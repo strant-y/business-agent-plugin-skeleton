@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-agent.dev/schema/rule.schema.json",
+  "title": "Business Rule",
+  "type": "object",
+  "required": ["id", "name", "entity", "rule", "confidence", "evidence"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^rule\\.[a-z0-9._-]+$" },
+    "name": { "type": "string" },
+    "entity": { "type": "string" },
+    "preconditions": { "type": "array", "items": { "type": "string" } },
+    "rule": { "type": "array", "items": { "type": "string" } },
+    "exceptions": { "type": "array", "items": { "type": "string" } },
+    "impact": { "type": "array", "items": { "type": "string" } },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "status": { "enum": ["candidate", "confirmed", "deprecated"] }
+  }
+}

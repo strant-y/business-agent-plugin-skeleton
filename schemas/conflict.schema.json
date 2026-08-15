@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-agent.dev/schema/conflict.schema.json",
+  "title": "Rule Conflict",
+  "type": "object",
+  "required": ["id", "ruleA", "ruleB", "entity", "description", "confidence", "evidence"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^conflict\\.[a-z0-9._-]+$" },
+    "ruleA": { "type": "string" },
+    "ruleB": { "type": "string" },
+    "entity": { "type": "string" },
+    "description": { "type": "string" },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "array", "items": { "type": "string" } }
+  }
+}

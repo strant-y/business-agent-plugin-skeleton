@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-agent.dev/schema/entity.schema.json",
+  "title": "Business Entity",
+  "type": "object",
+  "required": ["id", "name", "type", "description", "confidence", "evidence"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^entity\\.[a-z0-9._-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "type": { "const": "business_entity" },
+    "description": { "type": "string" },
+    "attributes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "type": "string" },
+          "required": { "type": "boolean" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "tags": { "type": "array", "items": { "type": "string" } }
+  }
+}

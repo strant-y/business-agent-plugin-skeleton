@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-agent.dev/schema/api.schema.json",
+  "title": "API Route",
+  "type": "object",
+  "required": ["id", "method", "path", "confidence", "evidence"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^api\\.[a-z0-9._-]+$" },
+    "method": { "type": "string" },
+    "path": { "type": "string" },
+    "handler": { "type": "string" },
+    "entity": { "type": "string" },
+    "kind": { "enum": ["backend", "frontend"] },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "array", "items": { "type": "string" } }
+  }
+}

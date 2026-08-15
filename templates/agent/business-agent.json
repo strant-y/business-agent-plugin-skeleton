@@ -1,0 +1,18 @@
+{
+  "ignoreDirs": ["node_modules", ".git", "dist", "build", ".idea", ".vscode", ".agent", "coverage"],
+  "allowedExt": [".ts", ".tsx", ".vue", ".java", ".sql", ".xml", ".js", ".jsx"],
+  "preferredEntities": [],
+  "maxFileBytes": 1048576,
+  "maxEntities": 100,
+  "maxSampleFiles": 40,
+  "maxSamplesPerExt": 20,
+  "maxSampleChars": 8000,
+  "relationWindow": 150,
+  "analyzers": [],
+  "llm": {
+    "provider": "openai-compatible",
+    "model": "",
+    "baseUrl": "",
+    "apiKeyEnv": "OPENAI_API_KEY"
+  }
+}

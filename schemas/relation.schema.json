@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://business-agent.dev/schema/relation.schema.json",
+  "title": "Business Relation",
+  "type": "object",
+  "required": ["id", "source", "target", "relationship", "cardinality", "confidence", "evidence"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^relation\\.[a-z0-9._-]+$" },
+    "source": { "type": "string" },
+    "target": { "type": "string" },
+    "relationship": { "type": "string" },
+    "cardinality": { "enum": ["1:1", "1:N", "N:1", "N:M", "unknown"] },
+    "description": { "type": "string" },
+    "confidence": { "enum": ["high", "medium", "low"] },
+    "evidence": { "type": "array", "items": { "type": "string" } }
+  }
+}

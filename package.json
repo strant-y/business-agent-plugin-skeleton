@@ -1,0 +1,69 @@
+{
+  "name": "business-agent",
+  "version": "0.1.0",
+  "description": "Business-first project-aware agent CLI scaffold",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/strant-y/business-agent-plugin-skeleton.git"
+  },
+  "bugs": {
+    "url": "https://github.com/strant-y/business-agent-plugin-skeleton/issues"
+  },
+  "homepage": "https://github.com/strant-y/business-agent-plugin-skeleton",
+  "keywords": [
+    "agent",
+    "business-analysis",
+    "discovery",
+    "knowledge-base",
+    "cli",
+    "scaffold"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "bin": {
+    "business-agent": "dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "schemas",
+    "templates"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"*.{js,json,md}\" \"schemas/*.json\" \".github/**/*.yml\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"*.{js,json,md}\" \"schemas/*.json\" \".github/**/*.yml\"",
+    "prepare": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.8.1",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.6",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.1.10"
+  }
+}

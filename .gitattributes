@@ -1,0 +1,4 @@
+# Normalize line endings across platforms; the CI matrix runs on Windows too.
+* text=auto
+*.bat text eol=crlf
+*.sh text eol=lf

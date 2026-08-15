@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.example.order.mapper.OrderMapper">
+
+  <resultMap id="OrderResult" type="Order">
+    <id property="id" column="id"/>
+    <result property="total" column="total"/>
+    <association property="customer" column="customer_id" javaType="Customer"/>
+  </resultMap>
+
+  <select id="findByCustomer" resultType="Order">
+    SELECT o.id, o.total
+    FROM orders o
+    JOIN customer c ON o.customer_id = c.id
+    WHERE c.id = #{customerId}
+  </select>
+
+  <insert id="insertOrder">
+    INSERT INTO orders (id, total, customer_id) VALUES (#{id}, #{total}, #{customerId})
+  </insert>
+</mapper>
