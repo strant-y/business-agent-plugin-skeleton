@@ -158,6 +158,9 @@ npm run build         # compile to dist/
 
 ## Next implementation stage
 
-1. SQL join / subquery relationship extraction (partial: `JOIN` relations are now extracted).
-2. Rule conflict resolution suggestions.
-3. Workflow and state-machine modeling.
+详细方案、里程碑与取舍见 [ROADMAP.md](./ROADMAP.md)。概要：
+
+1. 发布到 npm（改名为 `business-agent-cli`，含发布 CI）。
+2. 评审闭环：`review` 命令、评审状态持久化、`autoPromote` 旋钮。
+3. LLM 本地模型支持（Ollama）与上传隐私开关。
+4. SQL 子查询 / 多 JOIN 关系提取、冲突解决建议、状态机与工作流建模。
