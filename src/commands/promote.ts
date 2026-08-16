@@ -89,7 +89,7 @@ async function promoteRule(
   const resolved = await resolveCandidateText(candidatesDir, target);
   const candidate = resolved
     ? parseCandidate(resolved.content, resolved.name)
-    : { name: target, hypothesis: [target], evidence: [], impact: [], verification: [] };
+    : { name: target, hypothesis: [target], evidence: [], impact: [], context: [], verification: [] };
   if (!resolved) {
     console.warn(`Warning: no candidate file found for "${target}"; promoting a bare rule from the name.`);
   }

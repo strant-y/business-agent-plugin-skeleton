@@ -6,6 +6,7 @@ export interface ParsedCandidate {
   hypothesis: string[];
   evidence: string[];
   impact: string[];
+  context: string[];
   verification: string[];
 }
 
@@ -34,6 +35,7 @@ export function parseCandidate(content: string, fallbackName: string): ParsedCan
     hypothesis: section('Hypothesis'),
     evidence: section('Evidence'),
     impact: section('Impact'),
+    context: section('Context'),
     verification: section('Verification'),
   };
 }
@@ -44,6 +46,7 @@ export interface PromoteRuleInput {
   candidate: ParsedCandidate;
   confidence?: BusinessRule['confidence'];
   evidence?: string[];
+  context?: string[];
 }
 
 export function buildRuleFromCandidate(input: PromoteRuleInput): BusinessRule {
@@ -62,6 +65,7 @@ export function buildRuleFromCandidate(input: PromoteRuleInput): BusinessRule {
       ? input.candidate.impact
       : ['Review related UI, API, service, and database code.'],
     evidence: evidence.length ? evidence : ['Promoted from candidate'],
+    context: input.context ?? input.candidate.context,
     confidence: input.confidence ?? 'medium',
     status: 'confirmed',
   };

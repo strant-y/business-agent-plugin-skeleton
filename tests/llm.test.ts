@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildEntityPrompt, completeLlm } from '../src/core/analyzers/llm.js';
+import { redactSecrets } from '../src/core/analyzers/privacy.js';
 import type { Entity } from '../src/core/types.js';
 import type { LlmConfig } from '../src/core/config.js';
 
@@ -20,6 +21,16 @@ describe('buildEntityPrompt', () => {
     const prompt = buildEntityPrompt(ENTITIES);
     expect(prompt).toContain('Product');
     expect(prompt).toContain('status');
+  });
+});
+
+describe('redactSecrets', () => {
+  it('redacts common credentials and bearer tokens', () => {
+    const result = redactSecrets('apiKey=sk-test-secret Bearer abc.def password: "hidden"');
+    expect(result).not.toContain('sk-test-secret');
+    expect(result).not.toContain('abc.def');
+    expect(result).not.toContain('hidden');
+    expect(result).toContain('[REDACTED]');
   });
 });
 
@@ -60,6 +71,26 @@ describe('completeLlm', () => {
     expect(result).toBe('OK');
     expect(captured?.url).toBe('https://example.com/v1/chat/completions');
     expect(captured?.headers.Authorization).toBe('Bearer sk-test');
+  });
+
+  it('supports Ollama without an authorization header', async () => {
+    let captured: { url: string; headers: Record<string, string>; body: string } | undefined;
+    const fakeFetch = async (
+      url: string,
+      init: { headers: Record<string, string>; body: string },
+    ): Promise<{ ok: boolean; json: () => Promise<{ choices: Array<{ message: { content: string } }> }> }> => {
+      captured = { url, headers: init.headers, body: init.body };
+      return { ok: true, json: async () => ({ choices: [{ message: { content: 'OK' } }] }) };
+    };
+    const result = await completeLlm(
+      'hi',
+      { provider: 'ollama', model: 'qwen2.5-coder', apiKeyEnv: 'none' },
+      fakeFetch as unknown as typeof fetch,
+    );
+    expect(result).toBe('OK');
+    expect(captured?.url).toBe('http://localhost:11434/v1/chat/completions');
+    expect(captured?.headers.Authorization).toBeUndefined();
+    expect(JSON.parse(captured?.body ?? '{}').model).toBe('qwen2.5-coder');
   });
 
   it('treats empty model/baseUrl as unset defaults', async () => {

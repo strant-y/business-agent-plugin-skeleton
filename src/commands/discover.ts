@@ -8,8 +8,10 @@ export interface CommandOptions {
 }
 
 export async function discoverCommand(root: string, options: CommandOptions = {}): Promise<void> {
-  const config = await loadConfig(root);
-  const analyzers: AnalyzerName[] = options.deep ? ['sql', 'api', 'ast', 'vue', 'java', 'xml', 'linkage'] : [];
+  const config = await loadConfig(root, (message) => console.warn(`Warning: ${message}`));
+  const analyzers: AnalyzerName[] = options.deep
+    ? ['sql', 'api', 'ast', 'vue', 'stores', 'frontend', 'java', 'xml', 'linkage']
+    : [];
   const active = new Set<AnalyzerName>([...(config.analyzers as AnalyzerName[]), ...analyzers]);
   if (active.has('llm') || active.has('llm-rules')) {
     console.log('LLM enrichment active: source code snippets will be sent to the configured LLM endpoint.');
@@ -31,6 +33,8 @@ export async function discoverCommand(root: string, options: CommandOptions = {}
   if (options.deep) {
     console.log(`APIs: ${manifest.apis.length}`);
     console.log(`Conflicts: ${manifest.conflicts.length}`);
+    console.log(`Frontend pages: ${manifest.pages?.length ?? 0}`);
+    console.log(`User actions: ${manifest.actions?.length ?? 0}`);
   }
   if (options.dryRun) {
     console.log('Dry run: no files written.');

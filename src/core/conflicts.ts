@@ -10,6 +10,17 @@ export function ruleSign(text: string): 1 | -1 | 0 {
   return sign as 1 | -1 | 0;
 }
 
+function buildSuggestions(a: BusinessRule, b: BusinessRule): string[] {
+  const suggestions: string[] = [];
+  if ((a.preconditions?.length ?? 0) > 0 && (b.preconditions?.length ?? 0) > 0) {
+    suggestions.push('合并两条规则的前置条件，确认是否只在不同状态下分别成立。');
+  }
+  if (a.confidence !== b.confidence) suggestions.push(`优先人工裁决置信度更高的规则（${a.id} vs ${b.id}）。`);
+  if (a.evidence.some((e) => b.evidence.includes(e))) suggestions.push('同源证据可合并，保留更具体的规则描述。');
+  suggestions.push(`确认后可将不适用规则标记为 deprecated：${a.id} 或 ${b.id}。`);
+  return suggestions;
+}
+
 export function detectConflicts(rules: BusinessRule[]): RuleConflict[] {
   const conflicts: RuleConflict[] = [];
   const byEntity = new Map<string, BusinessRule[]>();
@@ -37,6 +48,7 @@ export function detectConflicts(rules: BusinessRule[]): RuleConflict[] {
             description: `Rules "${a.name}" and "${b.name}" express opposing constraints on ${entity}.`,
             confidence: 'low',
             evidence: [...a.evidence, ...b.evidence].slice(0, 10),
+            suggestions: buildSuggestions(a, b),
           });
         }
       }

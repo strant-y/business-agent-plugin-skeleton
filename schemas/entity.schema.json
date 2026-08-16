@@ -7,7 +7,18 @@
   "properties": {
     "id": { "type": "string", "pattern": "^entity\\.[a-z0-9._-]+$" },
     "name": { "type": "string", "minLength": 1 },
-    "type": { "const": "business_entity" },
+    "type": {
+      "enum": [
+        "business_entity",
+        "frontend_store",
+        "composable",
+        "page",
+        "component",
+        "api_client",
+        "backend_api",
+        "database_table"
+      ]
+    },
     "description": { "type": "string" },
     "attributes": {
       "type": "array",

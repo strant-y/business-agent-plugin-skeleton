@@ -18,6 +18,8 @@ describe('initCommand', () => {
     await initCommand(dir);
     expect(await fs.stat(path.join(dir, '.agent/HARNESS.md'))).toBeDefined();
     expect(await fs.stat(path.join(dir, '.agent/business-agent.json'))).toBeDefined();
+    expect(await fs.stat(path.join(dir, '.agent/business/entities'))).toBeDefined();
+    expect(await fs.stat(path.join(dir, '.agent/memory/candidates'))).toBeDefined();
   });
 
   it('keeps an existing .agent unless --force is used', async () => {

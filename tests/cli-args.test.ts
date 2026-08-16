@@ -23,7 +23,16 @@ describe('parseArgs', () => {
 
   it('returns all flags false for an empty argv', () => {
     const { flags, positional } = parseArgs([]);
-    expect(flags).toEqual({ dryRun: false, json: false, help: false, version: false, deep: false, force: false });
+    expect(flags).toEqual({
+      dryRun: false,
+      json: false,
+      help: false,
+      version: false,
+      deep: false,
+      force: false,
+      nonInteractive: false,
+      quiet: false,
+    });
     expect(positional).toEqual([]);
   });
 });

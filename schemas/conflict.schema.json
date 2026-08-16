@@ -11,6 +11,7 @@
     "entity": { "type": "string" },
     "description": { "type": "string" },
     "confidence": { "enum": ["high", "medium", "low"] },
-    "evidence": { "type": "array", "items": { "type": "string" } }
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "suggestions": { "type": "array", "items": { "type": "string" } }
   }
 }

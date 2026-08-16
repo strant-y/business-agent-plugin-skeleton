@@ -1,9 +1,19 @@
 export type Confidence = 'high' | 'medium' | 'low';
 
+export type EntityType =
+  | 'business_entity'
+  | 'frontend_store'
+  | 'composable'
+  | 'page'
+  | 'component'
+  | 'api_client'
+  | 'backend_api'
+  | 'database_table';
+
 export interface Entity {
   id: string;
   name: string;
-  type: 'business_entity';
+  type: EntityType;
   description: string;
   attributes?: Array<{ name: string; type?: string; required?: boolean; description?: string }>;
   confidence: Confidence;
@@ -19,6 +29,7 @@ export interface BusinessRule {
   rule: string[];
   exceptions?: string[];
   impact?: string[];
+  context?: string[];
   confidence: Confidence;
   evidence: string[];
   status?: 'candidate' | 'confirmed' | 'deprecated';
@@ -55,6 +66,49 @@ export interface RuleConflict {
   description: string;
   confidence: Confidence;
   evidence: string[];
+  suggestions?: string[];
+}
+
+export interface StateMachine {
+  entity: string;
+  states: string[];
+  transitions: Array<{ from: string; to: string; evidence: string }>;
+  mermaid: string;
+}
+
+export type UserActionTrigger = 'click' | 'submit' | 'route' | 'watch' | 'startup' | 'event';
+
+export interface FrontendPage {
+  id: string;
+  route?: string;
+  component: string;
+  permissions: string[];
+  stores: string[];
+  apiCalls: string[];
+  actions: string[];
+  evidence: string[];
+}
+
+export interface UserAction {
+  id: string;
+  name: string;
+  source: string;
+  trigger: UserActionTrigger;
+  preconditions: string[];
+  stateReads: string[];
+  stateWrites: string[];
+  apiCalls: string[];
+  successEffects: string[];
+  failureEffects: string[];
+  evidence: string[];
+}
+
+export interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  steps: string[];
+  status: 'draft';
 }
 
 export interface DiscoverManifest {
@@ -66,4 +120,8 @@ export interface DiscoverManifest {
   relations: Relation[];
   apis: ApiRoute[];
   conflicts: RuleConflict[];
+  states?: StateMachine[];
+  workflows?: WorkflowTemplate[];
+  pages?: FrontendPage[];
+  actions?: UserAction[];
 }

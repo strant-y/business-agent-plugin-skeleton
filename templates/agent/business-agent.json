@@ -8,11 +8,13 @@
   "maxSamplesPerExt": 20,
   "maxSampleChars": 8000,
   "relationWindow": 150,
-  "analyzers": [],
+  "analyzers": ["frontend"],
+  "autoPromote": "never",
   "llm": {
     "provider": "openai-compatible",
     "model": "",
     "baseUrl": "",
-    "apiKeyEnv": "OPENAI_API_KEY"
+    "apiKeyEnv": "OPENAI_API_KEY",
+    "allowSourceUpload": false
   }
 }

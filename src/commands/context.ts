@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
-import type { ApiRoute, RuleConflict } from '../core/types.js';
+import type { ApiRoute, FrontendPage, RuleConflict, StateMachine, UserAction } from '../core/types.js';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -11,6 +11,9 @@ interface ContextManifest {
   entities?: Array<{ name: string; description: string; confidence: string }>;
   apis?: ApiRoute[];
   conflicts?: RuleConflict[];
+  states?: StateMachine[];
+  pages?: FrontendPage[];
+  actions?: UserAction[];
 }
 
 export interface ContextOptions {
@@ -52,6 +55,16 @@ export async function contextCommand(root: string, subject: string, options: Con
     (c) => matchedNames.has(c.entity) || c.entity.toLowerCase() === subjectLower,
   );
   const relevantApis = (manifest?.apis ?? []).filter((a) => a.entity && matchedNames.has(a.entity));
+  const relevantPages = (manifest?.pages ?? []).filter(
+    (page) =>
+      matchedNames.has(page.component) ||
+      page.stores.some((store) => matchedNames.has(store)) ||
+      page.apiCalls.some((api) => api.toLowerCase().includes(subjectLower)),
+  );
+  const relevantActions = (manifest?.actions ?? []).filter(
+    (action) =>
+      relevantPages.some((page) => page.actions.includes(action.id)) || action.source.toLowerCase() === subjectLower,
+  );
 
   // Impact maps are keyed by rule/relation file id; only surface relevant ones.
   const relevantImpactFiles = new Set<string>();
@@ -83,8 +96,34 @@ export async function contextCommand(root: string, subject: string, options: Con
     '',
     '## Rule Conflicts',
     ...(relevantConflicts.length
-      ? relevantConflicts.map((c) => `- ${c.ruleA} vs ${c.ruleB}: ${c.description}`)
+      ? relevantConflicts.flatMap((c) => [
+          `- ${c.ruleA} vs ${c.ruleB}: ${c.description}`,
+          ...(c.suggestions ?? []).map((suggestion) => `  - Suggestion: ${suggestion}`),
+        ])
       : ['- None detected.']),
+    '',
+    '## State Machines',
+    ...(manifest?.states
+      ?.filter((s) => matchedNames.has(s.entity) || s.entity.toLowerCase() === subjectLower)
+      .map((s) => `- ${s.entity}: ${s.states.join(', ')}\n\n  \`\`\`mermaid\n  ${s.mermaid}\n  \`\`\``) ?? [
+      '- None detected.',
+    ]),
+    '',
+    '## Frontend Pages',
+    ...(relevantPages.length
+      ? relevantPages.map(
+          (page) =>
+            `- ${page.component}${page.route ? ` (${page.route})` : ''}: stores=${page.stores.join(', ') || 'none'}, APIs=${page.apiCalls.join(', ') || 'none'}`,
+        )
+      : ['- None matched.']),
+    '',
+    '## User Actions',
+    ...(relevantActions.length
+      ? relevantActions.map(
+          (action) =>
+            `- ${action.name} [${action.trigger}] on ${action.source}: ${action.preconditions.join('; ') || 'no explicit precondition'}`,
+        )
+      : ['- None matched.']),
     '',
     '## Relevant API Routes',
     ...(relevantApis.length
@@ -117,6 +156,9 @@ export async function contextCommand(root: string, subject: string, options: Con
           relations: relevantRelations,
           conflicts: relevantConflicts,
           apis: relevantApis,
+          states: manifest?.states ?? [],
+          pages: relevantPages,
+          actions: relevantActions,
           impacts: relevantImpacts,
         },
         null,

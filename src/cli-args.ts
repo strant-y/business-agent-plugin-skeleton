@@ -10,10 +10,21 @@ export interface Flags {
   version: boolean;
   deep: boolean;
   force: boolean;
+  nonInteractive: boolean;
+  quiet: boolean;
 }
 
 export function parseArgs(raw: string[]): { flags: Flags; positional: string[] } {
-  const flags: Flags = { dryRun: false, json: false, help: false, version: false, deep: false, force: false };
+  const flags: Flags = {
+    dryRun: false,
+    json: false,
+    help: false,
+    version: false,
+    deep: false,
+    force: false,
+    nonInteractive: false,
+    quiet: false,
+  };
   const positional: string[] = [];
   for (const arg of raw) {
     switch (arg) {
@@ -28,6 +39,12 @@ export function parseArgs(raw: string[]): { flags: Flags; positional: string[] }
         break;
       case '--force':
         flags.force = true;
+        break;
+      case '--non-interactive':
+        flags.nonInteractive = true;
+        break;
+      case '--quiet':
+        flags.quiet = true;
         break;
       case '-h':
       case '--help':
@@ -44,15 +61,28 @@ export function parseArgs(raw: string[]): { flags: Flags; positional: string[] }
   return { flags, positional };
 }
 
-export const PROMOTE_KEYS = new Set(['type', 'entity', 'source', 'target', 'relationship', 'cardinality']);
+export const PROMOTE_KEYS = new Set([
+  'type',
+  'entity',
+  'source',
+  'target',
+  'relationship',
+  'cardinality',
+  'accept',
+  'reject',
+]);
 
-export function parsePromoteOptions(args: string[]): Record<string, string> {
+export const CAPTURE_KEYS = new Set(['learn', 'since', 'entity']);
+
+export const TASK_KEYS = new Set(['command', 'passed', 'summary', 'learn', 'session', 'files']);
+
+function parseValueOptions(args: string[], keys: Set<string>, label: string): Record<string, string> {
   const opts: Record<string, string> = {};
   for (let i = 0; i < args.length; i++) {
     if (!args[i].startsWith('--')) continue;
     const key = args[i].slice(2);
-    if (!PROMOTE_KEYS.has(key)) {
-      throw new Error(`Unknown promote option: --${key}`);
+    if (!keys.has(key)) {
+      throw new Error(`Unknown ${label} option: --${key}`);
     }
     const value = args[i + 1];
     if (value === undefined || value.startsWith('--')) {
@@ -62,6 +92,18 @@ export function parsePromoteOptions(args: string[]): Record<string, string> {
     i++;
   }
   return opts;
+}
+
+export function parsePromoteOptions(args: string[]): Record<string, string> {
+  return parseValueOptions(args, PROMOTE_KEYS, 'promote');
+}
+
+export function parseCaptureOptions(args: string[]): Record<string, string> {
+  return parseValueOptions(args, CAPTURE_KEYS, 'capture');
+}
+
+export function parseTaskOptions(args: string[]): Record<string, string> {
+  return parseValueOptions(args, TASK_KEYS, 'task');
 }
 
 export function rejectUnexpectedArgs(command: string, args: string[]): void {

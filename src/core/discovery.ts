@@ -6,8 +6,17 @@ import { validateManifest } from './validate.js';
 import { heuristicScorer } from './evidence.js';
 import { runAnalyzers, resolveAnalyzers } from './analyzer.js';
 import { detectConflicts } from './conflicts.js';
-import { writeRule, writeRelation, buildIndex, safeFileId } from './knowledge.js';
+import { writeRule, writeRelation, buildIndex } from './knowledge.js';
 import { writeJson, writeText, readText, exists } from '../utils/fs.js';
+import {
+  applyReviewState,
+  loadReviewState,
+  markReviewed,
+  mergeCandidateRules,
+  shouldAutoPromote,
+  writeCandidate,
+  saveReviewState,
+} from './review.js';
 
 export function entityId(name: string): string {
   return `entity.${name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
@@ -92,6 +101,17 @@ const RULE_PATTERNS: Array<{ id: string; name: string; pattern: RegExp }> = [
   },
 ];
 
+function buildEvidenceContext(evidence: string[], samples: SampleFile[]): string[] {
+  return evidence.map((file) => {
+    const sample = samples.find((item) => item.file === file);
+    if (!sample) return `${file}: evidence file selected during discovery.`;
+    const lines = sample.text.split(/\r?\n/);
+    const lineIndex = lines.findIndex((value) => /status|disabled|v-if|throw new|validation/i.test(value));
+    const line = lineIndex >= 0 ? lines[lineIndex] : lines.find((value) => value.trim());
+    return `${file}:${lineIndex >= 0 ? lineIndex + 1 : 1}: ${line?.trim() ?? 'matched business signal'}`;
+  });
+}
+
 function detectRules(samples: SampleFile[]): BusinessRule[] {
   const rules: BusinessRule[] = [];
   for (const { id, name, pattern } of RULE_PATTERNS) {
@@ -110,6 +130,7 @@ function detectRules(samples: SampleFile[]): BusinessRule[] {
       impact: ['Review related UI, API, service, and database code.'],
       confidence: heuristicScorer.score(evidence),
       evidence,
+      context: buildEvidenceContext(evidence, samples),
       status: 'candidate',
     };
     rules.push(rule);
@@ -143,6 +164,11 @@ export function candidateMarkdown(rule: BusinessRule): string {
     '## Evidence',
     ...(rule.evidence.length ? rule.evidence.map((e) => `- ${e}`) : ['- None captured yet']),
     '',
+    '## Context',
+    ...(rule.context?.length
+      ? rule.context.map((c) => `- ${c}`)
+      : ['- Review the cited code paths before promoting this candidate.']),
+    '',
     '## Impact',
     ...(rule.impact?.length ? rule.impact.map((i) => `- ${i}`) : ['- TBD']),
     '',
@@ -172,7 +198,7 @@ export interface DiscoverOptions {
 
 export async function discover(root: string, options: DiscoverOptions = {}): Promise<DiscoverManifest> {
   const warn = options.onWarning ?? ((): void => {});
-  const config = options.config ?? (await loadConfig(root));
+  const config = options.config ?? (await loadConfig(root, warn));
   const scan = await scanProject(root, config);
   const entities = detectEntities(scan.sampleText, scan.files, config.preferredEntities, config.maxEntities);
   const relations = detectRelations(entities, scan.sampleText, config.relationWindow);
@@ -183,6 +209,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   let finalRules = rules;
   let finalRelations = relations;
   let apis: DiscoverManifest['apis'] = [];
+  let states: DiscoverManifest['states'] = [];
+  let pages: DiscoverManifest['pages'] = [];
+  let actions: DiscoverManifest['actions'] = [];
 
   if (analyzers.length > 0) {
     const deep = await runAnalyzers(scan, { config, entities, rules, relations }, analyzers, warn);
@@ -190,7 +219,19 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     finalRules = deep.rules;
     finalRelations = deep.relations;
     apis = deep.apis;
+    states = deep.states;
+    pages = deep.pages;
+    actions = deep.actions;
   }
+
+  const agentRoot = path.join(root, '.agent');
+  const reviewState = await loadReviewState(agentRoot);
+  const candidateRules = mergeCandidateRules(applyReviewState(finalRules, reviewState));
+  const autoPromoted = candidateRules.filter((rule) => shouldAutoPromote(rule, config.autoPromote));
+  const persistedRules = candidateRules.filter((rule) => !shouldAutoPromote(rule, config.autoPromote));
+  const confirmedRules = autoPromoted.map((rule) => ({ ...rule, status: 'confirmed' as const }));
+  for (const rule of autoPromoted) markReviewed(reviewState, rule, 'accepted', rule.id);
+  finalRules = [...persistedRules, ...confirmedRules];
 
   const conflicts = detectConflicts(finalRules);
 
@@ -203,6 +244,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     relations: finalRelations,
     apis,
     conflicts,
+    states,
+    pages,
+    actions,
   };
   const problems = await validateManifest(manifest);
   if (problems.length > 0) {
@@ -210,9 +254,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   }
   if (options.dryRun) return manifest;
 
-  const agentRoot = path.join(root, '.agent');
   const prevManifest = await readPreviousManifest(agentRoot);
   await writeJson(path.join(agentRoot, 'memory', 'discovery-manifest.json'), manifest);
+  await saveReviewState(agentRoot, reviewState);
 
   // Entities: never clobber files the user has edited since the last discovery.
   const preserved: string[] = [];
@@ -241,7 +285,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     await writeRule(agentRoot, rule);
   }
   for (const rule of finalRules.filter((r) => r.status !== 'confirmed')) {
-    await writeText(path.join(agentRoot, 'memory', 'candidates', `${safeFileId(rule.id)}.md`), candidateMarkdown(rule));
+    await writeCandidate(agentRoot, rule, candidateMarkdown);
   }
   for (const relation of finalRelations) {
     await writeRelation(agentRoot, relation);
@@ -250,6 +294,12 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     agentRoot,
     finalEntities.map((e) => ({ name: e.name })),
   );
+  if (states.length) {
+    await writeText(
+      path.join(agentRoot, 'business', 'states', 'discovery.md'),
+      states.map((state) => `# ${state.entity} States\n\n\`\`\`mermaid\n${state.mermaid}\n\`\`\``).join('\n\n'),
+    );
+  }
 
   return manifest;
 }

@@ -5,12 +5,12 @@
 
 ## 现状与问题
 
-| # | 问题 | 现状 |
-|---|------|------|
-| 1 | 未发布到 npm | 只能 `npm link` 或 `npm publish` 后使用；包名 `business-agent` 已被 npm 占用（实测存在 v0.3.0） |
-| 2 | 知识需人工确认 | discover 产出 low/medium 候选，须手动 promote；重复 discover 会重新生成候选，无评审状态记忆 |
-| 3 | LLM 分析器门槛高 | 需外部 API key；会把源码片段发往远端；默认关闭 |
-| 4 | 三项能力待办 | SQL 仅单表 JOIN；冲突只有检测无建议；states/workflows 目录为空壳 |
+| #   | 问题             | 现状                                                                                            |
+| --- | ---------------- | ----------------------------------------------------------------------------------------------- |
+| 1   | 未发布到 npm     | 只能 `npm link` 或 `npm publish` 后使用；包名 `business-agent` 已被 npm 占用（实测存在 v0.3.0） |
+| 2   | 知识需人工确认   | discover 产出 low/medium 候选，须手动 promote；重复 discover 会重新生成候选，无评审状态记忆     |
+| 3   | LLM 分析器门槛高 | 需外部 API key；会把源码片段发往远端；默认关闭                                                  |
+| 4   | 三项能力待办     | SQL 仅单表 JOIN；冲突只有检测无建议；states/workflows 目录为空壳                                |
 
 ---
 
@@ -18,12 +18,12 @@
 
 ### 命名（已核实注册表）
 
-| 候选名 | 状态 | 评价 |
-|--------|------|------|
-| `business-agent` | ❌ 已占用 | 无法使用 |
-| `business-agent-cli` | ✅ 可用 | **推荐**：语义清晰、SEO 好，bin 名可保持 `business-agent` 不变 |
-| `@strant-y/business-agent` | ✅ 可用 | 最稳妥（scope 独占），但需 `--access public`，且要求拥有该 scope |
-| `ba-cli` | ✅ 可用 | 短但语义弱，不推荐 |
+| 候选名                     | 状态      | 评价                                                             |
+| -------------------------- | --------- | ---------------------------------------------------------------- |
+| `business-agent`           | ❌ 已占用 | 无法使用                                                         |
+| `business-agent-cli`       | ✅ 可用   | **推荐**：语义清晰、SEO 好，bin 名可保持 `business-agent` 不变   |
+| `@strant-y/business-agent` | ✅ 可用   | 最稳妥（scope 独占），但需 `--access public`，且要求拥有该 scope |
+| `ba-cli`                   | ✅ 可用   | 短但语义弱，不推荐                                               |
 
 **决策：改名为 `business-agent-cli`，bin 名保持 `business-agent`。** 用户安装后命令无变化，零迁移成本。
 
@@ -172,11 +172,11 @@ business-agent review --json                 # 机器可读
 
 ## 里程碑与落地顺序
 
-| 版本 | 主题 | 内容 |
-|------|------|------|
-| **0.2.0** | 发布 + 评审闭环 | 改名 `business-agent-cli`、publish CI、`review` 命令 + review-state 持久化、`autoPromote`、候选聚合降噪、LLM 本地模型 + `allowSourceUpload` + 脱敏、`config` 命令 |
-| **0.3.0** | 深度 SQL + 冲突闭环 | SQL 子查询/多 JOIN/CTE 解析、冲突建议 + `conflicts` 命令、`deprecate` 命令 |
-| **0.4.0** | 状态机 + 工作流 | `states` 分析器 + mermaid 输出、`workflow` 命令 + context 集成 |
+| 版本      | 主题                | 内容                                                                                                                                                              |
+| --------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **0.2.0** | 发布 + 评审闭环     | 改名 `business-agent-cli`、publish CI、`review` 命令 + review-state 持久化、`autoPromote`、候选聚合降噪、LLM 本地模型 + `allowSourceUpload` + 脱敏、`config` 命令 |
+| **0.3.0** | 深度 SQL + 冲突闭环 | SQL 子查询/多 JOIN/CTE 解析、冲突建议 + `conflicts` 命令、`deprecate` 命令                                                                                        |
+| **0.4.0** | 状态机 + 工作流     | `states` 分析器 + mermaid 输出、`workflow` 命令 + context 集成                                                                                                    |
 
 每版本流程：`npm version` 打 tag → 推 tag 触发 CI 发布 → 更新 CHANGELOG。
 

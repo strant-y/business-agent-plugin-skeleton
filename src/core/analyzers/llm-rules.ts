@@ -1,6 +1,7 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
 import type { BusinessRule, Relation } from '../types.js';
 import { completeLlm } from './llm.js';
+import { redactSecrets } from './privacy.js';
 
 export function buildRulesPrompt(snippets: Array<{ file: string; text: string }>): string {
   const lines = snippets.map((s) => `--- ${s.file} ---\n${s.text.slice(0, 1200)}`);
@@ -64,7 +65,14 @@ export const llmRulesAnalyzer: Analyzer = {
     const config = ctx.config.llm;
     if (!config) return {};
 
-    const snippets = selectRuleSnippets(scan.samples);
+    if (!config.allowSourceUpload) {
+      ctx.warn?.('LLM rules analysis skipped: llm.allowSourceUpload is false.');
+      return {};
+    }
+    const snippets = selectRuleSnippets(scan.samples).map((sample) => ({
+      ...sample,
+      text: redactSecrets(sample.text),
+    }));
     const content = await completeLlm(buildRulesPrompt(snippets), config);
     if (!content) return {};
 

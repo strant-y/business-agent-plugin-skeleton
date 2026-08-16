@@ -6,7 +6,12 @@ import { describe, expect, it } from 'vitest';
 import { scanProject } from '../src/core/scanner.js';
 import { DEFAULT_CONFIG } from '../src/core/config.js';
 import { apiAnalyzer } from '../src/core/analyzers/api.js';
-import { linkageAnalyzer, linkViewsToApis, staticCallPath } from '../src/core/analyzers/linkage.js';
+import {
+  linkageAnalyzer,
+  linkFrontendModules,
+  linkViewsToApis,
+  staticCallPath,
+} from '../src/core/analyzers/linkage.js';
 import { runAnalyzers } from '../src/core/analyzer.js';
 import type { ApiRoute, Entity } from '../src/core/types.js';
 
@@ -38,6 +43,33 @@ describe('linkageAnalyzer', () => {
     expect(rel?.target).toBe('Order');
     expect(rel?.description).toContain('GET /api/orders');
     expect(rel?.evidence.some((f) => f.endsWith('OrderList.vue'))).toBe(true);
+  });
+
+  it('links components to composables and stores and identifies frontend entities', async () => {
+    const scan = await scanProject(LINK, DEFAULT_CONFIG);
+    const relations = linkFrontendModules(
+      scan,
+      [
+        {
+          method: 'GET',
+          path: '/api/orders',
+          entity: 'Order',
+          kind: 'backend',
+          id: 'api.orders',
+          confidence: 'low',
+          evidence: [],
+        },
+      ],
+      [ORDER_ENTITY],
+    );
+    expect(relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'OrderList', target: 'OrderStore', relationship: 'uses_store' }),
+        expect.objectContaining({ source: 'OrderList', target: 'UseOrderData', relationship: 'uses_composable' }),
+        expect.objectContaining({ source: 'OrderList', target: 'Order', relationship: 'uses_entity' }),
+        expect.objectContaining({ source: 'OrderStore', target: 'UseOrderData', relationship: 'uses_composable' }),
+      ]),
+    );
   });
 
   it('marks vue-router paths as frontend routes and never links views to them', async () => {

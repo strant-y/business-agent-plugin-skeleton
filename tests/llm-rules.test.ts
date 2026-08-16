@@ -99,7 +99,13 @@ describe('llmRulesAnalyzer', () => {
 
     const config: AgentConfig = {
       ...DEFAULT_CONFIG,
-      llm: { provider: 'openai-compatible', model: 'm', baseUrl: 'https://example.com/v1', apiKeyEnv: 'TEST_LLM_KEY' },
+      llm: {
+        provider: 'openai-compatible',
+        model: 'm',
+        baseUrl: 'https://example.com/v1',
+        apiKeyEnv: 'TEST_LLM_KEY',
+        allowSourceUpload: true,
+      },
     };
     const result = await llmRulesAnalyzer.analyze(SCAN, { config, entities: [], rules: [] });
 

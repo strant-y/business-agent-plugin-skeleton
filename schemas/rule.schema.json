@@ -12,6 +12,7 @@
     "rule": { "type": "array", "items": { "type": "string" } },
     "exceptions": { "type": "array", "items": { "type": "string" } },
     "impact": { "type": "array", "items": { "type": "string" } },
+    "context": { "type": "array", "items": { "type": "string" } },
     "confidence": { "enum": ["high", "medium", "low"] },
     "evidence": { "type": "array", "items": { "type": "string" } },
     "status": { "enum": ["candidate", "confirmed", "deprecated"] }

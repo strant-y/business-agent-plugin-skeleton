@@ -7,6 +7,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import axios from 'axios';
+import { useOrderStore } from '../stores/orderStore';
+import { useOrderData } from '../composables/useOrderData';
 
 interface Order {
   id: string;

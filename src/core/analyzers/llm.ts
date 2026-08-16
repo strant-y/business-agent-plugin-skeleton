@@ -4,8 +4,7 @@ import type { LlmConfig } from '../config.js';
 
 export function buildEntityPrompt(entities: Entity[]): string {
   const lines = entities.map(
-    (e) =>
-      `- ${e.name}: ${e.description}${e.attributes?.length ? ` (${e.attributes.map((a) => a.name).join(', ')})` : ''}`,
+    (e) => `- ${e.name}${e.attributes?.length ? ` (${e.attributes.map((a) => a.name).join(', ')})` : ''}`,
   );
   return [
     'You are a business analyst for a codebase. For each entity below, return JSON with a concise business description and a suggested attribute description for each listed attribute.',
@@ -24,7 +23,7 @@ async function requestOnce(
   prompt: string,
   baseUrl: string,
   model: string,
-  apiKey: string,
+  apiKey: string | undefined,
   fetchImpl: typeof fetch,
   timeoutMs: number,
 ): Promise<string | undefined> {
@@ -35,7 +34,7 @@ async function requestOnce(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
       },
       body: JSON.stringify({
         model,
@@ -73,10 +72,12 @@ export async function completeLlm(
   retries = 2,
 ): Promise<string | undefined> {
   const apiKeyEnv = config.apiKeyEnv ?? 'OPENAI_API_KEY';
-  const apiKey = process.env[apiKeyEnv];
-  if (!apiKey) return undefined;
-  const baseUrl = config.baseUrl?.trim() || 'https://api.openai.com/v1';
-  const model = config.model?.trim() || 'gpt-4o-mini';
+  const apiKey = apiKeyEnv === 'none' ? undefined : process.env[apiKeyEnv];
+  if (config.provider !== 'ollama' && !apiKey) return undefined;
+  const baseUrl =
+    config.baseUrl?.trim() ||
+    (config.provider === 'ollama' ? 'http://localhost:11434/v1' : 'https://api.openai.com/v1');
+  const model = config.model?.trim() || (config.provider === 'ollama' ? 'qwen2.5-coder' : 'gpt-4o-mini');
 
   let lastError: Error | undefined;
   for (let attempt = 0; attempt <= retries; attempt++) {

@@ -3,7 +3,7 @@ import { runAnalyzers, type Analyzer } from '../src/core/analyzer.js';
 import { loadTs } from '../src/core/analyzers/ast.js';
 import { DEFAULT_CONFIG } from '../src/core/config.js';
 import type { ProjectScan } from '../src/core/scanner.js';
-import type { Entity } from '../src/core/types.js';
+import type { ApiRoute, Entity, Relation } from '../src/core/types.js';
 
 const SCAN: ProjectScan = { files: [], sampleText: '', samples: [] };
 
@@ -132,6 +132,35 @@ describe('runAnalyzers', () => {
 
     expect(first.entities.map((e) => e.name)).toEqual(['SlowSql', 'FastAst']);
     expect(second.entities.map((e) => e.name)).toEqual(['SlowSql', 'FastAst']);
+  });
+
+  it('preserves distinct relations and API routes during deduplication', async () => {
+    const relation = (relationship: string): Relation => ({
+      id: `relation.${relationship}`,
+      source: 'Order',
+      target: 'Customer',
+      relationship,
+      cardinality: 'unknown',
+      confidence: 'low',
+      evidence: [],
+    });
+    const api = (kind: 'backend' | 'frontend'): ApiRoute => ({
+      id: `api.${kind}`,
+      method: 'GET',
+      path: '/orders',
+      kind,
+      confidence: 'low',
+      evidence: [],
+    });
+    const analyzer: Analyzer = {
+      name: 'sql',
+      analyze() {
+        return { relations: [relation('references'), relation('calls_api')], apis: [api('backend'), api('frontend')] };
+      },
+    };
+    const result = await runAnalyzers(SCAN, { config: DEFAULT_CONFIG, entities: [], rules: [] }, [analyzer]);
+    expect(result.relations).toHaveLength(2);
+    expect(result.apis).toHaveLength(2);
   });
 
   it('does not emit false typescript-missing warnings when ast and vue run concurrently', async () => {

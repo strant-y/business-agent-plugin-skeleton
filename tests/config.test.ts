@@ -29,10 +29,19 @@ describe('loadConfig', () => {
     expect(config.allowedExt).toEqual(DEFAULT_CONFIG.allowedExt);
   });
 
-  it('falls back to defaults on invalid JSON', async () => {
+  it('falls back to defaults and warns on invalid JSON', async () => {
     const dir = await tempProject('{ not valid json');
-    const config = await loadConfig(dir);
+    const warnings: string[] = [];
+    const config = await loadConfig(dir, (message) => warnings.push(message));
     expect(config).toEqual(DEFAULT_CONFIG);
+    expect(warnings[0]).toContain('Ignoring invalid configuration');
+  });
+
+  it('warns when the config root is not a JSON object', async () => {
+    const dir = await tempProject('[]');
+    const warnings: string[] = [];
+    await loadConfig(dir, (message) => warnings.push(message));
+    expect(warnings[0]).toContain('expected a JSON object');
   });
 
   it('ignores wrong-typed overrides', async () => {
@@ -40,6 +49,15 @@ describe('loadConfig', () => {
     const config = await loadConfig(dir);
     expect(config.maxEntities).toBe(DEFAULT_CONFIG.maxEntities);
     expect(config.allowedExt).toEqual(DEFAULT_CONFIG.allowedExt);
+  });
+
+  it('validates LLM provider and privacy option types', async () => {
+    const dir = await tempProject({ llm: { provider: 'invalid', allowSourceUpload: 'yes' } });
+    const warnings: string[] = [];
+    const config = await loadConfig(dir, (message) => warnings.push(message));
+    expect(config.llm?.provider).toBe(DEFAULT_CONFIG.llm?.provider);
+    expect(config.llm?.allowSourceUpload).toBe(false);
+    expect(warnings).toHaveLength(2);
   });
 
   it('merges llm config over defaults instead of dropping it', async () => {

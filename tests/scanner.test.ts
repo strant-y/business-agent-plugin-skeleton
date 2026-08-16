@@ -60,6 +60,16 @@ describe('scanProject', () => {
     expect(scan.samples.filter((s) => s.file.endsWith('.vue')).length).toBe(2);
   });
 
+  it('continues when a nested directory disappears during traversal', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-scan-missing-'));
+    const nested = path.join(dir, 'nested');
+    await fs.mkdir(nested);
+    await fs.writeFile(path.join(dir, 'ok.ts'), 'content', 'utf8');
+    await fs.rm(nested, { recursive: true });
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    expect(scan.files).toEqual(['ok.ts']);
+  });
+
   it('produces deterministic file and sample order across repeated scans', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-scan-determ-'));
     for (const name of ['z.ts', 'a.ts', 'm.ts', 'c.vue', 'b.vue', 'k.sql']) {

@@ -64,11 +64,64 @@ export { astAnalyzer, analyzeTypeScript, type TypeScriptAnalysis } from './core/
 export { vueAnalyzer } from './core/analyzers/vue.js';
 export { javaAnalyzer } from './core/analyzers/java.js';
 export { xmlAnalyzer } from './core/analyzers/xml.js';
-export { linkageAnalyzer, linkViewsToApis } from './core/analyzers/linkage.js';
+export { storesAnalyzer } from './core/analyzers/stores.js';
+export { linkageAnalyzer, linkViewsToApis, fileModuleName } from './core/analyzers/linkage.js';
 export { llmAnalyzer, completeLlm, buildEntityPrompt } from './core/analyzers/llm.js';
+export { redactSecrets } from './core/analyzers/privacy.js';
 export { llmRulesAnalyzer, buildRulesPrompt } from './core/analyzers/llm-rules.js';
+export {
+  loadReviewState,
+  saveReviewState,
+  applyReviewState,
+  mergeCandidateRules,
+  shouldAutoPromote,
+  candidateReviewKey,
+  type ReviewState,
+  type ReviewStateEntry,
+} from './core/review.js';
 export { parseSqlRelations, pascal } from './core/analyzers/parse.js';
-export { parseArgs, parsePromoteOptions, rejectUnexpectedArgs, PROMOTE_KEYS, type Flags } from './cli-args.js';
+export { statesAnalyzer, extractStateMachines } from './core/analyzers/states.js';
+export { frontendAnalyzer } from './core/analyzers/frontend.js';
+export {
+  buildImpactReport,
+  writeImpactReport,
+  impactMarkdown as changeImpactMarkdown,
+  type ImpactReport,
+  type ImpactChainStep,
+} from './core/impact.js';
+export { gitDiffFiles, gitDiffText, gitBranch } from './utils/git.js';
+export {
+  buildTaskContext,
+  startTask,
+  loadTaskSession,
+  saveTaskSession,
+  updateTaskSession,
+  predictTaskImpact,
+  checkpointTask,
+  recordTaskTest,
+  finishTask,
+  compareImpact,
+  runTaskValidation,
+  handleTaskEvent,
+  type TaskSession,
+  type TaskContext,
+  type TaskPhase,
+  type TaskStatus,
+  type TestObservation,
+  type TaskExperience,
+  type ImpactComparison,
+  type TaskLifecycleEvent,
+  type LifecycleResult,
+} from './core/task.js';
+export {
+  parseArgs,
+  parsePromoteOptions,
+  parseCaptureOptions,
+  rejectUnexpectedArgs,
+  PROMOTE_KEYS,
+  CAPTURE_KEYS,
+  type Flags,
+} from './cli-args.js';
 export type {
   Confidence,
   Entity,
@@ -77,4 +130,8 @@ export type {
   ApiRoute,
   RuleConflict,
   DiscoverManifest,
+  EntityType,
+  FrontendPage,
+  UserAction,
+  UserActionTrigger,
 } from './core/types.js';

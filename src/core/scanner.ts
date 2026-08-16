@@ -27,9 +27,12 @@ export async function scanProject(root: string, config: AgentConfig = DEFAULT_CO
   const candidates: string[] = [];
 
   async function walk(dir: string): Promise<void> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    // Sort for deterministic traversal: file list, sample selection and
-    // analyzer input must not depend on the OS readdir order.
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
     entries.sort((a, b) => a.name.localeCompare(b.name));
     for (const entry of entries) {
       if (entry.isDirectory() && ignoreDirs.has(entry.name)) continue;

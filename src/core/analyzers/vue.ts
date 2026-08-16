@@ -114,6 +114,7 @@ function templateRules(text: string, file: string, entityName: string): Business
       rule: [`Element is rendered only when: ${m[1].trim()}.`],
       confidence: 'low',
       evidence: [file],
+      context: [`${file}: template match ${m[0].trim()}`],
       status: 'candidate',
     });
   }
@@ -127,6 +128,7 @@ function templateRules(text: string, file: string, entityName: string): Business
       rule: [`Control is disabled when: ${m[1].trim()}.`],
       confidence: 'low',
       evidence: [file],
+      context: [`${file}: template match ${m[0].trim()}`],
       status: 'candidate',
     });
   }

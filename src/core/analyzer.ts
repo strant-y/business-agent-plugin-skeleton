@@ -1,6 +1,6 @@
 import type { ProjectScan } from './scanner.js';
 import type { AgentConfig, AnalyzerName } from './config.js';
-import type { ApiRoute, BusinessRule, Entity, Relation } from './types.js';
+import type { ApiRoute, BusinessRule, Entity, FrontendPage, Relation, UserAction } from './types.js';
 import { AVAILABLE_ANALYZERS } from './config.js';
 import { sqlAnalyzer } from './analyzers/sql.js';
 import { apiAnalyzer } from './analyzers/api.js';
@@ -8,9 +8,12 @@ import { astAnalyzer } from './analyzers/ast.js';
 import { vueAnalyzer } from './analyzers/vue.js';
 import { javaAnalyzer } from './analyzers/java.js';
 import { xmlAnalyzer } from './analyzers/xml.js';
-import { linkageAnalyzer } from './analyzers/linkage.js';
+import { linkageAnalyzer, linkFrontendModules } from './analyzers/linkage.js';
+import { storesAnalyzer } from './analyzers/stores.js';
 import { llmAnalyzer } from './analyzers/llm.js';
 import { llmRulesAnalyzer } from './analyzers/llm-rules.js';
+import { statesAnalyzer } from './analyzers/states.js';
+import { frontendAnalyzer } from './analyzers/frontend.js';
 
 export interface AnalyzerContext {
   config: AgentConfig;
@@ -27,6 +30,9 @@ export interface AnalyzeResult {
   rules?: BusinessRule[];
   relations?: Relation[];
   apis?: ApiRoute[];
+  states?: import('./types.js').StateMachine[];
+  pages?: FrontendPage[];
+  actions?: UserAction[];
 }
 
 export interface Analyzer {
@@ -41,9 +47,12 @@ const REGISTRY: Record<AnalyzerName, Analyzer> = {
   vue: vueAnalyzer,
   java: javaAnalyzer,
   xml: xmlAnalyzer,
+  stores: storesAnalyzer,
   linkage: linkageAnalyzer,
   llm: llmAnalyzer,
   'llm-rules': llmRulesAnalyzer,
+  states: statesAnalyzer,
+  frontend: frontendAnalyzer,
 };
 
 export function resolveAnalyzers(
@@ -109,6 +118,9 @@ export interface RunAnalyzersResult {
   rules: BusinessRule[];
   relations: Relation[];
   apis: ApiRoute[];
+  states: import('./types.js').StateMachine[];
+  pages: FrontendPage[];
+  actions: UserAction[];
   /** Non-fatal problems encountered while running analyzers. */
   warnings: string[];
 }
@@ -122,7 +134,7 @@ export interface RunAnalyzersResult {
  * Results are always merged in phase order, so the output is deterministic
  * regardless of which parallel analyzer finishes first.
  */
-const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml'];
+const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend'];
 const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'llm', 'llm-rules'];
 
 export async function runAnalyzers(
@@ -147,6 +159,9 @@ export async function runAnalyzers(
   const accRules: BusinessRule[] = [];
   const accRelations: Relation[] = [];
   const accApis: ApiRoute[] = [];
+  const accStates: import('./types.js').StateMachine[] = [];
+  const accPages: FrontendPage[] = [];
+  const accActions: UserAction[] = [];
 
   const runPhase = async (names: AnalyzerName[], phaseCtx: AnalyzerContext): Promise<void> => {
     // All analyzers in a phase share the same context snapshot and run concurrently.
@@ -169,6 +184,9 @@ export async function runAnalyzers(
       accRules.push(...(outcome.result?.rules ?? []));
       accRelations.push(...(outcome.result?.relations ?? []));
       accApis.push(...(outcome.result?.apis ?? []));
+      accStates.push(...(outcome.result?.states ?? []));
+      accPages.push(...(outcome.result?.pages ?? []));
+      accActions.push(...(outcome.result?.actions ?? []));
     }
   };
 
@@ -198,6 +216,13 @@ export async function runAnalyzers(
   );
 
   if (byName.has('linkage')) {
+    accRelations.push(
+      ...linkFrontendModules(
+        scan,
+        accApis,
+        uniqEntities([...baseEntities, ...accEntities]).map((entity) => ({ name: entity.name })),
+      ),
+    );
     const finalCtx: AnalyzerContext = {
       config: ctx.config,
       entities: uniqEntities([...baseEntities, ...accEntities]),
@@ -214,6 +239,9 @@ export async function runAnalyzers(
     rules: dedupeRules([...baseRules, ...accRules]),
     relations: dedupeRelations([...baseRelations, ...accRelations]),
     apis: dedupeApis(accApis),
+    states: accStates,
+    pages: dedupeById(accPages),
+    actions: dedupeById(accActions),
     warnings,
   };
 }
@@ -231,9 +259,18 @@ function dedupeRules(rules: BusinessRule[]): BusinessRule[] {
 function dedupeRelations(relations: Relation[]): Relation[] {
   const seen = new Set<string>();
   return relations.filter((r) => {
-    const key = `${r.source}|${r.target}`;
+    const key = [r.source, r.target, r.relationship, r.cardinality].join('|');
     if (seen.has(key)) return false;
     seen.add(key);
+    return true;
+  });
+}
+
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
     return true;
   });
 }
@@ -241,7 +278,7 @@ function dedupeRelations(relations: Relation[]): Relation[] {
 function dedupeApis(apis: ApiRoute[]): ApiRoute[] {
   const seen = new Set<string>();
   return apis.filter((a) => {
-    const key = `${a.method.toUpperCase()} ${a.path}`;
+    const key = [a.method.toUpperCase(), a.path, a.kind ?? 'backend', a.handler ?? '', a.entity ?? ''].join('|');
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
