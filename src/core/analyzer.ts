@@ -1,6 +1,6 @@
 import type { ProjectScan } from './scanner.js';
 import type { AgentConfig, AnalyzerName } from './config.js';
-import type { ApiRoute, BusinessRule, Entity, FrontendPage, Relation, UserAction } from './types.js';
+import type { ApiRoute, BusinessRule, Entity, FrontendPage, Relation, UserAction, WorkflowTemplate } from './types.js';
 import { AVAILABLE_ANALYZERS } from './config.js';
 import { sqlAnalyzer } from './analyzers/sql.js';
 import { apiAnalyzer } from './analyzers/api.js';
@@ -33,6 +33,7 @@ export interface AnalyzeResult {
   states?: import('./types.js').StateMachine[];
   pages?: FrontendPage[];
   actions?: UserAction[];
+  workflows?: WorkflowTemplate[];
 }
 
 export interface Analyzer {
@@ -121,6 +122,7 @@ export interface RunAnalyzersResult {
   states: import('./types.js').StateMachine[];
   pages: FrontendPage[];
   actions: UserAction[];
+  workflows: WorkflowTemplate[];
   /** Non-fatal problems encountered while running analyzers. */
   warnings: string[];
 }
@@ -162,6 +164,7 @@ export async function runAnalyzers(
   const accStates: import('./types.js').StateMachine[] = [];
   const accPages: FrontendPage[] = [];
   const accActions: UserAction[] = [];
+  const accWorkflows: WorkflowTemplate[] = [];
 
   const runPhase = async (names: AnalyzerName[], phaseCtx: AnalyzerContext): Promise<void> => {
     // All analyzers in a phase share the same context snapshot and run concurrently.
@@ -187,6 +190,7 @@ export async function runAnalyzers(
       accStates.push(...(outcome.result?.states ?? []));
       accPages.push(...(outcome.result?.pages ?? []));
       accActions.push(...(outcome.result?.actions ?? []));
+      accWorkflows.push(...(outcome.result?.workflows ?? []));
     }
   };
 
@@ -242,6 +246,7 @@ export async function runAnalyzers(
     states: accStates,
     pages: dedupeById(accPages),
     actions: dedupeById(accActions),
+    workflows: dedupeById(accWorkflows),
     warnings,
   };
 }

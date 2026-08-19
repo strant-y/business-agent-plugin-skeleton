@@ -65,6 +65,8 @@ describe('hookCommand', () => {
     await hookCommand(dir, 'install');
     const content = await fs.readFile(hookFile, 'utf8');
     expect(content).toContain('business-agent capture --since last-commit --quiet');
+    expect(content).toContain('hook-errors.log');
+    expect(content).toContain('|| true');
 
     await hookCommand(dir, 'install');
     expect(await fs.readFile(hookFile, 'utf8')).toBe(content);

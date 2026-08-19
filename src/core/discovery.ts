@@ -210,6 +210,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   let finalRelations = relations;
   let apis: DiscoverManifest['apis'] = [];
   let states: DiscoverManifest['states'] = [];
+  let workflows: DiscoverManifest['workflows'] = [];
   let pages: DiscoverManifest['pages'] = [];
   let actions: DiscoverManifest['actions'] = [];
 
@@ -220,6 +221,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     finalRelations = deep.relations;
     apis = deep.apis;
     states = deep.states;
+    workflows = deep.workflows;
     pages = deep.pages;
     actions = deep.actions;
   }
@@ -244,7 +246,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     relations: finalRelations,
     apis,
     conflicts,
+    tests: scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file)),
     states,
+    workflows,
     pages,
     actions,
   };

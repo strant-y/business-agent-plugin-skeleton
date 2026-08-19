@@ -280,7 +280,7 @@ export const storesAnalyzer: Analyzer = {
         addEntity({
           id: entityId(name),
           name,
-          type: 'business_entity',
+          type: 'frontend_store',
           description: `Pinia store "${store.id}" discovered in ${sample.file}.`,
           confidence: 'medium',
           attributes: attributesFromBody(store.body),
@@ -297,7 +297,7 @@ export const storesAnalyzer: Analyzer = {
         addEntity({
           id: entityId(baseName),
           name: baseName,
-          type: 'business_entity',
+          type: 'frontend_store',
           description: `Vuex store discovered in ${sample.file}.`,
           confidence: 'medium',
           attributes: attributesFromBody(vuexBody),
@@ -313,7 +313,7 @@ export const storesAnalyzer: Analyzer = {
         addEntity({
           id: entityId(name),
           name,
-          type: 'business_entity',
+          type: 'composable',
           description: `Composable ${composable.name} discovered in ${sample.file}.`,
           confidence: 'medium',
           attributes: attributesFromBody(composable.body),
@@ -329,7 +329,7 @@ export const storesAnalyzer: Analyzer = {
         addEntity({
           id: entityId(baseName),
           name: baseName,
-          type: 'business_entity',
+          type: 'api_client',
           description: `Frontend API wrapper module discovered in ${sample.file}.`,
           confidence: 'medium',
           evidence: [sample.file],

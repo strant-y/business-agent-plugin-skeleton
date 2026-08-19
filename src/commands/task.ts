@@ -78,17 +78,17 @@ export async function taskCommand(
   const session = await loadTaskSession(root, options.sessionId);
   if (subcommand === 'context') {
     const context = await buildTaskContext(root, session.task);
-    await updateTaskSession(session, 'before_context');
+    if (!options.dryRun) await updateTaskSession({ ...session, context }, 'before_context');
     printContext(context, options.json);
     return;
   }
   if (subcommand === 'predict-impact') {
-    const updated = await predictTaskImpact(root, session, options.files ?? []);
+    const updated = await predictTaskImpact(root, session, options.files ?? [], options.dryRun);
     printSession(updated, options.json);
     return;
   }
   if (subcommand === 'checkpoint') {
-    const updated = await checkpointTask(root, session, options.files ?? []);
+    const updated = await checkpointTask(root, session, options.files ?? [], options.dryRun);
     printSession(updated, options.json);
     return;
   }
@@ -97,12 +97,16 @@ export async function taskCommand(
       throw new Error('Usage: business-agent task test --command <command> [--passed true|false] [--summary <text>]');
     const updated =
       options.passed === undefined
-        ? await runTaskValidation(session, [options.command])
-        : await recordTaskTest(session, {
-            command: options.command,
-            passed: options.passed,
-            summary: options.summary,
-          });
+        ? await runTaskValidation(session, [options.command], options.dryRun)
+        : await recordTaskTest(
+            session,
+            {
+              command: options.command,
+              passed: options.passed,
+              summary: options.summary,
+            },
+            options.dryRun,
+          );
     printSession(updated, options.json);
     return;
   }

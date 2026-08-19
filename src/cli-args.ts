@@ -12,6 +12,8 @@ export interface Flags {
   force: boolean;
   nonInteractive: boolean;
   quiet: boolean;
+  includeUnhealthy: boolean;
+  includeLowConfidence: boolean;
 }
 
 export function parseArgs(raw: string[]): { flags: Flags; positional: string[] } {
@@ -24,6 +26,8 @@ export function parseArgs(raw: string[]): { flags: Flags; positional: string[] }
     force: false,
     nonInteractive: false,
     quiet: false,
+    includeUnhealthy: false,
+    includeLowConfidence: false,
   };
   const positional: string[] = [];
   for (const arg of raw) {
@@ -45,6 +49,12 @@ export function parseArgs(raw: string[]): { flags: Flags; positional: string[] }
         break;
       case '--quiet':
         flags.quiet = true;
+        break;
+      case '--include-unhealthy':
+        flags.includeUnhealthy = true;
+        break;
+      case '--include-low-confidence':
+        flags.includeLowConfidence = true;
         break;
       case '-h':
       case '--help':

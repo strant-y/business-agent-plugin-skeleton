@@ -35,6 +35,7 @@ export async function discoverCommand(root: string, options: CommandOptions = {}
     console.log(`Conflicts: ${manifest.conflicts.length}`);
     console.log(`Frontend pages: ${manifest.pages?.length ?? 0}`);
     console.log(`User actions: ${manifest.actions?.length ?? 0}`);
+    console.log(`Workflows: ${manifest.workflows?.length ?? 0}`);
   }
   if (options.dryRun) {
     console.log('Dry run: no files written.');

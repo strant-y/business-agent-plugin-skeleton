@@ -1,5 +1,8 @@
 export type Confidence = 'high' | 'medium' | 'low';
 
+export type { EvidenceKind, EvidenceStrength, EvidenceRef } from './evidence.js';
+export type { KnowledgeStatus, KnowledgeRecord, KnowledgeStateEvent } from './knowledge-state.js';
+
 export type EntityType =
   | 'business_entity'
   | 'frontend_store'
@@ -69,10 +72,19 @@ export interface RuleConflict {
   suggestions?: string[];
 }
 
+export interface StateTransition {
+  from?: string;
+  to: string;
+  trigger?: string;
+  guard?: string;
+  effects?: string[];
+  evidence: string;
+}
+
 export interface StateMachine {
   entity: string;
   states: string[];
-  transitions: Array<{ from: string; to: string; evidence: string }>;
+  transitions: StateTransition[];
   mermaid: string;
 }
 
@@ -120,6 +132,7 @@ export interface DiscoverManifest {
   relations: Relation[];
   apis: ApiRoute[];
   conflicts: RuleConflict[];
+  tests?: string[];
   states?: StateMachine[];
   workflows?: WorkflowTemplate[];
   pages?: FrontendPage[];

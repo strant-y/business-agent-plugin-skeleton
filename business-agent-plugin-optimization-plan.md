@@ -309,7 +309,13 @@ interface KnowledgeFact {
   confidence: 'low' | 'medium' | 'high';
   confidenceScore?: number;
   status: 'candidate' | 'corroborated' | 'confirmed' | 'verified' | 'stale' | 'contradicted' | 'deprecated';
-  source: 'static-analysis' | 'llm-inference' | 'human-confirmed' | 'test-observation' | 'task-capture' | 'runtime-observation';
+  source:
+    | 'static-analysis'
+    | 'llm-inference'
+    | 'human-confirmed'
+    | 'test-observation'
+    | 'task-capture'
+    | 'runtime-observation';
   evidence: EvidenceRef[];
   relatedTasks: string[];
   firstSeenAt: string;
@@ -744,10 +750,7 @@ LLM 不应替代静态分析，而应负责归纳、消歧和解释。
     }
   ],
   "reasoning": "前端 Store 和后端服务均存在相同限制",
-  "questions": [
-    "是否所有审核状态订单都不能修改？",
-    "管理员是否有例外权限？"
-  ],
+  "questions": ["是否所有审核状态订单都不能修改？", "管理员是否有例外权限？"],
   "status": "candidate"
 }
 ```

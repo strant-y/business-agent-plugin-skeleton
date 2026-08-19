@@ -35,5 +35,24 @@ export async function writeText(file: string, content: string): Promise<void> {
 }
 
 export async function writeJson(file: string, value: unknown): Promise<void> {
-  await writeText(file, JSON.stringify(value, null, 2) + '\n');
+  await ensureDir(path.dirname(file));
+  const temporary = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
+  await fs.writeFile(temporary, JSON.stringify(value, null, 2) + '\n', 'utf8');
+  try {
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        await fs.rename(temporary, file);
+        return;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== 'EEXIST' && code !== 'EPERM') throw error;
+        await fs.rm(file, { force: true });
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+    }
+    throw new Error(`Unable to replace JSON file: ${file}`);
+  } catch (error) {
+    await fs.rm(temporary, { force: true });
+    throw error;
+  }
 }

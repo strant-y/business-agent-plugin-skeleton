@@ -1,5 +1,5 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
-import type { Entity, FrontendPage, Relation, UserAction, BusinessRule } from '../types.js';
+import type { Entity, FrontendPage, Relation, UserAction, BusinessRule, WorkflowTemplate } from '../types.js';
 import { fileModuleName } from './linkage.js';
 
 function entityId(name: string): string {
@@ -18,6 +18,7 @@ const CONDITION_RE = /(?:v-if|v-show|disabled|:disabled|v-bind:disabled)\s*=\s*[
 const FORM_RE = /(?:required|minLength|maxLength|min|max|pattern|validate|rules?)\s*[:=(]/gi;
 const STATUS_WRITE_RE = /(?:status|state)(?:\.value)?\s*=\s*["'`]([A-Z][A-Z0-9_-]*)["'`]/g;
 const STATUS_READ_RE = /(?:status|state)[\s\S]{0,60}?(?:===?|!==?)\s*["'`]([A-Z][A-Z0-9_-]*)["'`]/g;
+const TEST_HINT_RE = /(?:spec|test)\.(?:ts|tsx|js|jsx)$/i;
 
 function moduleName(file: string): string {
   return fileModuleName(file);
@@ -60,10 +61,30 @@ function actionTrigger(text: string, name: string): UserAction['trigger'] {
   return name.toLowerCase().includes('route') ? 'route' : 'event';
 }
 
+function inferWorkflowName(source: string): string {
+  return source.replace(/(Page|View|List|Edit|Detail)$/i, '') || source;
+}
+
+function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: string[]): string[] {
+  const steps = [
+    ...actions.map((action) => `Action: ${action.name}`),
+    ...states.map((state) => `State: ${state}`),
+    ...apiCalls.map((api) => `API: ${api}`),
+  ];
+  return unique(steps);
+}
+
 function analyzeSample(
   file: string,
   text: string,
-): { entities: Entity[]; pages: FrontendPage[]; actions: UserAction[]; relations: Relation[]; rules: BusinessRule[] } {
+): {
+  entities: Entity[];
+  pages: FrontendPage[];
+  actions: UserAction[];
+  relations: Relation[];
+  rules: BusinessRule[];
+  workflows: WorkflowTemplate[];
+} {
   const source = moduleName(file);
   const importedModules = unique(
     [...text.matchAll(IMPORT_RE)]
@@ -122,11 +143,11 @@ function analyzeSample(
       confidence: 'medium',
       evidence: [file],
     });
-  if (isReact(file))
+  if (isReact(file) && !page)
     entities.push({
       id: entityId(source),
       name: source,
-      type: page ? 'page' : 'component',
+      type: 'component',
       description: `React component discovered in ${file}.`,
       confidence: 'medium',
       evidence: [file],
@@ -154,6 +175,30 @@ function analyzeSample(
       description: `${source} calls API path ${api}.`,
       evidence: [file],
     });
+  for (const action of actions) {
+    for (const store of stores)
+      relations.push({
+        id: `relation.${action.id}-${store.toLowerCase()}-action-store`,
+        source: action.name,
+        target: store,
+        relationship: 'action_updates_store',
+        cardinality: 'unknown',
+        confidence: 'medium',
+        description: `${action.name} reads or writes ${store}.`,
+        evidence: [file],
+      });
+    for (const api of apiCalls)
+      relations.push({
+        id: `relation.${action.id}-${api.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-action-api`,
+        source: action.name,
+        target: api,
+        relationship: 'action_calls_api',
+        cardinality: 'unknown',
+        confidence: 'medium',
+        description: `${action.name} calls ${api}.`,
+        evidence: [file],
+      });
+  }
   const rules: BusinessRule[] = [];
   if (conditions.length || permissions.length || /required|minLength|maxLength|validate|rules?\s*[:=(]/i.test(text)) {
     const conditionRules = conditions.map((value) => `Interaction condition: ${value}.`);
@@ -168,13 +213,29 @@ function analyzeSample(
         ...(FORM_RE.test(text) ? ['Form validation constraints are enforced.'] : []),
         `Frontend evidence: ${text.match(/(?:AUDIT|AUDITING|APPROVED|DRAFT|REJECT)/i)?.[0] ?? 'interaction constraint'}.`,
       ],
+      impact: [
+        ...(permissions.length ? ['Review page permission checks and route guards.'] : []),
+        ...(FORM_RE.test(text) ? ['Review form validators and submit actions.'] : []),
+      ],
       confidence: 'low',
       evidence: [file],
       context: [file],
       status: 'candidate',
     });
   }
-  return { entities, pages, actions, relations, rules };
+  const workflows: WorkflowTemplate[] =
+    page && !TEST_HINT_RE.test(file) && (actions.length > 0 || stateWrites.length > 0 || apiCalls.length > 0)
+      ? [
+          {
+            id: `workflow.${source.toLowerCase()}`,
+            name: `${inferWorkflowName(source)} frontend flow`,
+            description: `${source} links actions, stores, APIs and states into a frontend workflow.`,
+            steps: inferWorkflowSteps(actions, [...stateReads, ...stateWrites], apiCalls),
+            status: 'draft',
+          },
+        ]
+      : [];
+  return { entities, pages, actions, relations, rules, workflows };
 }
 
 export const frontendAnalyzer: Analyzer = {
@@ -185,6 +246,7 @@ export const frontendAnalyzer: Analyzer = {
     const actions: UserAction[] = [];
     const relations: Relation[] = [];
     const rules: BusinessRule[] = [];
+    const workflows: WorkflowTemplate[] = [];
     for (const sample of scan.samples) {
       if (!/\.(vue|tsx|jsx|ts|js)$/i.test(sample.file)) continue;
       const result = analyzeSample(sample.file, sample.text);
@@ -193,7 +255,8 @@ export const frontendAnalyzer: Analyzer = {
       actions.push(...result.actions);
       relations.push(...result.relations);
       rules.push(...result.rules);
+      workflows.push(...result.workflows);
     }
-    return { entities, pages, actions, relations, rules };
+    return { entities, pages, actions, relations, rules, workflows };
   },
 };

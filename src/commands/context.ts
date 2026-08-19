@@ -1,7 +1,14 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
-import type { ApiRoute, FrontendPage, RuleConflict, StateMachine, UserAction } from '../core/types.js';
+import type {
+  ApiRoute,
+  FrontendPage,
+  RuleConflict,
+  StateMachine,
+  UserAction,
+  WorkflowTemplate,
+} from '../core/types.js';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -12,6 +19,7 @@ interface ContextManifest {
   apis?: ApiRoute[];
   conflicts?: RuleConflict[];
   states?: StateMachine[];
+  workflows?: WorkflowTemplate[];
   pages?: FrontendPage[];
   actions?: UserAction[];
 }
@@ -65,6 +73,12 @@ export async function contextCommand(root: string, subject: string, options: Con
     (action) =>
       relevantPages.some((page) => page.actions.includes(action.id)) || action.source.toLowerCase() === subjectLower,
   );
+  const relevantWorkflows = (manifest?.workflows ?? []).filter(
+    (workflow) =>
+      matchedNames.has(workflow.name) ||
+      workflow.name.toLowerCase().includes(subjectLower) ||
+      workflow.steps.some((step) => step.toLowerCase().includes(subjectLower)),
+  );
 
   // Impact maps are keyed by rule/relation file id; only surface relevant ones.
   const relevantImpactFiles = new Set<string>();
@@ -117,6 +131,11 @@ export async function contextCommand(root: string, subject: string, options: Con
         )
       : ['- None matched.']),
     '',
+    '## Workflows',
+    ...(relevantWorkflows.length
+      ? relevantWorkflows.map((workflow) => `- ${workflow.name}: ${workflow.steps.join(' -> ') || 'no steps'}`)
+      : ['- None matched.']),
+    '',
     '## User Actions',
     ...(relevantActions.length
       ? relevantActions.map(
@@ -157,6 +176,7 @@ export async function contextCommand(root: string, subject: string, options: Con
           conflicts: relevantConflicts,
           apis: relevantApis,
           states: manifest?.states ?? [],
+          workflows: relevantWorkflows,
           pages: relevantPages,
           actions: relevantActions,
           impacts: relevantImpacts,

@@ -44,6 +44,9 @@ function save() { submit(); }
     expect(result.rules?.[0]?.rule.join(' ')).toContain('AUDIT');
     expect(result.rules?.[0]?.rule.join(' ')).toContain('order.edit');
     expect(result.rules?.[0]?.rule.join(' ')).toContain('Form validation');
+    expect(result.workflows?.[0]?.steps).toEqual(
+      expect.arrayContaining(['Action: submit', 'Action: save', 'State: AUDITING']),
+    );
   });
 
   it('models React components and hooks as frontend pages and actions', async () => {
@@ -76,5 +79,6 @@ export function OrderPage() { useEffect(() => loadOrders(), []); return <button 
     const manifest = await discover(dir, { dryRun: true, analyzers: ['frontend'] });
     expect(manifest.pages?.some((page) => page.component === 'Order')).toBe(true);
     expect(manifest.actions?.some((action) => action.source === 'Order')).toBe(true);
+    expect(manifest.workflows?.some((workflow) => workflow.name.includes('frontend flow'))).toBe(true);
   });
 });

@@ -24,7 +24,17 @@ export {
   type RunAnalyzersResult,
 } from './core/analyzer.js';
 export { detectConflicts, ruleSign } from './core/conflicts.js';
-export { heuristicScorer, type EvidenceScorer } from './core/evidence.js';
+export {
+  heuristicScorer,
+  normalizeEvidence,
+  validateEvidence,
+  contentHash,
+  type EvidenceScorer,
+  type EvidenceRef,
+  type EvidenceKind,
+  type EvidenceStrength,
+  type EvidenceValidation,
+} from './core/evidence.js';
 export {
   writeRule,
   writeRelation,
@@ -90,6 +100,41 @@ export {
   type ImpactChainStep,
 } from './core/impact.js';
 export { gitDiffFiles, gitDiffText, gitBranch } from './utils/git.js';
+export {
+  dispatchLifecycleEvent,
+  loadEventResult,
+  lifecycleAdapter,
+  type LifecycleAdapter,
+  type LifecycleWarning,
+  type TaskLifecycleEvent as ExtendedTaskLifecycleEvent,
+  type EventLifecycleResult,
+} from './core/lifecycle.js';
+export {
+  transitionKnowledge,
+  validateKnowledgeState,
+  persistKnowledgeState,
+  loadKnowledgeState,
+  type KnowledgeRecord,
+  type KnowledgeStateEvent,
+  type KnowledgeStatus,
+} from './core/knowledge-state.js';
+export {
+  recordFeedback,
+  applyFeedback,
+  loadFeedback,
+  feedbackStats,
+  type FeedbackInput,
+  type FeedbackRecord,
+  type FeedbackType,
+} from './core/feedback.js';
+export {
+  rebuildRetrievalIndex,
+  retrieveTaskContext,
+  type RetrievalDocument,
+  type RetrievalHit,
+  type RetrieveOptions,
+} from './core/retrieval.js';
+export { runAudit, type AuditCheck, type AuditReport, type AuditStatus } from './core/audit.js';
 export {
   buildTaskContext,
   startTask,

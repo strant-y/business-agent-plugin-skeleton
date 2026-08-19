@@ -32,8 +32,16 @@ describe('parseArgs', () => {
       force: false,
       nonInteractive: false,
       quiet: false,
+      includeUnhealthy: false,
+      includeLowConfidence: false,
     });
     expect(positional).toEqual([]);
+  });
+
+  it('parses the retrieval include flags', () => {
+    const { flags } = parseArgs(['retrieve', '订单', '--include-unhealthy', '--include-low-confidence']);
+    expect(flags.includeUnhealthy).toBe(true);
+    expect(flags.includeLowConfidence).toBe(true);
   });
 });
 

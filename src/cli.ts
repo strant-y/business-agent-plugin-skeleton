@@ -18,6 +18,8 @@ import { impactCommand } from './commands/impact.js';
 import { captureCommand } from './commands/capture.js';
 import { hookCommand } from './commands/hook.js';
 import { taskCommand } from './commands/task.js';
+import { continuousLearningCommand } from './commands/continuous-learning.js';
+import { auditCommand } from './commands/audit.js';
 import {
   parseArgs,
   parsePromoteOptions,
@@ -55,7 +57,11 @@ const HELP: Record<string, string> = {
   capture:
     'Usage: business-agent capture [message...] [--learn <fact>] [--entity <name>] [--since last-commit] [--quiet] [--json] [--dry-run]\n\nRecord the closing summary of a task: writes a task-history record with the change impact chain, and optionally records a verified business fact as a reviewable candidate.',
   hook: 'Usage: business-agent hook install|remove\n\nInstall or remove the post-commit hook that runs `capture --since last-commit --quiet` after every commit.',
-  task: 'Usage: business-agent task start|context|predict-impact|checkpoint|test|finish\n\nRun the Agent task lifecycle and persist structured task knowledge.',
+  task: 'Usage: business-agent task start|context|predict-impact|checkpoint|test|finish|feedback\n\nRun the Agent task lifecycle and persist structured task knowledge.\n\nFeedback:\n  business-agent task feedback <type> <targetId> [--reason <text>] [--correction <text>]\n\nKnowledge:\n  business-agent knowledge status <targetId>\n  business-agent knowledge verify <targetId> [--reason <text>]\n  business-agent knowledge stale --id <id> [--reason <text>]',
+  retrieve:
+    'Usage: business-agent retrieve <query> [--include-unhealthy] [--include-low-confidence]\n\nRetrieve ranked business context. By default stale/contradicted/deprecated knowledge and low-confidence candidates are filtered out; use the flags to include them.',
+  audit:
+    'Usage: business-agent audit [--json]\n\nHealth check for the accumulated knowledge: init, manifest, schema, candidate noise, knowledge state, evidence drift, hook status and unfinished sessions. Exits 1 when issues are found.',
 };
 
 function printGeneralHelp(): void {
@@ -83,6 +89,10 @@ Commands:
   capture               Record a task-closing summary (task-history + optional candidate)
   hook                  Install or remove the post-commit auto-capture hook
   task                  Run the Agent task lifecycle and persist task knowledge
+  retrieve              Retrieve continuous-learning context from indexes
+  index                 Manage retrieval indexes (\`rebuild\`)
+  knowledge             Inspect or transition knowledge state
+  audit                 Health check the accumulated knowledge
 
 Global options:
   --help, -h            Show help for a command or this overview
@@ -217,8 +227,29 @@ async function main(): Promise<void> {
       await hookCommand(root, action);
       break;
     }
+    case 'retrieve':
+      await continuousLearningCommand(root, 'retrieve', args, flags.json, {
+        includeUnhealthy: flags.includeUnhealthy,
+        includeLowConfidence: flags.includeLowConfidence,
+      });
+      break;
+    case 'index':
+      if (args[0] !== 'rebuild') throw new Error('Usage: business-agent index rebuild');
+      await continuousLearningCommand(root, 'index', [], flags.json);
+      break;
+    case 'knowledge':
+      await continuousLearningCommand(root, args[0], args.slice(1), flags.json);
+      break;
+    case 'audit':
+      rejectUnexpectedArgs('audit', args);
+      await auditCommand(root, flags.json);
+      break;
     case 'task': {
       const subcommand = args[0];
+      if (subcommand === 'feedback') {
+        await continuousLearningCommand(root, 'feedback', args.slice(1), flags.json);
+        break;
+      }
       const optionArgs = args.slice(1);
       const opts = parseTaskOptions(optionArgs);
       const values: string[] = [];

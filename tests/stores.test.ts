@@ -53,6 +53,7 @@ export const useOrderStore = defineStore('orderStore', {
 
     const store = result.entities?.find((e) => e.name === 'OrderStore');
     expect(store).toBeDefined();
+    expect(store?.type).toBe('frontend_store');
     expect(store?.description).toContain('orderStore');
     expect(store?.attributes?.map((a) => a.name)).toEqual(expect.arrayContaining(['status', 'total', 'order']));
 
@@ -93,6 +94,7 @@ export function useOrderData() {
 
     const composable = result.entities?.find((e) => e.name === 'UseOrderData');
     expect(composable).toBeDefined();
+    expect(composable?.type).toBe('composable');
     expect(composable?.attributes?.map((a) => a.name)).toEqual(expect.arrayContaining(['orders', 'status']));
     expect(result.rules).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Store state transition', entity: 'UseOrderData' })]),
@@ -117,6 +119,7 @@ export default createStore({
 
     expect(result.entities?.some((e) => e.name === 'VuexStore')).toBe(true);
     const vuex = result.entities?.find((e) => e.name === 'VuexStore');
+    expect(vuex?.type).toBe('frontend_store');
     expect(vuex?.attributes?.some((a) => a.name === 'status')).toBe(true);
     expect(result.rules).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Store state transition', entity: 'VuexStore' })]),
@@ -136,7 +139,8 @@ export const orderApi = {
 `,
     });
 
-    expect(result.entities?.some((e) => e.name === 'OrderApi')).toBe(true);
+    const apiClient = result.entities?.find((e) => e.name === 'OrderApi');
+    expect(apiClient?.type).toBe('api_client');
     expect(result.relations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ source: 'OrderApi', target: 'Order', relationship: 'calls_api' }),

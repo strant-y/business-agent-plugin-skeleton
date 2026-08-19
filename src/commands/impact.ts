@@ -1,9 +1,10 @@
 import { buildImpactReport, writeImpactReport } from '../core/impact.js';
-import { gitDiffFiles } from '../utils/git.js';
+import { gitDiffFiles, gitDiffText } from '../utils/git.js';
 
 export async function impactCommand(root: string, files: string[] = [], json = false): Promise<void> {
   const changedFiles = files.length ? files : await gitDiffFiles(root);
-  const report = await buildImpactReport(root, changedFiles);
+  const diff = await gitDiffText(root);
+  const report = await buildImpactReport(root, changedFiles, diff);
   if (json) {
     console.log(JSON.stringify(report, null, 2));
     return;

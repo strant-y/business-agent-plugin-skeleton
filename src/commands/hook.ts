@@ -6,7 +6,7 @@ const MARKER = '# business-agent';
 const HOOK_LINES = [
   '#!/bin/sh',
   `${MARKER}: auto-capture business knowledge after each commit.`,
-  'business-agent capture --since last-commit --quiet 2>/dev/null || exit 0',
+  'business-agent capture --since last-commit --quiet 2>/dev/null || { echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] business-agent capture failed (exit $?)" >> .agent/memory/hook-errors.log 2>/dev/null || true; }',
 ];
 
 export type HookAction = 'install' | 'remove';
