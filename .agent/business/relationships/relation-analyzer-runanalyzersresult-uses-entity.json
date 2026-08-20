@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-runanalyzersresult-uses_entity",
+  "source": "Analyzer",
+  "target": "RunAnalyzersResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Analyzer references frontend entity RunAnalyzersResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

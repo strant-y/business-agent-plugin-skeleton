@@ -1,0 +1,10 @@
+{
+  "id": "relation.analyzercontext-agentconfig",
+  "source": "AnalyzerContext",
+  "target": "AgentConfig",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between AnalyzerContext and AgentConfig.",
+  "confidence": "low",
+  "evidence": []
+}

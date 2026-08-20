@@ -1,0 +1,12 @@
+{
+  "id": "relation.audit-auditcheck-uses_entity",
+  "source": "Audit",
+  "target": "AuditCheck",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Audit references frontend entity AuditCheck.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\audit.ts"
+  ]
+}

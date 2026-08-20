@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzeresult-frontendpage-type",
+  "source": "AnalyzeResult",
+  "target": "FrontendPage",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzeResult → FrontendPage.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.stores-entityattribute-uses_entity",
+  "source": "Stores",
+  "target": "EntityAttribute",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Stores references frontend entity EntityAttribute.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\stores.ts"
+  ]
+}

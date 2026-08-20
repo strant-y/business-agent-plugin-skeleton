@@ -1,0 +1,10 @@
+{
+  "id": "relation.decision-candidateitem",
+  "source": "Decision",
+  "target": "CandidateItem",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between Decision and CandidateItem.",
+  "confidence": "low",
+  "evidence": []
+}

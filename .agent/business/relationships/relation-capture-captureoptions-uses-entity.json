@@ -1,0 +1,12 @@
+{
+  "id": "relation.capture-captureoptions-uses_entity",
+  "source": "Capture",
+  "target": "CaptureOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Capture references frontend entity CaptureOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\capture.ts"
+  ]
+}

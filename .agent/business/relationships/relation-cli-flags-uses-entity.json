@@ -1,0 +1,12 @@
+{
+  "id": "relation.cli-flags-uses_entity",
+  "source": "Cli",
+  "target": "Flags",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Cli references frontend entity Flags.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\cli.ts"
+  ]
+}

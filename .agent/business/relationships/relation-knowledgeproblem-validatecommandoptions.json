@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgeproblem-validatecommandoptions",
+  "source": "KnowledgeProblem",
+  "target": "ValidateCommandOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeProblem and ValidateCommandOptions.",
+  "confidence": "low",
+  "evidence": []
+}

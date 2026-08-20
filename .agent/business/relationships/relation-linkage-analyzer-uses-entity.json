@@ -1,0 +1,12 @@
+{
+  "id": "relation.linkage-analyzer-uses_entity",
+  "source": "Linkage",
+  "target": "Analyzer",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Linkage references frontend entity Analyzer.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\linkage.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.frontend-useroute-frontend-store",
+  "source": "Frontend",
+  "target": "useRoute",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "confidence": "medium",
+  "description": "Frontend uses frontend store useRoute.",
+  "evidence": [
+    "src\\core\\analyzers\\frontend.ts"
+  ]
+}

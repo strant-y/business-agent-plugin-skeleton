@@ -1,0 +1,12 @@
+{
+  "id": "relation.decision-candidateitem-type",
+  "source": "Decision",
+  "target": "CandidateItem",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in Decision → CandidateItem.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\review.ts"
+  ]
+}

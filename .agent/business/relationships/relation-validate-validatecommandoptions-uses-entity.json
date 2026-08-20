@@ -1,0 +1,12 @@
+{
+  "id": "relation.validate-validatecommandoptions-uses_entity",
+  "source": "Validate",
+  "target": "ValidateCommandOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Validate references frontend entity ValidateCommandOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\validate.ts"
+  ]
+}

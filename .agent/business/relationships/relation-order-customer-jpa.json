@@ -1,0 +1,12 @@
+{
+  "id": "relation.order-customer-jpa",
+  "source": "Order",
+  "target": "Customer",
+  "relationship": "references",
+  "cardinality": "N:1",
+  "description": "JPA ManyToOne on Order.customer → Customer.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\full\\java\\Order.java"
+  ]
+}

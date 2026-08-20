@@ -1,0 +1,12 @@
+{
+  "id": "relation.init-initoptions-uses_entity",
+  "source": "Init",
+  "target": "InitOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Init references frontend entity InitOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\init.ts"
+  ]
+}

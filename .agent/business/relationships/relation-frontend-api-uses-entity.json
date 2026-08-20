@@ -1,0 +1,12 @@
+{
+  "id": "relation.frontend-api-uses_entity",
+  "source": "Frontend",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Frontend references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\frontend.ts"
+  ]
+}

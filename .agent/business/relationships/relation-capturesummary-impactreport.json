@@ -1,0 +1,10 @@
+{
+  "id": "relation.capturesummary-impactreport",
+  "source": "CaptureSummary",
+  "target": "ImpactReport",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between CaptureSummary and ImpactReport.",
+  "confidence": "low",
+  "evidence": []
+}

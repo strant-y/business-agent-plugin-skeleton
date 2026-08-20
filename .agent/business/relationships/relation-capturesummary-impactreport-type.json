@@ -1,0 +1,12 @@
+{
+  "id": "relation.capturesummary-impactreport-type",
+  "source": "CaptureSummary",
+  "target": "ImpactReport",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in CaptureSummary → ImpactReport.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\capture.ts"
+  ]
+}

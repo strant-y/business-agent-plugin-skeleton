@@ -1,0 +1,12 @@
+{
+  "id": "relation.xml-analyzeresult-uses_entity",
+  "source": "Xml",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Xml references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\xml.ts"
+  ]
+}

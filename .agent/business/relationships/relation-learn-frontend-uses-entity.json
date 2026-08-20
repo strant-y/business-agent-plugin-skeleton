@@ -1,0 +1,12 @@
+{
+  "id": "relation.learn-frontend-uses_entity",
+  "source": "Learn",
+  "target": "Frontend",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Learn references frontend entity Frontend.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\learn.ts"
+  ]
+}

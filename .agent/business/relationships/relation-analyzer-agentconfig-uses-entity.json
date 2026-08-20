@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-agentconfig-uses_entity",
+  "source": "Analyzer",
+  "target": "AgentConfig",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Analyzer references frontend entity AgentConfig.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

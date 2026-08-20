@@ -1,0 +1,12 @@
+{
+  "id": "relation.linkage-frontend-uses_entity",
+  "source": "Linkage",
+  "target": "Frontend",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Linkage references frontend entity Frontend.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\linkage.ts"
+  ]
+}

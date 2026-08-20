@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzeresult-useraction-type",
+  "source": "AnalyzeResult",
+  "target": "UserAction",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzeResult → UserAction.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

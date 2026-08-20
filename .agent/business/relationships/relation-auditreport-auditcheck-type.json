@@ -1,0 +1,12 @@
+{
+  "id": "relation.auditreport-auditcheck-type",
+  "source": "AuditReport",
+  "target": "AuditCheck",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AuditReport → AuditCheck.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\audit.ts"
+  ]
+}

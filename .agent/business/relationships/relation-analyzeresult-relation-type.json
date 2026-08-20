@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzeresult-relation-type",
+  "source": "AnalyzeResult",
+  "target": "Relation",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzeResult → Relation.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

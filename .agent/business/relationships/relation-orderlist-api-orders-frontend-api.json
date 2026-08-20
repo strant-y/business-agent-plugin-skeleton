@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist--api-orders-frontend-api",
+  "source": "OrderList",
+  "target": "/api/orders",
+  "relationship": "calls_api_route",
+  "cardinality": "unknown",
+  "confidence": "low",
+  "description": "OrderList calls API path /api/orders.",
+  "evidence": [
+    "tests\\fixtures\\full\\ui\\OrderList.vue"
+  ]
+}

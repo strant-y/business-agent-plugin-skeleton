@@ -1,0 +1,12 @@
+{
+  "id": "relation.validate-problem-uses_entity",
+  "source": "Validate",
+  "target": "Problem",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Validate references frontend entity Problem.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\validate.ts"
+  ]
+}

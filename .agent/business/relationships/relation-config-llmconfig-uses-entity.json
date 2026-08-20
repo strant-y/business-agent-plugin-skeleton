@@ -1,0 +1,12 @@
+{
+  "id": "relation.config-llmconfig-uses_entity",
+  "source": "Config",
+  "target": "LlmConfig",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Config references frontend entity LlmConfig.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\config.ts"
+  ]
+}

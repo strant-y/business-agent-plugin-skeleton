@@ -1,0 +1,12 @@
+{
+  "id": "relation.candidate-api-uses_entity",
+  "source": "Candidate",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Candidate references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

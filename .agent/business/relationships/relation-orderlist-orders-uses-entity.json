@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist-orders-uses_entity",
+  "source": "OrderList",
+  "target": "Orders",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "OrderList references frontend entity Orders.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\full\\ui\\OrderList.vue"
+  ]
+}

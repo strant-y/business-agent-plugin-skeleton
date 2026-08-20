@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgerecord-feedbacktype",
+  "source": "KnowledgeRecord",
+  "target": "FeedbackType",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeRecord and FeedbackType.",
+  "confidence": "low",
+  "evidence": []
+}

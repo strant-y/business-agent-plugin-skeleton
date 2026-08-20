@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-api-uses_entity",
+  "source": "Analyzer",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Analyzer references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.continuous-learning-retrievaldocument-uses_entity",
+  "source": "Continuous-learning",
+  "target": "RetrievalDocument",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Continuous-learning references frontend entity RetrievalDocument.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\continuous-learning.ts"
+  ]
+}

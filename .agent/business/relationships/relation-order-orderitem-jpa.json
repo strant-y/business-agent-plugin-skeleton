@@ -1,0 +1,12 @@
+{
+  "id": "relation.order-orderitem-jpa",
+  "source": "Order",
+  "target": "OrderItem",
+  "relationship": "references",
+  "cardinality": "1:N",
+  "description": "JPA OneToMany on Order.items → OrderItem.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\full\\java\\Order.java"
+  ]
+}

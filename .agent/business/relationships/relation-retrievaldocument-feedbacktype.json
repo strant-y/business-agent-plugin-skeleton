@@ -1,0 +1,10 @@
+{
+  "id": "relation.retrievaldocument-feedbacktype",
+  "source": "RetrievalDocument",
+  "target": "FeedbackType",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between RetrievalDocument and FeedbackType.",
+  "confidence": "low",
+  "evidence": []
+}

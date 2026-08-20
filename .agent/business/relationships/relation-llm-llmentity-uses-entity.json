@@ -1,0 +1,12 @@
+{
+  "id": "relation.llm-llmentity-uses_entity",
+  "source": "Llm",
+  "target": "LlmEntity",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Llm references frontend entity LlmEntity.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\llm.ts"
+  ]
+}

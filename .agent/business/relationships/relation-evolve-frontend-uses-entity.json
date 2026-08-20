@@ -1,0 +1,12 @@
+{
+  "id": "relation.evolve-frontend-uses_entity",
+  "source": "Evolve",
+  "target": "Frontend",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Evolve references frontend entity Frontend.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\evolve.ts"
+  ]
+}

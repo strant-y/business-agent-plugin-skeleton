@@ -1,0 +1,12 @@
+{
+  "id": "relation.frontend-analyzeresult-uses_entity",
+  "source": "Frontend",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Frontend references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\frontend.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.learn-api-uses_entity",
+  "source": "Learn",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Learn references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\learn.ts"
+  ]
+}

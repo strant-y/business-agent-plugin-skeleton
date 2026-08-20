@@ -1,0 +1,12 @@
+{
+  "id": "relation.promoterelationinput-relation-type",
+  "source": "PromoteRelationInput",
+  "target": "Relation",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in PromoteRelationInput → Relation.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

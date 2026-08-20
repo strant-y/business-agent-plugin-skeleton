@@ -1,0 +1,5034 @@
+{
+  "generatedAt": "2026-08-19T07:02:49.781Z",
+  "projectRoot": "D:\\work\\business-agent-plugin-skeleton",
+  "filesScanned": 105,
+  "entities": [
+    {
+      "id": "entity.flags",
+      "name": "Flags",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\cli-args.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\cli-args.ts"
+      ],
+      "attributes": [
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        },
+        {
+          "name": "json",
+          "type": "boolean"
+        },
+        {
+          "name": "help",
+          "type": "boolean"
+        },
+        {
+          "name": "version",
+          "type": "boolean"
+        },
+        {
+          "name": "deep",
+          "type": "boolean"
+        },
+        {
+          "name": "force",
+          "type": "boolean"
+        },
+        {
+          "name": "nonInteractive",
+          "type": "boolean"
+        },
+        {
+          "name": "quiet",
+          "type": "boolean"
+        },
+        {
+          "name": "includeUnhealthy",
+          "type": "boolean"
+        },
+        {
+          "name": "includeLowConfidence",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.audit-check",
+      "name": "AuditCheck",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\audit.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "label",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "AuditStatus"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.audit-report",
+      "name": "AuditReport",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\audit.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ],
+      "attributes": [
+        {
+          "name": "healthy",
+          "type": "boolean"
+        },
+        {
+          "name": "issues",
+          "type": "number"
+        },
+        {
+          "name": "warnings",
+          "type": "number"
+        },
+        {
+          "name": "checks",
+          "type": "AuditCheck[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.impact-report",
+      "name": "ImpactReport",
+      "type": "business_entity",
+      "description": "Discovered business candidate: ImpactReport",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.capture-options",
+      "name": "CaptureOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\capture.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ],
+      "attributes": [
+        {
+          "name": "files",
+          "type": "string[]"
+        },
+        {
+          "name": "sinceLastCommit",
+          "type": "boolean"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "learn",
+          "type": "string"
+        },
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "quiet",
+          "type": "boolean"
+        },
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        },
+        {
+          "name": "json",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.capture-summary",
+      "name": "CaptureSummary",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\capture.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ],
+      "attributes": [
+        {
+          "name": "record",
+          "type": "string"
+        },
+        {
+          "name": "learned",
+          "type": "string"
+        },
+        {
+          "name": "changedFiles",
+          "type": "string[]"
+        },
+        {
+          "name": "report",
+          "type": "ImpactReport"
+        }
+      ]
+    },
+    {
+      "id": "entity.context-manifest",
+      "name": "ContextManifest",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\context.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entities",
+          "type": "Array<{ name: string; description: string; confidence: string }>"
+        },
+        {
+          "name": "apis",
+          "type": "ApiRoute[]"
+        },
+        {
+          "name": "conflicts",
+          "type": "RuleConflict[]"
+        },
+        {
+          "name": "states",
+          "type": "StateMachine[]"
+        },
+        {
+          "name": "workflows",
+          "type": "WorkflowTemplate[]"
+        },
+        {
+          "name": "pages",
+          "type": "FrontendPage[]"
+        },
+        {
+          "name": "actions",
+          "type": "UserAction[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.context-options",
+      "name": "ContextOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\context.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ],
+      "attributes": [
+        {
+          "name": "json",
+          "type": "boolean"
+        },
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.knowledge-record",
+      "name": "KnowledgeRecord",
+      "type": "business_entity",
+      "description": "Discovered business candidate: KnowledgeRecord",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.knowledge-status",
+      "name": "KnowledgeStatus",
+      "type": "business_entity",
+      "description": "Discovered business candidate: KnowledgeStatus",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.feedback-type",
+      "name": "FeedbackType",
+      "type": "business_entity",
+      "description": "Discovered business candidate: FeedbackType",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.retrieval-document",
+      "name": "RetrievalDocument",
+      "type": "business_entity",
+      "description": "Discovered business candidate: RetrievalDocument",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.retrieval-hit",
+      "name": "RetrievalHit",
+      "type": "business_entity",
+      "description": "Discovered business candidate: RetrievalHit",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.analyzer-name",
+      "name": "AnalyzerName",
+      "type": "business_entity",
+      "description": "Discovered business candidate: AnalyzerName",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.command-options",
+      "name": "CommandOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\discover.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ],
+      "attributes": [
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        },
+        {
+          "name": "json",
+          "type": "boolean"
+        },
+        {
+          "name": "deep",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.evolve-options",
+      "name": "EvolveOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\evolve.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\evolve.ts"
+      ],
+      "attributes": [
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.hook-action",
+      "name": "HookAction",
+      "type": "business_entity",
+      "description": "Discovered business candidate: HookAction",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.init-options",
+      "name": "InitOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\init.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\init.ts"
+      ],
+      "attributes": [
+        {
+          "name": "force",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.learn-options",
+      "name": "LearnOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\learn.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\learn.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "evidence",
+          "type": "string[]"
+        },
+        {
+          "name": "source",
+          "type": "'task-capture' | 'human-confirmed' | 'agent-observation'"
+        },
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.promote-options",
+      "name": "PromoteOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\promote.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\promote.ts"
+      ],
+      "attributes": [
+        {
+          "name": "type",
+          "type": "'rule' | 'relation'"
+        },
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "name": "target",
+          "type": "string"
+        },
+        {
+          "name": "relationship",
+          "type": "string"
+        },
+        {
+          "name": "cardinality",
+          "type": "string"
+        },
+        {
+          "name": "json",
+          "type": "boolean"
+        },
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.resolved-candidate",
+      "name": "ResolvedCandidate",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\promote.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\promote.ts"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        },
+        {
+          "name": "file",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.review-options",
+      "name": "ReviewOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\review.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ],
+      "attributes": [
+        {
+          "name": "nonInteractive",
+          "type": "boolean"
+        },
+        {
+          "name": "accept",
+          "type": "Confidence"
+        },
+        {
+          "name": "reject",
+          "type": "Confidence"
+        },
+        {
+          "name": "json",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.candidate-item",
+      "name": "CandidateItem",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\review.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ],
+      "attributes": [
+        {
+          "name": "slug",
+          "type": "string"
+        },
+        {
+          "name": "rule",
+          "type": "BusinessRule"
+        },
+        {
+          "name": "content",
+          "type": "string"
+        },
+        {
+          "name": "file",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.decision",
+      "name": "Decision",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\review.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ],
+      "attributes": [
+        {
+          "name": "item",
+          "type": "CandidateItem"
+        },
+        {
+          "name": "decision",
+          "type": "'accepted' | 'rejected'"
+        }
+      ]
+    },
+    {
+      "id": "entity.task-session",
+      "name": "TaskSession",
+      "type": "business_entity",
+      "description": "Discovered business candidate: TaskSession",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.task-command-options",
+      "name": "TaskCommandOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\task.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\task.ts"
+      ],
+      "attributes": [
+        {
+          "name": "json",
+          "type": "boolean"
+        },
+        {
+          "name": "dryRun",
+          "type": "boolean"
+        },
+        {
+          "name": "files",
+          "type": "string[]"
+        },
+        {
+          "name": "command",
+          "type": "string"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "passed",
+          "type": "boolean"
+        },
+        {
+          "name": "summary",
+          "type": "string"
+        },
+        {
+          "name": "learn",
+          "type": "string"
+        },
+        {
+          "name": "sessionId",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.knowledge-problem",
+      "name": "KnowledgeProblem",
+      "type": "business_entity",
+      "description": "Discovered business candidate: KnowledgeProblem",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.validate-command-options",
+      "name": "ValidateCommandOptions",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\validate.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ],
+      "attributes": [
+        {
+          "name": "json",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.problem",
+      "name": "Problem",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\commands\\validate.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ],
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "'entity' | 'rule' | 'relation' | 'api' | 'conflict'"
+        },
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "problems",
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.analyzer-context",
+      "name": "AnalyzerContext",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzer.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ],
+      "attributes": [
+        {
+          "name": "config",
+          "type": "AgentConfig"
+        },
+        {
+          "name": "entities",
+          "type": "Entity[]"
+        },
+        {
+          "name": "rules",
+          "type": "BusinessRule[]"
+        },
+        {
+          "name": "relations",
+          "type": "Relation[]"
+        },
+        {
+          "name": "apis",
+          "type": "ApiRoute[]"
+        },
+        {
+          "name": "warn",
+          "type": "(message: string) => void"
+        }
+      ]
+    },
+    {
+      "id": "entity.analyze-result",
+      "name": "AnalyzeResult",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzer.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entities",
+          "type": "Entity[]"
+        },
+        {
+          "name": "rules",
+          "type": "BusinessRule[]"
+        },
+        {
+          "name": "relations",
+          "type": "Relation[]"
+        },
+        {
+          "name": "apis",
+          "type": "ApiRoute[]"
+        },
+        {
+          "name": "states",
+          "type": "import('./types.js').StateMachine[]"
+        },
+        {
+          "name": "pages",
+          "type": "FrontendPage[]"
+        },
+        {
+          "name": "actions",
+          "type": "UserAction[]"
+        },
+        {
+          "name": "workflows",
+          "type": "WorkflowTemplate[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.analyzer",
+      "name": "Analyzer",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzer.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "AnalyzerName"
+        }
+      ]
+    },
+    {
+      "id": "entity.entity-attribute",
+      "name": "EntityAttribute",
+      "type": "business_entity",
+      "description": "Discovered business candidate: EntityAttribute",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.run-analyzers-result",
+      "name": "RunAnalyzersResult",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzer.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entities",
+          "type": "Entity[]"
+        },
+        {
+          "name": "rules",
+          "type": "BusinessRule[]"
+        },
+        {
+          "name": "relations",
+          "type": "Relation[]"
+        },
+        {
+          "name": "apis",
+          "type": "ApiRoute[]"
+        },
+        {
+          "name": "states",
+          "type": "import('./types.js').StateMachine[]"
+        },
+        {
+          "name": "pages",
+          "type": "FrontendPage[]"
+        },
+        {
+          "name": "actions",
+          "type": "UserAction[]"
+        },
+        {
+          "name": "workflows",
+          "type": "WorkflowTemplate[]"
+        },
+        {
+          "name": "warnings",
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.type-script-analysis",
+      "name": "TypeScriptAnalysis",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\ast.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entities",
+          "type": "Entity[]"
+        },
+        {
+          "name": "relations",
+          "type": "Relation[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.llm-rule",
+      "name": "LlmRule",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\llm-rules.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "rule",
+          "type": "string[]"
+        },
+        {
+          "name": "evidence",
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.llm-relation",
+      "name": "LlmRelation",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\llm-rules.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ],
+      "attributes": [
+        {
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "name": "target",
+          "type": "string"
+        },
+        {
+          "name": "relationship",
+          "type": "string"
+        },
+        {
+          "name": "cardinality",
+          "type": "'1:1' | '1:N' | 'N:1' | 'N:M' | 'unknown'"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.llm-payload",
+      "name": "LlmPayload",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\llm-rules.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ],
+      "attributes": [
+        {
+          "name": "rules",
+          "type": "LlmRule[]"
+        },
+        {
+          "name": "relations",
+          "type": "LlmRelation[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.llm-entity",
+      "name": "LlmEntity",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\llm.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "attributes",
+          "type": "Array<{ name?: string; description?: string }>"
+        }
+      ]
+    },
+    {
+      "id": "entity.sql-parse-result",
+      "name": "SqlParseResult",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\analyzers\\parse.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\analyzers\\parse.ts"
+      ],
+      "attributes": [
+        {
+          "name": "entities",
+          "type": "Entity[]"
+        },
+        {
+          "name": "relations",
+          "type": "Relation[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.audit-status",
+      "name": "AuditStatus",
+      "type": "business_entity",
+      "description": "Discovered business candidate: AuditStatus",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "entity.parsed-candidate",
+      "name": "ParsedCandidate",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\candidate.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "hypothesis",
+          "type": "string[]"
+        },
+        {
+          "name": "evidence",
+          "type": "string[]"
+        },
+        {
+          "name": "impact",
+          "type": "string[]"
+        },
+        {
+          "name": "context",
+          "type": "string[]"
+        },
+        {
+          "name": "verification",
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.promote-rule-input",
+      "name": "PromoteRuleInput",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\candidate.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ],
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "entity",
+          "type": "string"
+        },
+        {
+          "name": "candidate",
+          "type": "ParsedCandidate"
+        },
+        {
+          "name": "confidence",
+          "type": "BusinessRule['confidence']"
+        },
+        {
+          "name": "evidence",
+          "type": "string[]"
+        },
+        {
+          "name": "context",
+          "type": "string[]"
+        }
+      ]
+    },
+    {
+      "id": "entity.promote-relation-input",
+      "name": "PromoteRelationInput",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\candidate.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ],
+      "attributes": [
+        {
+          "name": "source",
+          "type": "string"
+        },
+        {
+          "name": "target",
+          "type": "string"
+        },
+        {
+          "name": "relationship",
+          "type": "string"
+        },
+        {
+          "name": "cardinality",
+          "type": "Relation['cardinality']"
+        },
+        {
+          "name": "confidence",
+          "type": "Relation['confidence']"
+        },
+        {
+          "name": "evidence",
+          "type": "string[]"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "id": "entity.llm-config",
+      "name": "LlmConfig",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\config.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\config.ts"
+      ],
+      "attributes": [
+        {
+          "name": "provider",
+          "type": "'openai' | 'openai-compatible' | 'ollama'"
+        },
+        {
+          "name": "model",
+          "type": "string"
+        },
+        {
+          "name": "baseUrl",
+          "type": "string"
+        },
+        {
+          "name": "apiKeyEnv",
+          "type": "string"
+        },
+        {
+          "name": "allowSourceUpload",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "entity.agent-config",
+      "name": "AgentConfig",
+      "type": "business_entity",
+      "description": "Discovered from AST in src\\core\\config.ts.",
+      "confidence": "high",
+      "evidence": [
+        "src\\core\\config.ts"
+      ],
+      "attributes": [
+        {
+          "name": "ignoreDirs",
+          "type": "string[]"
+        },
+        {
+          "name": "allowedExt",
+          "type": "string[]"
+        },
+        {
+          "name": "preferredEntities",
+          "type": "string[]"
+        },
+        {
+          "name": "maxFileBytes",
+          "type": "number"
+        },
+        {
+          "name": "maxEntities",
+          "type": "number"
+        },
+        {
+          "name": "maxSampleFiles",
+          "type": "number"
+        },
+        {
+          "name": "maxSamplesPerExt",
+          "type": "number"
+        },
+        {
+          "name": "maxSampleChars",
+          "type": "number"
+        },
+        {
+          "name": "relationWindow",
+          "type": "number"
+        },
+        {
+          "name": "analyzers",
+          "type": "string[]"
+        },
+        {
+          "name": "autoPromote",
+          "type": "'never' | 'high' | 'medium'"
+        },
+        {
+          "name": "llm",
+          "type": "LlmConfig"
+        }
+      ]
+    },
+    {
+      "id": "entity.customer",
+      "name": "Customer",
+      "type": "business_entity",
+      "description": "Discovered from SQL table customer.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\deep\\src\\Customer.ts",
+        "tests\\fixtures\\full\\java\\Customer.java",
+        "tests\\fixtures\\full\\mapper\\OrderMapper.xml"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "Long",
+          "required": false,
+          "description": "Column id"
+        },
+        {
+          "name": "name",
+          "type": "String",
+          "required": false,
+          "description": "Column name"
+        },
+        {
+          "name": "orders",
+          "type": "List<Order>"
+        }
+      ]
+    },
+    {
+      "id": "entity.order",
+      "name": "Order",
+      "type": "business_entity",
+      "description": "Discovered from AST in tests\\fixtures\\full\\ui\\OrderList.vue.",
+      "confidence": "high",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\Order.java",
+        "tests\\fixtures\\full\\java\\OrderController.java",
+        "tests\\fixtures\\full\\java\\OrderService.java",
+        "tests\\fixtures\\full\\mapper\\OrderMapper.xml",
+        "tests\\fixtures\\full\\ui\\OrderList.vue",
+        "tests\\fixtures\\linkage\\composables\\useOrderData.ts",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue",
+        "tests\\fixtures\\sample\\src\\Order.ts"
+      ],
+      "attributes": [
+        {
+          "name": "id",
+          "type": "string"
+        },
+        {
+          "name": "status",
+          "type": "'DRAFT' | 'APPROVED'"
+        },
+        {
+          "name": "total",
+          "type": "BigDecimal",
+          "required": true,
+          "description": "Column total"
+        },
+        {
+          "name": "customer",
+          "type": "Customer"
+        },
+        {
+          "name": "items",
+          "type": "List<OrderItem>"
+        }
+      ]
+    },
+    {
+      "id": "entity.order-controller",
+      "name": "OrderController",
+      "type": "business_entity",
+      "description": "Discovered business candidate: OrderController",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    },
+    {
+      "id": "entity.order-service",
+      "name": "OrderService",
+      "type": "business_entity",
+      "description": "Discovered business candidate: OrderService",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderService.java"
+      ]
+    },
+    {
+      "id": "entity.orders",
+      "name": "Orders",
+      "type": "business_entity",
+      "description": "Discovered from SQL table orders.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\deep\\db\\schema.sql",
+        "tests\\fixtures\\full\\mapper\\OrderMapper.xml"
+      ]
+    },
+    {
+      "id": "entity.product",
+      "name": "Product",
+      "type": "business_entity",
+      "description": "Discovered from SQL table product.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\sample\\src\\Product.ts"
+      ]
+    },
+    {
+      "id": "entity.order-item",
+      "name": "OrderItem",
+      "type": "business_entity",
+      "description": "Discovered from SQL table order_item.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\sample\\db\\schema.sql"
+      ]
+    },
+    {
+      "id": "entity.order-list",
+      "name": "OrderList",
+      "type": "business_entity",
+      "description": "Vue component discovered in tests\\fixtures\\full\\ui\\OrderList.vue.",
+      "confidence": "medium",
+      "attributes": [
+        {
+          "name": "selected",
+          "type": "Order",
+          "required": true
+        },
+        {
+          "name": "change",
+          "type": "emit",
+          "required": false
+        }
+      ],
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "entity.api",
+      "name": "Api",
+      "type": "api_client",
+      "description": "Frontend API wrapper module discovered in src\\core\\analyzers\\api.ts.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\api.ts"
+      ]
+    },
+    {
+      "id": "entity.llm",
+      "name": "Llm",
+      "type": "api_client",
+      "description": "Frontend API wrapper module discovered in src\\core\\analyzers\\llm.ts.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ]
+    },
+    {
+      "id": "entity.frontend",
+      "name": "Frontend",
+      "type": "page",
+      "description": "Frontend page discovered in src\\core\\analyzers\\frontend.ts.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    }
+  ],
+  "rules": [
+    {
+      "id": "rule.discovery.disabled-control",
+      "name": "Disabled control / conditional edit discovered",
+      "entity": "Unknown",
+      "rule": [
+        "Review the matched conditions, disabled controls, and thrown validation errors as candidate business rules."
+      ],
+      "impact": [
+        "Review related UI, API, service, and database code."
+      ],
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ],
+      "context": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue:4: <button :disabled=\"selected.status === 'AUDIT'\">Edit</button>",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue:3: <button :disabled=\"order.status === 'AUDIT'\">Edit</button>"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.discovery.thrown-error",
+      "name": "Explicit validation error thrown",
+      "entity": "Unknown",
+      "rule": [
+        "Review the matched conditions, disabled controls, and thrown validation errors as candidate business rules."
+      ],
+      "impact": [
+        "Review related UI, API, service, and database code."
+      ],
+      "confidence": "high",
+      "evidence": [
+        "src\\cli-args.ts",
+        "src\\cli.ts",
+        "src\\commands\\config.ts",
+        "src\\commands\\conflicts.ts",
+        "src\\commands\\continuous-learning.ts",
+        "src\\commands\\deprecate.ts",
+        "src\\commands\\hook.ts",
+        "src\\commands\\learn.ts",
+        "src\\commands\\promote.ts",
+        "src\\commands\\review.ts"
+      ],
+      "context": [
+        "src\\cli-args.ts:95: throw new Error(`Unknown ${label} option: --${key}`);",
+        "src\\cli.ts:60: task: 'Usage: business-agent task start|context|predict-impact|checkpoint|test|finish|feedback\\n\\nRun the Agent task lifecycle and persist structured task knowledge.\\n\\nFeedback:\\n  business-agent task feedback <type> <targetId> [--reason <text>] [--correction <text>]\\n\\nKnowledge:\\n  business-agent knowledge status <targetId>\\n  business-agent knowledge verify <targetId> [--reason <text>]\\n  business-agent knowledge stale --id <id> [--reason <text>]',",
+        "src\\commands\\config.ts:17: if (result === undefined) throw new Error(`Unknown config key: ${key}`);",
+        "src\\commands\\conflicts.ts:17: throw new Error(`Invalid discovery manifest: ${manifestFile}`);",
+        "src\\commands\\continuous-learning.ts:2: import { loadKnowledgeState, type KnowledgeRecord, type KnowledgeStatus } from '../core/knowledge-state.js';",
+        "src\\commands\\deprecate.ts:7: if (!ruleId) throw new Error('Usage: business-agent deprecate <rule-id>');",
+        "src\\commands\\hook.ts:17: throw new Error('Not a git repository: .git not found. Run `git init` or `business-agent init` first.');",
+        "src\\commands\\learn.ts:20: `Status: candidate`,",
+        "src\\commands\\promote.ts:68: if (!content.includes('Status: candidate')) return;",
+        "src\\commands\\review.ts:85: if (content.includes('Status: promoted') || content.includes('Status: rejected')) continue;"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.vue.if-lluiorderlistvue",
+      "name": "Conditional rendering constraints (v-if)",
+      "entity": "OrderList",
+      "rule": [
+        "Elements are rendered only when: selected.status ===."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ],
+      "context": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue: template context: \" /> <button :disabled=\"selected.status === 'AUDIT'\">Edit</button> <p v-if=\"selected.status === 'DRAFT'\">Draft order</p> </div>"
+      ],
+      "status": "candidate",
+      "impact": []
+    },
+    {
+      "id": "rule.vue.disabled-lluiorderlistvue",
+      "name": "Disabled control constraints (:disabled)",
+      "entity": "OrderList",
+      "rule": [
+        "Controls are disabled when: selected.status ===.",
+        "Controls are disabled when: order.status ===."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ],
+      "context": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue: template context: <div> <OrderCard :order=\"selected\" /> <button :disabled=\"selected.status === 'AUDIT'\">Edit</button> <p v-if=\"selected.status === 'DRAFT'\">Draft order</p>",
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue: template context: <div> <button :disabled=\"order.status === 'AUDIT'\">Edit</button> </div>"
+      ],
+      "status": "candidate",
+      "impact": []
+    },
+    {
+      "id": "rule.java.throw-rservicejava-0",
+      "name": "Explicit validation error thrown",
+      "entity": "Order",
+      "rule": [
+        "cannot modify an order under audit"
+      ],
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderService.java"
+      ],
+      "status": "candidate",
+      "impact": [],
+      "context": []
+    },
+    {
+      "id": "rule.java.status-rservicejava",
+      "name": "State-dependent service constraint",
+      "entity": "Order",
+      "rule": [
+        "Service logic branches on status values (AUDIT/AUDITING/APPROVED/DRAFT/REJECT/SUBMIT/PENDING)."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderService.java"
+      ],
+      "status": "candidate",
+      "impact": [],
+      "context": []
+    },
+    {
+      "id": "rule.frontend.eslint.config",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Eslint.config",
+      "rule": [
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "eslint.config.js"
+      ],
+      "context": [
+        "eslint.config.js"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.cli",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Cli",
+      "rule": [
+        "Permission condition: ..",
+        "Permission condition: candidate.",
+        "Permission condition: knowledge.",
+        "Permission condition: directory..",
+        "Permission condition: into.",
+        "Permission condition: business.",
+        "Permission condition: for.",
+        "Permission condition: are.",
+        "Permission condition: noise.",
+        "Permission condition: rules.",
+        "Permission condition: impact.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: audit."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\cli.ts"
+      ],
+      "context": [
+        "src\\cli.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.capture",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Capture",
+      "rule": [
+        "Permission condition: Candidate.",
+        "Permission condition: ..",
+        "Permission condition: :.",
+        "Permission condition: candidate.",
+        "Permission condition: root.",
+        "Permission condition: candidate'.",
+        "Permission condition: created:.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ],
+      "context": [
+        "src\\commands\\capture.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.conflicts",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Conflicts",
+      "rule": [
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\conflicts.ts"
+      ],
+      "context": [
+        "src\\commands\\conflicts.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.context",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Context",
+      "rule": [
+        "Permission condition: candidate'.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ],
+      "context": [
+        "src\\commands\\context.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.continuous-learning",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Continuous-learning",
+      "rule": [
+        "Permission condition: candidate'.",
+        "Frontend evidence: reject."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ],
+      "context": [
+        "src\\commands\\continuous-learning.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.deprecate",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Deprecate",
+      "rule": [
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\deprecate.ts"
+      ],
+      "context": [
+        "src\\commands\\deprecate.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.discover",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Discover",
+      "rule": [
+        "Permission condition: canned.",
+        "Permission condition: candidates.",
+        "Permission condition: rules:.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ],
+      "context": [
+        "src\\commands\\discover.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.evolve",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Evolve",
+      "rule": [
+        "Permission condition: candidateSlug.",
+        "Permission condition: .js.",
+        "Permission condition: candidate.",
+        "Permission condition: candidates'.",
+        "Permission condition: directory:.",
+        "Permission condition: knowledge.",
+        "Permission condition: :.",
+        "Permission condition: created:.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\evolve.ts"
+      ],
+      "context": [
+        "src\\commands\\evolve.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.learn",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Learn",
+      "rule": [
+        "Permission condition: candidateSlug.",
+        "Permission condition: .js.",
+        "Permission condition: statement:.",
+        "Permission condition: :.",
+        "Permission condition: candidate.",
+        "Permission condition: root:.",
+        "Permission condition: statement.",
+        "Permission condition: candidates'.",
+        "Permission condition: root.",
+        "Permission condition: created:.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\learn.ts"
+      ],
+      "context": [
+        "src\\commands\\learn.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.promote",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Promote",
+      "rule": [
+        "Permission condition: Candidate.",
+        "Permission condition: .js.",
+        "Permission condition: candidatesDir.",
+        "Permission condition: candidates'.",
+        "Permission condition: candidate.",
+        "Permission condition: live.",
+        "Permission condition: candidatesDir:.",
+        "Permission condition: file:.",
+        "Permission condition: candidate'.",
+        "Permission condition: candidate \".",
+        "Permission condition: :.",
+        "Permission condition: resolved.content.",
+        "Permission condition: file.",
+        "Permission condition: .entity.",
+        "Permission condition: .name.",
+        "Permission condition: Candidate(.",
+        "Permission condition: .evidence.length.",
+        "Permission condition: .evidence.",
+        "Permission condition: resolved.file.",
+        "Permission condition: candidates.",
+        "Permission condition: .add.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\promote.ts"
+      ],
+      "context": [
+        "src\\commands\\promote.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.review",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Review",
+      "rule": [
+        "Permission condition: Candidate.",
+        "Permission condition: .js.",
+        "Permission condition: candidateReviewKey.",
+        "Permission condition: candidatesDir.",
+        "Permission condition: candidates'.",
+        "Permission condition: candidates.",
+        "Permission condition: .length.",
+        "Permission condition: ..",
+        "Permission condition: item.item.file.",
+        "Permission condition: CandidateItem.",
+        "Permission condition: candidatesDir:.",
+        "Permission condition: CandidateItem[.",
+        "Permission condition: content.",
+        "Permission condition: candidate.",
+        "Permission condition: .id.replace.",
+        "Permission condition: rule.",
+        "Permission condition: file:.",
+        "Permission condition: :.",
+        "Permission condition: .filter.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: reject."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ],
+      "context": [
+        "src\\commands\\review.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.states",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "States",
+      "rule": [
+        "Permission condition: canProject.",
+        "Permission condition: .js.",
+        "Permission condition: root.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\states.ts"
+      ],
+      "context": [
+        "src\\commands\\states.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.task",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Task",
+      "rule": [
+        "Permission condition: candidate'.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\task.ts"
+      ],
+      "context": [
+        "src\\commands\\task.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.validate",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Validate",
+      "rule": [
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ],
+      "context": [
+        "src\\commands\\validate.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.analyzer",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Analyzer",
+      "rule": [
+        "Permission condition: .js.",
+        "Permission condition: :.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ],
+      "context": [
+        "src\\core\\analyzer.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.frontend",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Frontend",
+      "rule": [
+        "Permission condition: _RE.",
+        "Permission condition: permission.",
+        "Permission condition: s.",
+        "Permission condition: hasPermission.",
+        "Permission condition: s.length.",
+        "Permission condition: Rules.",
+        "Permission condition: s.map.",
+        "Permission condition: condition:.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ],
+      "context": [
+        "src\\core\\analyzers\\frontend.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.java",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Java",
+      "rule": [
+        "Frontend evidence: AUDIT."
+      ],
+      "impact": [
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzers\\java.ts"
+      ],
+      "context": [
+        "src\\core\\analyzers\\java.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.llm-rules",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Llm-rules",
+      "rule": [
+        "Permission condition: permission.",
+        "Permission condition: rule.",
+        "Permission condition: candidate'.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: audit."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ],
+      "context": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.stores",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Stores",
+      "rule": [
+        "Permission condition: see..",
+        "Permission condition: with.",
+        "Permission condition: ..",
+        "Permission condition: candidate'.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ],
+      "context": [
+        "src\\core\\analyzers\\stores.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.vue",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Vue",
+      "rule": [
+        "Permission condition: per.",
+        "Permission condition: candidate'.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\analyzers\\vue.ts"
+      ],
+      "context": [
+        "src\\core\\analyzers\\vue.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.audit",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Audit",
+      "rule": [
+        "Permission condition: candidate'.",
+        "Frontend evidence: Audit."
+      ],
+      "impact": [
+        "Review page permission checks and route guards.",
+        "Review form validators and submit actions."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ],
+      "context": [
+        "src\\core\\audit.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.candidate",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "Candidate",
+      "rule": [
+        "Permission condition: Candidate.",
+        "Permission condition: content:.",
+        "Permission condition: :.",
+        "Permission condition: is.",
+        "Permission condition: input:.",
+        "Permission condition: .evidence.",
+        "Permission condition: .hypothesis.length.",
+        "Permission condition: .hypothesis.",
+        "Permission condition: .impact.length.",
+        "Permission condition: .impact.",
+        "Permission condition: candidate'.",
+        "Permission condition: .context.",
+        "Permission condition: candidate:.",
+        "Permission condition: .toLowerCase.",
+        "Permission condition: -.",
+        "Form validation constraints are enforced.",
+        "Frontend evidence: interaction constraint."
+      ],
+      "impact": [
+        "Review page permission checks and route guards."
+      ],
+      "confidence": "low",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ],
+      "context": [
+        "src\\core\\candidate.ts"
+      ],
+      "status": "candidate"
+    },
+    {
+      "id": "rule.frontend.orderlist",
+      "name": "Frontend interaction and validation constraints",
+      "entity": "OrderList",
+      "rule": [
+        "Interaction condition: selected.status ===.",
+        "Frontend evidence: AUDIT."
+      ],
+      "impact": [],
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ],
+      "context": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ],
+      "status": "candidate"
+    }
+  ],
+  "relations": [
+    {
+      "id": "relation.auditcheck-auditreport",
+      "source": "AuditCheck",
+      "target": "AuditReport",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditCheck and AuditReport.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.auditcheck-problem",
+      "source": "AuditCheck",
+      "target": "Problem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditCheck and Problem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.auditcheck-auditstatus",
+      "source": "AuditCheck",
+      "target": "AuditStatus",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditCheck and AuditStatus.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.auditreport-auditcheck",
+      "source": "AuditReport",
+      "target": "AuditCheck",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditReport and AuditCheck.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.captureoptions-capturesummary",
+      "source": "CaptureOptions",
+      "target": "CaptureSummary",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CaptureOptions and CaptureSummary.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.capturesummary-impactreport",
+      "source": "CaptureSummary",
+      "target": "ImpactReport",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CaptureSummary and ImpactReport.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgerecord-knowledgestatus",
+      "source": "KnowledgeRecord",
+      "target": "KnowledgeStatus",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeRecord and KnowledgeStatus.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgerecord-feedbacktype",
+      "source": "KnowledgeRecord",
+      "target": "FeedbackType",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeRecord and FeedbackType.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgestatus-knowledgerecord",
+      "source": "KnowledgeStatus",
+      "target": "KnowledgeRecord",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeStatus and KnowledgeRecord.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgestatus-feedbacktype",
+      "source": "KnowledgeStatus",
+      "target": "FeedbackType",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeStatus and FeedbackType.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.feedbacktype-retrievaldocument",
+      "source": "FeedbackType",
+      "target": "RetrievalDocument",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between FeedbackType and RetrievalDocument.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.feedbacktype-retrievalhit",
+      "source": "FeedbackType",
+      "target": "RetrievalHit",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between FeedbackType and RetrievalHit.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievaldocument-feedbacktype",
+      "source": "RetrievalDocument",
+      "target": "FeedbackType",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalDocument and FeedbackType.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievaldocument-retrievalhit",
+      "source": "RetrievalDocument",
+      "target": "RetrievalHit",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalDocument and RetrievalHit.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievaldocument-tasksession",
+      "source": "RetrievalDocument",
+      "target": "TaskSession",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalDocument and TaskSession.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievalhit-feedbacktype",
+      "source": "RetrievalHit",
+      "target": "FeedbackType",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalHit and FeedbackType.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievalhit-retrievaldocument",
+      "source": "RetrievalHit",
+      "target": "RetrievalDocument",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalHit and RetrievalDocument.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.retrievalhit-tasksession",
+      "source": "RetrievalHit",
+      "target": "TaskSession",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between RetrievalHit and TaskSession.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzername-commandoptions",
+      "source": "AnalyzerName",
+      "target": "CommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerName and CommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzername-analyzercontext",
+      "source": "AnalyzerName",
+      "target": "AnalyzerContext",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerName and AnalyzerContext.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzername-analyzeresult",
+      "source": "AnalyzerName",
+      "target": "AnalyzeResult",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerName and AnalyzeResult.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzername-analyzer",
+      "source": "AnalyzerName",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerName and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.commandoptions-analyzername",
+      "source": "CommandOptions",
+      "target": "AnalyzerName",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CommandOptions and AnalyzerName.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.commandoptions-problem",
+      "source": "CommandOptions",
+      "target": "Problem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CommandOptions and Problem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.commandoptions-analyzer",
+      "source": "CommandOptions",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CommandOptions and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.promoteoptions-captureoptions",
+      "source": "PromoteOptions",
+      "target": "CaptureOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between PromoteOptions and CaptureOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.reviewoptions-decision",
+      "source": "ReviewOptions",
+      "target": "Decision",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between ReviewOptions and Decision.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.candidateitem-reviewoptions",
+      "source": "CandidateItem",
+      "target": "ReviewOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CandidateItem and ReviewOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.candidateitem-decision",
+      "source": "CandidateItem",
+      "target": "Decision",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between CandidateItem and Decision.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.decision-candidateitem",
+      "source": "Decision",
+      "target": "CandidateItem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Decision and CandidateItem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.tasksession-feedbacktype",
+      "source": "TaskSession",
+      "target": "FeedbackType",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between TaskSession and FeedbackType.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.tasksession-commandoptions",
+      "source": "TaskSession",
+      "target": "CommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between TaskSession and CommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.tasksession-taskcommandoptions",
+      "source": "TaskSession",
+      "target": "TaskCommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between TaskSession and TaskCommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgeproblem-commandoptions",
+      "source": "KnowledgeProblem",
+      "target": "CommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeProblem and CommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgeproblem-validatecommandoptions",
+      "source": "KnowledgeProblem",
+      "target": "ValidateCommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeProblem and ValidateCommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.knowledgeproblem-problem",
+      "source": "KnowledgeProblem",
+      "target": "Problem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between KnowledgeProblem and Problem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.validatecommandoptions-problem",
+      "source": "ValidateCommandOptions",
+      "target": "Problem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between ValidateCommandOptions and Problem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.problem-auditcheck",
+      "source": "Problem",
+      "target": "AuditCheck",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Problem and AuditCheck.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.problem-commandoptions",
+      "source": "Problem",
+      "target": "CommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Problem and CommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.problem-knowledgeproblem",
+      "source": "Problem",
+      "target": "KnowledgeProblem",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Problem and KnowledgeProblem.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.problem-validatecommandoptions",
+      "source": "Problem",
+      "target": "ValidateCommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Problem and ValidateCommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzercontext-analyzername",
+      "source": "AnalyzerContext",
+      "target": "AnalyzerName",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerContext and AnalyzerName.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzercontext-analyzeresult",
+      "source": "AnalyzerContext",
+      "target": "AnalyzeResult",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerContext and AnalyzeResult.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzercontext-analyzer",
+      "source": "AnalyzerContext",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerContext and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzercontext-runanalyzersresult",
+      "source": "AnalyzerContext",
+      "target": "RunAnalyzersResult",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerContext and RunAnalyzersResult.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzercontext-agentconfig",
+      "source": "AnalyzerContext",
+      "target": "AgentConfig",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzerContext and AgentConfig.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzeresult-analyzername",
+      "source": "AnalyzeResult",
+      "target": "AnalyzerName",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzeResult and AnalyzerName.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzeresult-analyzer",
+      "source": "AnalyzeResult",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AnalyzeResult and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-analyzername",
+      "source": "Analyzer",
+      "target": "AnalyzerName",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and AnalyzerName.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-commandoptions",
+      "source": "Analyzer",
+      "target": "CommandOptions",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and CommandOptions.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-analyzercontext",
+      "source": "Analyzer",
+      "target": "AnalyzerContext",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and AnalyzerContext.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-analyzeresult",
+      "source": "Analyzer",
+      "target": "AnalyzeResult",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and AnalyzeResult.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-runanalyzersresult",
+      "source": "Analyzer",
+      "target": "RunAnalyzersResult",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and RunAnalyzersResult.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-llmconfig",
+      "source": "Analyzer",
+      "target": "LlmConfig",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and LlmConfig.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.analyzer-agentconfig",
+      "source": "Analyzer",
+      "target": "AgentConfig",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Analyzer and AgentConfig.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmrule-analyzer",
+      "source": "LlmRule",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmRule and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmrule-llmrelation",
+      "source": "LlmRule",
+      "target": "LlmRelation",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmRule and LlmRelation.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmrelation-analyzer",
+      "source": "LlmRelation",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmRelation and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmpayload-analyzer",
+      "source": "LlmPayload",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmPayload and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmpayload-llmrule",
+      "source": "LlmPayload",
+      "target": "LlmRule",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmPayload and LlmRule.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmpayload-llmrelation",
+      "source": "LlmPayload",
+      "target": "LlmRelation",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmPayload and LlmRelation.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmentity-analyzer",
+      "source": "LlmEntity",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmEntity and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.auditstatus-auditcheck",
+      "source": "AuditStatus",
+      "target": "AuditCheck",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditStatus and AuditCheck.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.auditstatus-auditreport",
+      "source": "AuditStatus",
+      "target": "AuditReport",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AuditStatus and AuditReport.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.parsedcandidate-promoteruleinput",
+      "source": "ParsedCandidate",
+      "target": "PromoteRuleInput",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between ParsedCandidate and PromoteRuleInput.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.promoteruleinput-parsedcandidate",
+      "source": "PromoteRuleInput",
+      "target": "ParsedCandidate",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between PromoteRuleInput and ParsedCandidate.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.llmconfig-agentconfig",
+      "source": "LlmConfig",
+      "target": "AgentConfig",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between LlmConfig and AgentConfig.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.agentconfig-analyzername",
+      "source": "AgentConfig",
+      "target": "AnalyzerName",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AgentConfig and AnalyzerName.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.agentconfig-analyzer",
+      "source": "AgentConfig",
+      "target": "Analyzer",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between AgentConfig and Analyzer.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.customer-order",
+      "source": "Customer",
+      "target": "Order",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Customer and Order.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.order-orderservice",
+      "source": "Order",
+      "target": "OrderService",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between Order and OrderService.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.ordercontroller-order",
+      "source": "OrderController",
+      "target": "Order",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between OrderController and Order.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.orderservice-order",
+      "source": "OrderService",
+      "target": "Order",
+      "relationship": "references_or_contains",
+      "cardinality": "unknown",
+      "description": "Potential business relationship discovered between OrderService and Order.",
+      "confidence": "low",
+      "evidence": []
+    },
+    {
+      "id": "relation.orders-customer-fk",
+      "source": "Orders",
+      "target": "Customer",
+      "relationship": "references",
+      "cardinality": "N:1",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\deep\\db\\schema.sql"
+      ],
+      "description": "Foreign key: orders references customer."
+    },
+    {
+      "id": "relation.orderitem-product-fk",
+      "source": "OrderItem",
+      "target": "Product",
+      "relationship": "references",
+      "cardinality": "N:1",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\sample\\db\\schema.sql"
+      ],
+      "description": "Foreign key: order_item references product."
+    },
+    {
+      "id": "relation.capturesummary-impactreport-type",
+      "source": "CaptureSummary",
+      "target": "ImpactReport",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in CaptureSummary → ImpactReport.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-apiroute-type",
+      "source": "ContextManifest",
+      "target": "ApiRoute",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → ApiRoute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-ruleconflict-type",
+      "source": "ContextManifest",
+      "target": "RuleConflict",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → RuleConflict.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-statemachine-type",
+      "source": "ContextManifest",
+      "target": "StateMachine",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → StateMachine.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-workflowtemplate-type",
+      "source": "ContextManifest",
+      "target": "WorkflowTemplate",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → WorkflowTemplate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-frontendpage-type",
+      "source": "ContextManifest",
+      "target": "FrontendPage",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → FrontendPage.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.contextmanifest-useraction-type",
+      "source": "ContextManifest",
+      "target": "UserAction",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ContextManifest → UserAction.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.reviewoptions-confidence-type",
+      "source": "ReviewOptions",
+      "target": "Confidence",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in ReviewOptions → Confidence.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.candidateitem-businessrule-type",
+      "source": "CandidateItem",
+      "target": "BusinessRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in CandidateItem → BusinessRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.decision-candidateitem-type",
+      "source": "Decision",
+      "target": "CandidateItem",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in Decision → CandidateItem.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzercontext-agentconfig-type",
+      "source": "AnalyzerContext",
+      "target": "AgentConfig",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzerContext → AgentConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzercontext-entity-type",
+      "source": "AnalyzerContext",
+      "target": "Entity",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzerContext → Entity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzercontext-businessrule-type",
+      "source": "AnalyzerContext",
+      "target": "BusinessRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzerContext → BusinessRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzercontext-relation-type",
+      "source": "AnalyzerContext",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzerContext → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzercontext-apiroute-type",
+      "source": "AnalyzerContext",
+      "target": "ApiRoute",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzerContext → ApiRoute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-entity-type",
+      "source": "AnalyzeResult",
+      "target": "Entity",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → Entity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-businessrule-type",
+      "source": "AnalyzeResult",
+      "target": "BusinessRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → BusinessRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-relation-type",
+      "source": "AnalyzeResult",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-apiroute-type",
+      "source": "AnalyzeResult",
+      "target": "ApiRoute",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → ApiRoute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-statemachine-type",
+      "source": "AnalyzeResult",
+      "target": "StateMachine",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → StateMachine.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-frontendpage-type",
+      "source": "AnalyzeResult",
+      "target": "FrontendPage",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → FrontendPage.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-useraction-type",
+      "source": "AnalyzeResult",
+      "target": "UserAction",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → UserAction.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzeresult-workflowtemplate-type",
+      "source": "AnalyzeResult",
+      "target": "WorkflowTemplate",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AnalyzeResult → WorkflowTemplate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-analyzername-type",
+      "source": "Analyzer",
+      "target": "AnalyzerName",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in Analyzer → AnalyzerName.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-entity-type",
+      "source": "RunAnalyzersResult",
+      "target": "Entity",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → Entity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-businessrule-type",
+      "source": "RunAnalyzersResult",
+      "target": "BusinessRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → BusinessRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-relation-type",
+      "source": "RunAnalyzersResult",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-apiroute-type",
+      "source": "RunAnalyzersResult",
+      "target": "ApiRoute",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → ApiRoute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-statemachine-type",
+      "source": "RunAnalyzersResult",
+      "target": "StateMachine",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → StateMachine.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-frontendpage-type",
+      "source": "RunAnalyzersResult",
+      "target": "FrontendPage",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → FrontendPage.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-useraction-type",
+      "source": "RunAnalyzersResult",
+      "target": "UserAction",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → UserAction.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.runanalyzersresult-workflowtemplate-type",
+      "source": "RunAnalyzersResult",
+      "target": "WorkflowTemplate",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in RunAnalyzersResult → WorkflowTemplate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.typescriptanalysis-entity-type",
+      "source": "TypeScriptAnalysis",
+      "target": "Entity",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in TypeScriptAnalysis → Entity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ]
+    },
+    {
+      "id": "relation.typescriptanalysis-relation-type",
+      "source": "TypeScriptAnalysis",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in TypeScriptAnalysis → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ]
+    },
+    {
+      "id": "relation.llmpayload-llmrule-type",
+      "source": "LlmPayload",
+      "target": "LlmRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in LlmPayload → LlmRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llmpayload-llmrelation-type",
+      "source": "LlmPayload",
+      "target": "LlmRelation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in LlmPayload → LlmRelation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.sqlparseresult-entity-type",
+      "source": "SqlParseResult",
+      "target": "Entity",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in SqlParseResult → Entity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\parse.ts"
+      ]
+    },
+    {
+      "id": "relation.sqlparseresult-relation-type",
+      "source": "SqlParseResult",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in SqlParseResult → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\parse.ts"
+      ]
+    },
+    {
+      "id": "relation.auditcheck-auditstatus-type",
+      "source": "AuditCheck",
+      "target": "AuditStatus",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AuditCheck → AuditStatus.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.auditreport-auditcheck-type",
+      "source": "AuditReport",
+      "target": "AuditCheck",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AuditReport → AuditCheck.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.promoteruleinput-parsedcandidate-type",
+      "source": "PromoteRuleInput",
+      "target": "ParsedCandidate",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in PromoteRuleInput → ParsedCandidate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.promoteruleinput-businessrule-type",
+      "source": "PromoteRuleInput",
+      "target": "BusinessRule",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in PromoteRuleInput → BusinessRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.promoterelationinput-relation-type",
+      "source": "PromoteRelationInput",
+      "target": "Relation",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in PromoteRelationInput → Relation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.agentconfig-llmconfig-type",
+      "source": "AgentConfig",
+      "target": "LlmConfig",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "description": "Type reference in AgentConfig → LlmConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.orderlist-ordercard-import",
+      "source": "OrderList",
+      "target": "OrderCard",
+      "relationship": "imports_component",
+      "cardinality": "unknown",
+      "description": "OrderList imports component OrderCard.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.customer-order-jpa",
+      "source": "Customer",
+      "target": "Order",
+      "relationship": "references",
+      "cardinality": "1:N",
+      "description": "JPA OneToMany on Customer.orders → Order.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\Customer.java"
+      ]
+    },
+    {
+      "id": "relation.order-customer-jpa",
+      "source": "Order",
+      "target": "Customer",
+      "relationship": "references",
+      "cardinality": "N:1",
+      "description": "JPA ManyToOne on Order.customer → Customer.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\Order.java"
+      ]
+    },
+    {
+      "id": "relation.order-orderitem-jpa",
+      "source": "Order",
+      "target": "OrderItem",
+      "relationship": "references",
+      "cardinality": "1:N",
+      "description": "JPA OneToMany on Order.items → OrderItem.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\Order.java"
+      ]
+    },
+    {
+      "id": "relation.orders-customer-join",
+      "source": "Orders",
+      "target": "Customer",
+      "relationship": "references",
+      "cardinality": "unknown",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\mapper\\OrderMapper.xml"
+      ],
+      "description": "SQL join between orders and customer."
+    },
+    {
+      "id": "relation.frontend-useroute-frontend-store",
+      "source": "Frontend",
+      "target": "useRoute",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "confidence": "medium",
+      "description": "Frontend uses frontend store useRoute.",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "relation.frontend-useeffect-frontend-store",
+      "source": "Frontend",
+      "target": "useEffect",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "confidence": "medium",
+      "description": "Frontend uses frontend store useEffect.",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "relation.orderlist--api-orders-frontend-api",
+      "source": "OrderList",
+      "target": "/api/orders",
+      "relationship": "calls_api_route",
+      "cardinality": "unknown",
+      "confidence": "low",
+      "description": "OrderList calls API path /api/orders.",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-useorderstore-frontend-store",
+      "source": "OrderList",
+      "target": "useOrderStore",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "confidence": "medium",
+      "description": "OrderList uses frontend store useOrderStore.",
+      "evidence": [
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-useorderdata-frontend-store",
+      "source": "OrderList",
+      "target": "useOrderData",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "confidence": "medium",
+      "description": "OrderList uses frontend store useOrderData.",
+      "evidence": [
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.cli-args-flags-uses_entity",
+      "source": "Cli-args",
+      "target": "Flags",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Cli-args references frontend entity Flags.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\cli-args.ts"
+      ]
+    },
+    {
+      "id": "relation.cli-states-uses_store",
+      "source": "Cli",
+      "target": "States",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "description": "Cli uses store States.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\cli.ts"
+      ]
+    },
+    {
+      "id": "relation.cli-flags-uses_entity",
+      "source": "Cli",
+      "target": "Flags",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Cli references frontend entity Flags.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\cli.ts"
+      ]
+    },
+    {
+      "id": "relation.cli-api-uses_entity",
+      "source": "Cli",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Cli references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\cli.ts"
+      ]
+    },
+    {
+      "id": "relation.audit-auditcheck-uses_entity",
+      "source": "Audit",
+      "target": "AuditCheck",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Audit references frontend entity AuditCheck.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.audit-auditreport-uses_entity",
+      "source": "Audit",
+      "target": "AuditReport",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Audit references frontend entity AuditReport.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.capture-impactreport-uses_entity",
+      "source": "Capture",
+      "target": "ImpactReport",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Capture references frontend entity ImpactReport.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ]
+    },
+    {
+      "id": "relation.capture-captureoptions-uses_entity",
+      "source": "Capture",
+      "target": "CaptureOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Capture references frontend entity CaptureOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ]
+    },
+    {
+      "id": "relation.capture-capturesummary-uses_entity",
+      "source": "Capture",
+      "target": "CaptureSummary",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Capture references frontend entity CaptureSummary.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ]
+    },
+    {
+      "id": "relation.capture-api-uses_entity",
+      "source": "Capture",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Capture references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\capture.ts"
+      ]
+    },
+    {
+      "id": "relation.context-contextmanifest-uses_entity",
+      "source": "Context",
+      "target": "ContextManifest",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Context references frontend entity ContextManifest.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.context-contextoptions-uses_entity",
+      "source": "Context",
+      "target": "ContextOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Context references frontend entity ContextOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.context-order-uses_entity",
+      "source": "Context",
+      "target": "Order",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Context references frontend entity Order.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.context-api-uses_entity",
+      "source": "Context",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Context references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.context-frontend-uses_entity",
+      "source": "Context",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Context references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\context.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-knowledge-state-uses_store",
+      "source": "Continuous-learning",
+      "target": "Knowledge-state",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "description": "Continuous-learning uses store Knowledge-state.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-knowledgerecord-uses_entity",
+      "source": "Continuous-learning",
+      "target": "KnowledgeRecord",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Continuous-learning references frontend entity KnowledgeRecord.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-knowledgestatus-uses_entity",
+      "source": "Continuous-learning",
+      "target": "KnowledgeStatus",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Continuous-learning references frontend entity KnowledgeStatus.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-feedbacktype-uses_entity",
+      "source": "Continuous-learning",
+      "target": "FeedbackType",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Continuous-learning references frontend entity FeedbackType.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-retrievaldocument-uses_entity",
+      "source": "Continuous-learning",
+      "target": "RetrievalDocument",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Continuous-learning references frontend entity RetrievalDocument.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.continuous-learning-retrievalhit-uses_entity",
+      "source": "Continuous-learning",
+      "target": "RetrievalHit",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Continuous-learning references frontend entity RetrievalHit.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\continuous-learning.ts"
+      ]
+    },
+    {
+      "id": "relation.discover-analyzername-uses_entity",
+      "source": "Discover",
+      "target": "AnalyzerName",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Discover references frontend entity AnalyzerName.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ]
+    },
+    {
+      "id": "relation.discover-commandoptions-uses_entity",
+      "source": "Discover",
+      "target": "CommandOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Discover references frontend entity CommandOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ]
+    },
+    {
+      "id": "relation.discover-api-uses_entity",
+      "source": "Discover",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Discover references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ]
+    },
+    {
+      "id": "relation.discover-llm-uses_entity",
+      "source": "Discover",
+      "target": "Llm",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Discover references frontend entity Llm.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ]
+    },
+    {
+      "id": "relation.discover-frontend-uses_entity",
+      "source": "Discover",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Discover references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\discover.ts"
+      ]
+    },
+    {
+      "id": "relation.evolve-evolveoptions-uses_entity",
+      "source": "Evolve",
+      "target": "EvolveOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Evolve references frontend entity EvolveOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\evolve.ts"
+      ]
+    },
+    {
+      "id": "relation.evolve-api-uses_entity",
+      "source": "Evolve",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Evolve references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\evolve.ts"
+      ]
+    },
+    {
+      "id": "relation.evolve-frontend-uses_entity",
+      "source": "Evolve",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Evolve references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\evolve.ts"
+      ]
+    },
+    {
+      "id": "relation.hook-hookaction-uses_entity",
+      "source": "Hook",
+      "target": "HookAction",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Hook references frontend entity HookAction.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\hook.ts"
+      ]
+    },
+    {
+      "id": "relation.init-initoptions-uses_entity",
+      "source": "Init",
+      "target": "InitOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Init references frontend entity InitOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\init.ts"
+      ]
+    },
+    {
+      "id": "relation.learn-learnoptions-uses_entity",
+      "source": "Learn",
+      "target": "LearnOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Learn references frontend entity LearnOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\learn.ts"
+      ]
+    },
+    {
+      "id": "relation.learn-api-uses_entity",
+      "source": "Learn",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Learn references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\learn.ts"
+      ]
+    },
+    {
+      "id": "relation.learn-frontend-uses_entity",
+      "source": "Learn",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Learn references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\learn.ts"
+      ]
+    },
+    {
+      "id": "relation.promote-promoteoptions-uses_entity",
+      "source": "Promote",
+      "target": "PromoteOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Promote references frontend entity PromoteOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\promote.ts"
+      ]
+    },
+    {
+      "id": "relation.promote-resolvedcandidate-uses_entity",
+      "source": "Promote",
+      "target": "ResolvedCandidate",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Promote references frontend entity ResolvedCandidate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\promote.ts"
+      ]
+    },
+    {
+      "id": "relation.review-reviewoptions-uses_entity",
+      "source": "Review",
+      "target": "ReviewOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Review references frontend entity ReviewOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.review-candidateitem-uses_entity",
+      "source": "Review",
+      "target": "CandidateItem",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Review references frontend entity CandidateItem.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.review-decision-uses_entity",
+      "source": "Review",
+      "target": "Decision",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Review references frontend entity Decision.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\review.ts"
+      ]
+    },
+    {
+      "id": "relation.task-tasksession-uses_entity",
+      "source": "Task",
+      "target": "TaskSession",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Task references frontend entity TaskSession.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\task.ts"
+      ]
+    },
+    {
+      "id": "relation.task-taskcommandoptions-uses_entity",
+      "source": "Task",
+      "target": "TaskCommandOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Task references frontend entity TaskCommandOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\task.ts"
+      ]
+    },
+    {
+      "id": "relation.validate-knowledgeproblem-uses_entity",
+      "source": "Validate",
+      "target": "KnowledgeProblem",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Validate references frontend entity KnowledgeProblem.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ]
+    },
+    {
+      "id": "relation.validate-validatecommandoptions-uses_entity",
+      "source": "Validate",
+      "target": "ValidateCommandOptions",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Validate references frontend entity ValidateCommandOptions.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ]
+    },
+    {
+      "id": "relation.validate-problem-uses_entity",
+      "source": "Validate",
+      "target": "Problem",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Validate references frontend entity Problem.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ]
+    },
+    {
+      "id": "relation.validate-api-uses_entity",
+      "source": "Validate",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Validate references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\commands\\validate.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-stores-uses_store",
+      "source": "Analyzer",
+      "target": "Stores",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "description": "Analyzer uses store Stores.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-states-uses_store",
+      "source": "Analyzer",
+      "target": "States",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "description": "Analyzer uses store States.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-analyzername-uses_entity",
+      "source": "Analyzer",
+      "target": "AnalyzerName",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity AnalyzerName.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-analyzercontext-uses_entity",
+      "source": "Analyzer",
+      "target": "AnalyzerContext",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity AnalyzerContext.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-analyzeresult-uses_entity",
+      "source": "Analyzer",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-entityattribute-uses_entity",
+      "source": "Analyzer",
+      "target": "EntityAttribute",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity EntityAttribute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-runanalyzersresult-uses_entity",
+      "source": "Analyzer",
+      "target": "RunAnalyzersResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity RunAnalyzersResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-agentconfig-uses_entity",
+      "source": "Analyzer",
+      "target": "AgentConfig",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity AgentConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-order-uses_entity",
+      "source": "Analyzer",
+      "target": "Order",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity Order.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-api-uses_entity",
+      "source": "Analyzer",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-llm-uses_entity",
+      "source": "Analyzer",
+      "target": "Llm",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity Llm.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.analyzer-frontend-uses_entity",
+      "source": "Analyzer",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Analyzer references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzer.ts"
+      ]
+    },
+    {
+      "id": "relation.api-analyzer-uses_entity",
+      "source": "Api",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Api references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\api.ts"
+      ]
+    },
+    {
+      "id": "relation.api-frontend-uses_entity",
+      "source": "Api",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Api references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\api.ts"
+      ]
+    },
+    {
+      "id": "relation.ast-analyzeresult-uses_entity",
+      "source": "Ast",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Ast references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ]
+    },
+    {
+      "id": "relation.ast-analyzer-uses_entity",
+      "source": "Ast",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Ast references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ]
+    },
+    {
+      "id": "relation.ast-typescriptanalysis-uses_entity",
+      "source": "Ast",
+      "target": "TypeScriptAnalysis",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Ast references frontend entity TypeScriptAnalysis.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\ast.ts"
+      ]
+    },
+    {
+      "id": "relation.frontend-analyzeresult-uses_entity",
+      "source": "Frontend",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Frontend references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "relation.frontend-analyzer-uses_entity",
+      "source": "Frontend",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Frontend references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "relation.frontend-api-uses_entity",
+      "source": "Frontend",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Frontend references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "relation.java-analyzeresult-uses_entity",
+      "source": "Java",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Java references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\java.ts"
+      ]
+    },
+    {
+      "id": "relation.java-analyzer-uses_entity",
+      "source": "Java",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Java references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\java.ts"
+      ]
+    },
+    {
+      "id": "relation.java-entityattribute-uses_entity",
+      "source": "Java",
+      "target": "EntityAttribute",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Java references frontend entity EntityAttribute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\java.ts"
+      ]
+    },
+    {
+      "id": "relation.java-api-uses_entity",
+      "source": "Java",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Java references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\java.ts"
+      ]
+    },
+    {
+      "id": "relation.linkage-analyzercontext-uses_entity",
+      "source": "Linkage",
+      "target": "AnalyzerContext",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Linkage references frontend entity AnalyzerContext.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\linkage.ts"
+      ]
+    },
+    {
+      "id": "relation.linkage-analyzer-uses_entity",
+      "source": "Linkage",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Linkage references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\linkage.ts"
+      ]
+    },
+    {
+      "id": "relation.linkage-orders-uses_entity",
+      "source": "Linkage",
+      "target": "Orders",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Linkage references frontend entity Orders.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\linkage.ts"
+      ]
+    },
+    {
+      "id": "relation.linkage-api-uses_entity",
+      "source": "Linkage",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Linkage references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\linkage.ts"
+      ]
+    },
+    {
+      "id": "relation.linkage-frontend-uses_entity",
+      "source": "Linkage",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Linkage references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\linkage.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-analyzeresult-uses_entity",
+      "source": "Llm-rules",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-analyzer-uses_entity",
+      "source": "Llm-rules",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-llmrule-uses_entity",
+      "source": "Llm-rules",
+      "target": "LlmRule",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity LlmRule.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-llmrelation-uses_entity",
+      "source": "Llm-rules",
+      "target": "LlmRelation",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity LlmRelation.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-llmpayload-uses_entity",
+      "source": "Llm-rules",
+      "target": "LlmPayload",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity LlmPayload.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-order-uses_entity",
+      "source": "Llm-rules",
+      "target": "Order",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity Order.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-api-uses_entity",
+      "source": "Llm-rules",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-rules-llm-uses_entity",
+      "source": "Llm-rules",
+      "target": "Llm",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm-rules references frontend entity Llm.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm-rules.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-analyzer-uses_entity",
+      "source": "Llm",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-llmentity-uses_entity",
+      "source": "Llm",
+      "target": "LlmEntity",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm references frontend entity LlmEntity.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-llmconfig-uses_entity",
+      "source": "Llm",
+      "target": "LlmConfig",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm references frontend entity LlmConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ]
+    },
+    {
+      "id": "relation.llm-api-uses_entity",
+      "source": "Llm",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Llm references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\llm.ts"
+      ]
+    },
+    {
+      "id": "relation.parse-sqlparseresult-uses_entity",
+      "source": "Parse",
+      "target": "SqlParseResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Parse references frontend entity SqlParseResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\parse.ts"
+      ]
+    },
+    {
+      "id": "relation.parse-order-uses_entity",
+      "source": "Parse",
+      "target": "Order",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Parse references frontend entity Order.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\parse.ts"
+      ]
+    },
+    {
+      "id": "relation.privacy-api-uses_entity",
+      "source": "Privacy",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Privacy references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\privacy.ts"
+      ]
+    },
+    {
+      "id": "relation.sql-analyzeresult-uses_entity",
+      "source": "Sql",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Sql references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\sql.ts"
+      ]
+    },
+    {
+      "id": "relation.sql-analyzer-uses_entity",
+      "source": "Sql",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Sql references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\sql.ts"
+      ]
+    },
+    {
+      "id": "relation.states-analyzeresult-uses_entity",
+      "source": "States",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "States references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\states.ts"
+      ]
+    },
+    {
+      "id": "relation.states-analyzer-uses_entity",
+      "source": "States",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "States references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\states.ts"
+      ]
+    },
+    {
+      "id": "relation.stores-analyzeresult-uses_entity",
+      "source": "Stores",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Stores references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ]
+    },
+    {
+      "id": "relation.stores-analyzer-uses_entity",
+      "source": "Stores",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Stores references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ]
+    },
+    {
+      "id": "relation.stores-entityattribute-uses_entity",
+      "source": "Stores",
+      "target": "EntityAttribute",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Stores references frontend entity EntityAttribute.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ]
+    },
+    {
+      "id": "relation.stores-api-uses_entity",
+      "source": "Stores",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Stores references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ]
+    },
+    {
+      "id": "relation.stores-frontend-uses_entity",
+      "source": "Stores",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Stores references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\stores.ts"
+      ]
+    },
+    {
+      "id": "relation.vue-analyzeresult-uses_entity",
+      "source": "Vue",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Vue references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\vue.ts"
+      ]
+    },
+    {
+      "id": "relation.vue-analyzer-uses_entity",
+      "source": "Vue",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Vue references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\vue.ts"
+      ]
+    },
+    {
+      "id": "relation.xml-analyzeresult-uses_entity",
+      "source": "Xml",
+      "target": "AnalyzeResult",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Xml references frontend entity AnalyzeResult.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\xml.ts"
+      ]
+    },
+    {
+      "id": "relation.xml-analyzer-uses_entity",
+      "source": "Xml",
+      "target": "Analyzer",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Xml references frontend entity Analyzer.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\analyzers\\xml.ts"
+      ]
+    },
+    {
+      "id": "relation.audit-auditstatus-uses_entity",
+      "source": "Audit",
+      "target": "AuditStatus",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Audit references frontend entity AuditStatus.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.audit-api-uses_entity",
+      "source": "Audit",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Audit references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\audit.ts"
+      ]
+    },
+    {
+      "id": "relation.candidate-parsedcandidate-uses_entity",
+      "source": "Candidate",
+      "target": "ParsedCandidate",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Candidate references frontend entity ParsedCandidate.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.candidate-promoteruleinput-uses_entity",
+      "source": "Candidate",
+      "target": "PromoteRuleInput",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Candidate references frontend entity PromoteRuleInput.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.candidate-promoterelationinput-uses_entity",
+      "source": "Candidate",
+      "target": "PromoteRelationInput",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Candidate references frontend entity PromoteRelationInput.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.candidate-api-uses_entity",
+      "source": "Candidate",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Candidate references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\candidate.ts"
+      ]
+    },
+    {
+      "id": "relation.config-analyzername-uses_entity",
+      "source": "Config",
+      "target": "AnalyzerName",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity AnalyzerName.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.config-llmconfig-uses_entity",
+      "source": "Config",
+      "target": "LlmConfig",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity LlmConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.config-agentconfig-uses_entity",
+      "source": "Config",
+      "target": "AgentConfig",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity AgentConfig.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.config-api-uses_entity",
+      "source": "Config",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.config-llm-uses_entity",
+      "source": "Config",
+      "target": "Llm",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity Llm.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.config-frontend-uses_entity",
+      "source": "Config",
+      "target": "Frontend",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "Config references frontend entity Frontend.",
+      "confidence": "medium",
+      "evidence": [
+        "src\\core\\config.ts"
+      ]
+    },
+    {
+      "id": "relation.orderlist-order-uses_entity",
+      "source": "OrderList",
+      "target": "Order",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "OrderList references frontend entity Order.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-orders-uses_entity",
+      "source": "OrderList",
+      "target": "Orders",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "OrderList references frontend entity Orders.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-api-uses_entity",
+      "source": "OrderList",
+      "target": "Api",
+      "relationship": "uses_entity",
+      "cardinality": "unknown",
+      "description": "OrderList references frontend entity Api.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-orderstore-uses_store",
+      "source": "OrderList",
+      "target": "OrderStore",
+      "relationship": "uses_store",
+      "cardinality": "unknown",
+      "description": "OrderList uses store OrderStore.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-useorderdata-uses_composable",
+      "source": "OrderList",
+      "target": "UseOrderData",
+      "relationship": "uses_composable",
+      "cardinality": "unknown",
+      "description": "OrderList uses composable UseOrderData.",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+      ]
+    },
+    {
+      "id": "relation.orderlist-order-api",
+      "source": "OrderList",
+      "target": "Order",
+      "relationship": "calls_api",
+      "cardinality": "unknown",
+      "description": "OrderList calls GET /api/orders/{id} which serves Order. (OrderList|Order|GET /api/orders/{id})",
+      "confidence": "medium",
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue",
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    }
+  ],
+  "apis": [
+    {
+      "id": "api.java.get-api-orders--id",
+      "method": "GET",
+      "path": "/api/orders/{id}",
+      "entity": "Order",
+      "kind": "backend",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    },
+    {
+      "id": "api.java.post-api-orders",
+      "method": "POST",
+      "path": "/api/orders",
+      "entity": "Order",
+      "kind": "backend",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    },
+    {
+      "id": "api.any-api-orders",
+      "method": "ANY",
+      "path": "/api/orders",
+      "entity": "Api",
+      "kind": "backend",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    },
+    {
+      "id": "api.any--id",
+      "method": "ANY",
+      "path": "/{id}",
+      "kind": "backend",
+      "confidence": "low",
+      "evidence": [
+        "tests\\fixtures\\full\\java\\OrderController.java"
+      ]
+    }
+  ],
+  "conflicts": [],
+  "tests": [
+    "tests\\analyzer.test.ts",
+    "tests\\api.test.ts",
+    "tests\\ast.test.ts",
+    "tests\\audit.test.ts",
+    "tests\\candidate.test.ts",
+    "tests\\capture.test.ts",
+    "tests\\cli-args.test.ts",
+    "tests\\commands.test.ts",
+    "tests\\config.test.ts",
+    "tests\\conflicts.test.ts",
+    "tests\\continuous-learning.test.ts",
+    "tests\\deep.test.ts",
+    "tests\\discovery.test.ts",
+    "tests\\evidence.test.ts",
+    "tests\\frontend.test.ts",
+    "tests\\full.test.ts",
+    "tests\\impact.test.ts",
+    "tests\\java.test.ts",
+    "tests\\knowledge.test.ts",
+    "tests\\linkage.test.ts",
+    "tests\\llm-rules.test.ts",
+    "tests\\llm.test.ts",
+    "tests\\retrieval.test.ts",
+    "tests\\scanner.test.ts",
+    "tests\\sql.test.ts",
+    "tests\\stores.test.ts",
+    "tests\\task.test.ts",
+    "tests\\validate.test.ts",
+    "tests\\vue.test.ts",
+    "tests\\xml.test.ts"
+  ],
+  "states": [],
+  "workflows": [
+    {
+      "id": "workflow.orderlist",
+      "name": "Order frontend flow",
+      "description": "OrderList links actions, stores, APIs and states into a frontend workflow.",
+      "steps": [
+        "State: AUDIT",
+        "State: DRAFT",
+        "API: /api/orders"
+      ],
+      "status": "draft"
+    }
+  ],
+  "pages": [
+    {
+      "id": "page.frontend",
+      "component": "Frontend",
+      "permissions": [
+        "_RE",
+        "permission",
+        "s",
+        "hasPermission",
+        "s.length",
+        "Rules",
+        "s.map",
+        "condition:"
+      ],
+      "stores": [
+        "useRoute",
+        "useEffect"
+      ],
+      "apiCalls": [],
+      "actions": [],
+      "evidence": [
+        "src\\core\\analyzers\\frontend.ts"
+      ]
+    },
+    {
+      "id": "page.orderlist",
+      "component": "OrderList",
+      "permissions": [],
+      "stores": [],
+      "apiCalls": [
+        "/api/orders"
+      ],
+      "actions": [],
+      "evidence": [
+        "tests\\fixtures\\full\\ui\\OrderList.vue"
+      ]
+    }
+  ],
+  "actions": []
+}

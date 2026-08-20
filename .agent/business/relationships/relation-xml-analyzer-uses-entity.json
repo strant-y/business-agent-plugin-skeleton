@@ -1,0 +1,12 @@
+{
+  "id": "relation.xml-analyzer-uses_entity",
+  "source": "Xml",
+  "target": "Analyzer",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Xml references frontend entity Analyzer.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\xml.ts"
+  ]
+}

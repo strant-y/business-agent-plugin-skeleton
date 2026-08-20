@@ -1,0 +1,10 @@
+{
+  "id": "relation.tasksession-feedbacktype",
+  "source": "TaskSession",
+  "target": "FeedbackType",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between TaskSession and FeedbackType.",
+  "confidence": "low",
+  "evidence": []
+}

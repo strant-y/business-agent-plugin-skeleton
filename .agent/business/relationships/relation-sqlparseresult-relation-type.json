@@ -1,0 +1,12 @@
+{
+  "id": "relation.sqlparseresult-relation-type",
+  "source": "SqlParseResult",
+  "target": "Relation",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in SqlParseResult → Relation.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\parse.ts"
+  ]
+}

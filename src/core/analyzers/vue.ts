@@ -97,38 +97,44 @@ function templateRules(text: string, file: string, entityName: string): Business
   const rules: BusinessRule[] = [];
   const template = extractTemplate(text);
   if (!template) return rules;
-  // Include a per-file slug so rule ids never collide across components.
-  const fileSlug =
-    file
-      .replace(/[^a-z0-9]/gi, '')
-      .toLowerCase()
-      .slice(-16) || 'file';
-  let n = 0;
+  // Keep one candidate per component and constraint type; evidence retains every match.
+  const fileSlug = file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-16) || 'file';
+  const matches = (expression: RegExp): Array<{ value: string; context: string }> => {
+    const seen = new Set<string>();
+    return [...template.matchAll(expression)].flatMap((match) => {
+      const value = match[1].trim();
+      if (seen.has(value)) return [];
+      seen.add(value);
+      const start = Math.max(0, (match.index ?? 0) - 80);
+      const end = Math.min(template.length, (match.index ?? 0) + match[0].length + 80);
+      return [{ value, context: `${file}: template context: ${template.slice(start, end).replace(/\s+/g, ' ').trim()}` }];
+    });
+  };
 
-  const ifRe = /v-if\s*=\s*["']([^"']+)["']/g;
-  for (const m of template.matchAll(ifRe)) {
+  const conditions = matches(/v-if\s*=\s*["']([^"']+)["']/g);
+  if (conditions.length) {
     rules.push({
-      id: `rule.vue.if-${fileSlug}-${n++}`,
-      name: 'Conditional rendering constraint (v-if)',
+      id: `rule.vue.if-${fileSlug}`,
+      name: 'Conditional rendering constraints (v-if)',
       entity: entityName,
-      rule: [`Element is rendered only when: ${m[1].trim()}.`],
+      rule: conditions.map(({ value }) => `Elements are rendered only when: ${value}.`),
       confidence: 'low',
       evidence: [file],
-      context: [`${file}: template match ${m[0].trim()}`],
+      context: conditions.map(({ context }) => context),
       status: 'candidate',
     });
   }
 
-  const disabledRe = /(?::disabled|v-bind:disabled)\s*=\s*["']([^"']+)["']/g;
-  for (const m of template.matchAll(disabledRe)) {
+  const disabledConditions = matches(/(?::disabled|v-bind:disabled)\s*=\s*["']([^"']+)["']/g);
+  if (disabledConditions.length) {
     rules.push({
-      id: `rule.vue.disabled-${fileSlug}-${n++}`,
-      name: 'Disabled control constraint (:disabled)',
+      id: `rule.vue.disabled-${fileSlug}`,
+      name: 'Disabled control constraints (:disabled)',
       entity: entityName,
-      rule: [`Control is disabled when: ${m[1].trim()}.`],
+      rule: disabledConditions.map(({ value }) => `Controls are disabled when: ${value}.`),
       confidence: 'low',
       evidence: [file],
-      context: [`${file}: template match ${m[0].trim()}`],
+      context: disabledConditions.map(({ context }) => context),
       status: 'candidate',
     });
   }

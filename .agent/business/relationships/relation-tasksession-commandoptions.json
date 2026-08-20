@@ -1,0 +1,10 @@
+{
+  "id": "relation.tasksession-commandoptions",
+  "source": "TaskSession",
+  "target": "CommandOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between TaskSession and CommandOptions.",
+  "confidence": "low",
+  "evidence": []
+}

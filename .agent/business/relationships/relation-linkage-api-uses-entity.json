@@ -1,0 +1,12 @@
+{
+  "id": "relation.linkage-api-uses_entity",
+  "source": "Linkage",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Linkage references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\linkage.ts"
+  ]
+}

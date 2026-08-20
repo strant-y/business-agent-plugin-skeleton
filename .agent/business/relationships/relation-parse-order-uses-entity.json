@@ -1,0 +1,12 @@
+{
+  "id": "relation.parse-order-uses_entity",
+  "source": "Parse",
+  "target": "Order",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Parse references frontend entity Order.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\parse.ts"
+  ]
+}

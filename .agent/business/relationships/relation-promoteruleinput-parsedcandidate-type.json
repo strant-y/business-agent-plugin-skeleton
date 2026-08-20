@@ -1,0 +1,12 @@
+{
+  "id": "relation.promoteruleinput-parsedcandidate-type",
+  "source": "PromoteRuleInput",
+  "target": "ParsedCandidate",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in PromoteRuleInput → ParsedCandidate.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

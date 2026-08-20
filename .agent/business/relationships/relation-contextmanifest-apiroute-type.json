@@ -1,0 +1,12 @@
+{
+  "id": "relation.contextmanifest-apiroute-type",
+  "source": "ContextManifest",
+  "target": "ApiRoute",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in ContextManifest → ApiRoute.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

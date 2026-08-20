@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-order-uses_entity",
+  "source": "Analyzer",
+  "target": "Order",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Analyzer references frontend entity Order.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.orders-customer-join",
+  "source": "Orders",
+  "target": "Customer",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "confidence": "low",
+  "evidence": [
+    "tests\\fixtures\\full\\mapper\\OrderMapper.xml"
+  ],
+  "description": "SQL join between orders and customer."
+}

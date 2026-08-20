@@ -2,6 +2,7 @@ import path from 'node:path';
 import { exists, readText, writeJson } from '../utils/fs.js';
 import { normalizeEvidence, type EvidenceRef } from './evidence.js';
 import { loadFeedback } from './feedback.js';
+import { loadRules, buildIndex } from './knowledge.js';
 import type { DiscoverManifest } from './types.js';
 import type { KnowledgeRecord, KnowledgeStatus } from './knowledge-state.js';
 import type { TaskExperience } from './task.js';
@@ -39,15 +40,26 @@ export interface RetrieveOptions {
   includeLowConfidence?: boolean;
 }
 
+// CJK (Han script) has no separators: a whole sentence would become one giant token
+// that never equals a short query. Index CJK runs as overlapping bigrams, the
+// standard lightweight approach for Chinese/Japanese substring retrieval.
 function tokens(value: string): string[] {
-  return [
-    ...new Set(
-      value
-        .toLowerCase()
-        .split(/[^\p{L}\p{N}_/-]+/u)
-        .filter((item) => item.length >= 2),
-    ),
-  ];
+  const result = new Set<string>();
+  const runs = value.toLowerCase().match(/\p{Script=Han}+|[^\p{Script=Han}]+/gu) ?? [];
+  for (const run of runs) {
+    if (/^\p{Script=Han}/u.test(run)) {
+      if (run.length === 1) {
+        result.add(run);
+        continue;
+      }
+      for (let i = 0; i + 1 < run.length; i += 1) result.add(run.slice(i, i + 2));
+    } else {
+      for (const item of run.split(/[^\p{L}\p{N}_/-]+/u)) {
+        if (item.length >= 2) result.add(item);
+      }
+    }
+  }
+  return [...result];
 }
 
 function manifestPath(root: string): string {
@@ -121,7 +133,11 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         id: rule.id,
         type: 'rule',
         title: rule.name,
-        tokens: tokens(`${rule.name} ${rule.entity} ${rule.rule.join(' ')} ${knowledge?.claim ?? ''}`),
+        // rule.context carries source snippets (often Chinese UI copy) that make
+        // business terms like 缴费/特约 searchable in the retrieval index.
+        tokens: tokens(
+          `${rule.name} ${rule.entity} ${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+        ),
         aliases: [rule.entity],
         relatedIds: [rule.entity, ...(knowledge?.relatedTasks ?? [])],
         status:
@@ -130,7 +146,31 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         confidence:
           knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
         updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${rule.rule.join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+        text: `${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+        evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
+      });
+    }
+    // Confirmed rules under .agent/business/rules/ (promoted or hand-written)
+    // are the highest-value knowledge; they must also enter the retrieval
+    // index even though they never appear in the discovery manifest.
+    const manifestRuleIds = new Set((manifest.rules ?? []).map((r) => r.id));
+    for (const rule of await loadRules(path.join(root, '.agent'))) {
+      if (manifestRuleIds.has(rule.id)) continue;
+      const knowledge = knowledgeRecords[rule.id];
+      documents.push({
+        id: rule.id,
+        type: 'rule',
+        title: rule.name,
+        tokens: tokens(
+          `${rule.name} ${rule.entity} ${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+        ),
+        aliases: [rule.entity],
+        relatedIds: [rule.entity, ...(knowledge?.relatedTasks ?? [])],
+        status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : rule.status ?? 'confirmed'),
+        confidence:
+          knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
+        updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
+        text: `${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
         evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
       });
     }
@@ -206,6 +246,12 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     });
   }
   await writeJson(path.join(root, '.agent', 'memory', 'indexes', 'retrieval-index.json'), documents);
+  // Keep the human-readable INDEX.md in sync with confirmed knowledge files
+  // (buildIndex was previously dead code — never invoked anywhere).
+  if (await exists(manifestPath(root))) {
+    const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
+    await buildIndex(path.join(root, '.agent'), manifest.entities ?? []);
+  }
   return documents;
 }
 
@@ -286,10 +332,11 @@ export async function retrieveTaskContext(
     ? (JSON.parse(await readText(file)) as RetrievalDocument[])
     : await rebuildRetrievalIndex(root);
   const query = tokens(task);
-  return documents
+  const score = (includeLowConfidence: boolean): RetrievalHit[] =>
+    documents
     .filter((document) => {
       if (!(options.includeUnhealthy ?? false) && isUnhealthy(document)) return false;
-      if (!(options.includeLowConfidence ?? false) && isLowConfidence(document)) return false;
+      if (!includeLowConfidence && isLowConfidence(document)) return false;
       return true;
     })
     .map((document) => {
@@ -342,4 +389,12 @@ export async function retrieveTaskContext(
     .filter((hit) => hit.score > 0)
     .sort((a, b) => b.score - a.score || b.evidence.length - a.evidence.length || a.title.localeCompare(b.title))
     .slice(0, limit);
+  const hits = score(options.includeLowConfidence ?? false);
+  // Chinese content typically lives in low-confidence candidate rules (source
+  // snippets); when the strict pass finds nothing, retry once with low-confidence
+  // candidates included instead of returning an empty result set.
+  if (hits.length === 0 && !(options.includeLowConfidence ?? false)) {
+    return score(true);
+  }
+  return hits;
 }

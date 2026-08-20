@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-workflowtemplate-type",
+  "source": "RunAnalyzersResult",
+  "target": "WorkflowTemplate",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → WorkflowTemplate.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
+import { retrieveTaskContext } from '../core/retrieval.js';
 import type {
   ApiRoute,
   FrontendPage,
@@ -16,6 +17,7 @@ function escapeRegExp(value: string): string {
 
 interface ContextManifest {
   entities?: Array<{ name: string; description: string; confidence: string }>;
+  rules?: Array<{ id: string; name: string; entity: string }>;
   apis?: ApiRoute[];
   conflicts?: RuleConflict[];
   states?: StateMachine[];
@@ -50,12 +52,47 @@ export async function contextCommand(root: string, subject: string, options: Con
   // fallback so "der" does not match "Order".
   const entities = manifest?.entities ?? [];
   const boundaryRe = new RegExp(`\\b${escapeRegExp(subjectLower)}\\b`, 'i');
-  const matched = entities.filter((e) => e.name.toLowerCase() === subjectLower || boundaryRe.test(e.name));
-  const matchedNames = new Set(matched.map((e) => e.name));
+  let matched = entities.filter((e) => e.name.toLowerCase() === subjectLower || boundaryRe.test(e.name));
 
   const rules = await loadRules(agentRoot);
   const relations = await loadRelations(agentRoot);
   const impacts = await listImpacts(agentRoot);
+
+  // Fallback for subjects without an exact entity-name match (e.g. Chinese
+  // business terms like 缴费): resolve entities through the content retrieval
+  // index, which indexes rule context snippets and task experience text.
+  let retrievalFallback = false;
+  if (!matched.length) {
+    retrievalFallback = true;
+    const hits = await retrieveTaskContext(root, subject, 8, { includeLowConfidence: true });
+    const names = new Set<string>();
+    for (const hit of hits) {
+      if (hit.type === 'entity') {
+        names.add(hit.title);
+        continue;
+      }
+      const manifestRule = (manifest?.rules ?? []).find((r) => r.id === hit.id);
+      if (manifestRule) {
+        names.add(manifestRule.entity);
+        continue;
+      }
+      const confirmedRule = rules.find((r) => r.id === hit.id);
+      if (confirmedRule) {
+        names.add(confirmedRule.entity);
+        continue;
+      }
+      if (hit.type === 'relation') {
+        // Relation titles are formatted as `${source} ${relationship} ${target}`.
+        const parts = hit.title.split(' ');
+        if (parts.length >= 3) {
+          names.add(parts[0]);
+          names.add(parts[parts.length - 1]);
+        }
+      }
+    }
+    matched = entities.filter((e) => names.has(e.name));
+  }
+  const matchedNames = new Set(matched.map((e) => e.name));
 
   const relevantRules = rules.filter((r) => matchedNames.has(r.entity) || r.entity.toLowerCase() === subjectLower);
   const relevantRelations = relations.filter((r) => matchedNames.has(r.source) || matchedNames.has(r.target));
@@ -90,6 +127,9 @@ export async function contextCommand(root: string, subject: string, options: Con
     '# Active Business Context',
     '',
     `Subject: ${subject}`,
+    ...(retrievalFallback
+      ? ['', '> Note: no exact entity-name match; entities below resolved via content retrieval (Chinese terms supported).']
+      : []),
     '',
     '## Relevant Entities',
     ...(matched.length

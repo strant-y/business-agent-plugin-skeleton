@@ -1,0 +1,12 @@
+{
+  "id": "relation.audit-api-uses_entity",
+  "source": "Audit",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Audit references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\audit.ts"
+  ]
+}

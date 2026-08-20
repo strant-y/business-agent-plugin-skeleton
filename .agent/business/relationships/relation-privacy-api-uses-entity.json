@@ -1,0 +1,12 @@
+{
+  "id": "relation.privacy-api-uses_entity",
+  "source": "Privacy",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Privacy references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\privacy.ts"
+  ]
+}

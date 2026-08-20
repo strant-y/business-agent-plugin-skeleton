@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgeproblem-problem",
+  "source": "KnowledgeProblem",
+  "target": "Problem",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeProblem and Problem.",
+  "confidence": "low",
+  "evidence": []
+}

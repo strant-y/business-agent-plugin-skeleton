@@ -1,0 +1,12 @@
+{
+  "id": "relation.candidate-promoterelationinput-uses_entity",
+  "source": "Candidate",
+  "target": "PromoteRelationInput",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Candidate references frontend entity PromoteRelationInput.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

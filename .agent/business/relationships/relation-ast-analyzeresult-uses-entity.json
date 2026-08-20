@@ -1,0 +1,12 @@
+{
+  "id": "relation.ast-analyzeresult-uses_entity",
+  "source": "Ast",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Ast references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\ast.ts"
+  ]
+}

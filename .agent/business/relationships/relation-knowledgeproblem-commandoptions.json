@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgeproblem-commandoptions",
+  "source": "KnowledgeProblem",
+  "target": "CommandOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeProblem and CommandOptions.",
+  "confidence": "low",
+  "evidence": []
+}

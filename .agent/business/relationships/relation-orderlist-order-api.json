@@ -1,0 +1,13 @@
+{
+  "id": "relation.orderlist-order-api",
+  "source": "OrderList",
+  "target": "Order",
+  "relationship": "calls_api",
+  "cardinality": "unknown",
+  "description": "OrderList calls GET /api/orders/{id} which serves Order. (OrderList|Order|GET /api/orders/{id})",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\full\\ui\\OrderList.vue",
+    "tests\\fixtures\\full\\java\\OrderController.java"
+  ]
+}

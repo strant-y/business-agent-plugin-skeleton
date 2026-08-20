@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-useraction-type",
+  "source": "RunAnalyzersResult",
+  "target": "UserAction",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → UserAction.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

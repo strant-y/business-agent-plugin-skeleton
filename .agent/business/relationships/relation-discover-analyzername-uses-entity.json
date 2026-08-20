@@ -1,0 +1,12 @@
+{
+  "id": "relation.discover-analyzername-uses_entity",
+  "source": "Discover",
+  "target": "AnalyzerName",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Discover references frontend entity AnalyzerName.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\discover.ts"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "relation.llmrule-llmrelation",
+  "source": "LlmRule",
+  "target": "LlmRelation",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between LlmRule and LlmRelation.",
+  "confidence": "low",
+  "evidence": []
+}

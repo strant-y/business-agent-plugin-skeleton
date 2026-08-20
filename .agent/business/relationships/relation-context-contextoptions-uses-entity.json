@@ -1,0 +1,12 @@
+{
+  "id": "relation.context-contextoptions-uses_entity",
+  "source": "Context",
+  "target": "ContextOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Context references frontend entity ContextOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

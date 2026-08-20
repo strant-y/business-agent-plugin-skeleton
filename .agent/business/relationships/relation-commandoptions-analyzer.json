@@ -1,0 +1,10 @@
+{
+  "id": "relation.commandoptions-analyzer",
+  "source": "CommandOptions",
+  "target": "Analyzer",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between CommandOptions and Analyzer.",
+  "confidence": "low",
+  "evidence": []
+}

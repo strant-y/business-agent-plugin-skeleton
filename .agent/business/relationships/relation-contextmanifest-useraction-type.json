@@ -1,0 +1,12 @@
+{
+  "id": "relation.contextmanifest-useraction-type",
+  "source": "ContextManifest",
+  "target": "UserAction",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in ContextManifest → UserAction.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.validate-knowledgeproblem-uses_entity",
+  "source": "Validate",
+  "target": "KnowledgeProblem",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Validate references frontend entity KnowledgeProblem.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\validate.ts"
+  ]
+}

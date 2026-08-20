@@ -1,0 +1,12 @@
+{
+  "id": "relation.hook-hookaction-uses_entity",
+  "source": "Hook",
+  "target": "HookAction",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Hook references frontend entity HookAction.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\hook.ts"
+  ]
+}

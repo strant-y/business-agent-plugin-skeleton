@@ -1,0 +1,10 @@
+{
+  "id": "relation.analyzer-llmconfig",
+  "source": "Analyzer",
+  "target": "LlmConfig",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between Analyzer and LlmConfig.",
+  "confidence": "low",
+  "evidence": []
+}

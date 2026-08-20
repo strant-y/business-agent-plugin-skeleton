@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-analyzername-type",
+  "source": "Analyzer",
+  "target": "AnalyzerName",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in Analyzer → AnalyzerName.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

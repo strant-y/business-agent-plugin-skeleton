@@ -1,0 +1,10 @@
+{
+  "id": "relation.problem-validatecommandoptions",
+  "source": "Problem",
+  "target": "ValidateCommandOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between Problem and ValidateCommandOptions.",
+  "confidence": "low",
+  "evidence": []
+}

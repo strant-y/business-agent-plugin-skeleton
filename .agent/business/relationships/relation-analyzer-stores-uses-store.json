@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzer-stores-uses_store",
+  "source": "Analyzer",
+  "target": "Stores",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "description": "Analyzer uses store Stores.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

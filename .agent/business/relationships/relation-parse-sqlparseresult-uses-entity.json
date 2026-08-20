@@ -1,0 +1,12 @@
+{
+  "id": "relation.parse-sqlparseresult-uses_entity",
+  "source": "Parse",
+  "target": "SqlParseResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Parse references frontend entity SqlParseResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\parse.ts"
+  ]
+}

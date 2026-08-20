@@ -1,0 +1,12 @@
+{
+  "id": "relation.agentconfig-llmconfig-type",
+  "source": "AgentConfig",
+  "target": "LlmConfig",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AgentConfig → LlmConfig.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\config.ts"
+  ]
+}

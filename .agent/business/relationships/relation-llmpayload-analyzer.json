@@ -1,0 +1,10 @@
+{
+  "id": "relation.llmpayload-analyzer",
+  "source": "LlmPayload",
+  "target": "Analyzer",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between LlmPayload and Analyzer.",
+  "confidence": "low",
+  "evidence": []
+}

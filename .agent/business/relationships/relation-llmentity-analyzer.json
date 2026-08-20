@@ -1,0 +1,10 @@
+{
+  "id": "relation.llmentity-analyzer",
+  "source": "LlmEntity",
+  "target": "Analyzer",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between LlmEntity and Analyzer.",
+  "confidence": "low",
+  "evidence": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist-useorderdata-frontend-store",
+  "source": "OrderList",
+  "target": "useOrderData",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "confidence": "medium",
+  "description": "OrderList uses frontend store useOrderData.",
+  "evidence": [
+    "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+  ]
+}

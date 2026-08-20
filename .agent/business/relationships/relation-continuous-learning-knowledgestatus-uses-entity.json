@@ -1,0 +1,12 @@
+{
+  "id": "relation.continuous-learning-knowledgestatus-uses_entity",
+  "source": "Continuous-learning",
+  "target": "KnowledgeStatus",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Continuous-learning references frontend entity KnowledgeStatus.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\continuous-learning.ts"
+  ]
+}

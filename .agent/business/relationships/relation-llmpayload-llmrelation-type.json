@@ -1,0 +1,12 @@
+{
+  "id": "relation.llmpayload-llmrelation-type",
+  "source": "LlmPayload",
+  "target": "LlmRelation",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in LlmPayload → LlmRelation.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\llm-rules.ts"
+  ]
+}

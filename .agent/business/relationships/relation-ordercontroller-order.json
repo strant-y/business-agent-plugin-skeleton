@@ -1,0 +1,10 @@
+{
+  "id": "relation.ordercontroller-order",
+  "source": "OrderController",
+  "target": "Order",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between OrderController and Order.",
+  "confidence": "low",
+  "evidence": []
+}

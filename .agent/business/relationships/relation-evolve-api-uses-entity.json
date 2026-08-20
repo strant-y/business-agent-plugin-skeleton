@@ -1,0 +1,12 @@
+{
+  "id": "relation.evolve-api-uses_entity",
+  "source": "Evolve",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Evolve references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\evolve.ts"
+  ]
+}

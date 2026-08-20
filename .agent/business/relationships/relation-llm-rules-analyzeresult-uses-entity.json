@@ -1,0 +1,12 @@
+{
+  "id": "relation.llm-rules-analyzeresult-uses_entity",
+  "source": "Llm-rules",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Llm-rules references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\llm-rules.ts"
+  ]
+}

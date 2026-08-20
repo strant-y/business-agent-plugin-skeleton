@@ -1,0 +1,12 @@
+{
+  "id": "relation.context-order-uses_entity",
+  "source": "Context",
+  "target": "Order",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Context references frontend entity Order.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "relation.analyzer-analyzeresult",
+  "source": "Analyzer",
+  "target": "AnalyzeResult",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between Analyzer and AnalyzeResult.",
+  "confidence": "low",
+  "evidence": []
+}

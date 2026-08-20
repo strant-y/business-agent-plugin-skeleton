@@ -1,0 +1,12 @@
+{
+  "id": "relation.validate-api-uses_entity",
+  "source": "Validate",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Validate references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\validate.ts"
+  ]
+}

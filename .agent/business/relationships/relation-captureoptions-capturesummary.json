@@ -1,0 +1,10 @@
+{
+  "id": "relation.captureoptions-capturesummary",
+  "source": "CaptureOptions",
+  "target": "CaptureSummary",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between CaptureOptions and CaptureSummary.",
+  "confidence": "low",
+  "evidence": []
+}

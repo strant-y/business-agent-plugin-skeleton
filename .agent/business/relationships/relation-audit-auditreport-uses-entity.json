@@ -1,0 +1,12 @@
+{
+  "id": "relation.audit-auditreport-uses_entity",
+  "source": "Audit",
+  "target": "AuditReport",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Audit references frontend entity AuditReport.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\audit.ts"
+  ]
+}

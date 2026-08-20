@@ -1,0 +1,12 @@
+{
+  "id": "relation.ast-typescriptanalysis-uses_entity",
+  "source": "Ast",
+  "target": "TypeScriptAnalysis",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Ast references frontend entity TypeScriptAnalysis.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\ast.ts"
+  ]
+}

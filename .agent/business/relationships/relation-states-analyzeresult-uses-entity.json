@@ -1,0 +1,12 @@
+{
+  "id": "relation.states-analyzeresult-uses_entity",
+  "source": "States",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "States references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\states.ts"
+  ]
+}

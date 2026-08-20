@@ -1,0 +1,12 @@
+{
+  "id": "relation.config-api-uses_entity",
+  "source": "Config",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Config references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\config.ts"
+  ]
+}

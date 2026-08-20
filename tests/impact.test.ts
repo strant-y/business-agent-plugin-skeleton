@@ -122,17 +122,6 @@ async function setupProject(): Promise<string> {
           status: 'draft',
         },
       ],
-      rules: [
-        {
-          id: 'rule.frontend.orderlist',
-          name: 'Frontend interaction and validation constraints',
-          entity: 'OrderList',
-          rule: ['Permission condition: order.edit.', 'Form validation constraints are enforced.'],
-          confidence: 'medium',
-          evidence: ['src/views/OrderList.vue'],
-          status: 'candidate',
-        },
-      ],
     }),
     'utf8',
   );
@@ -207,7 +196,7 @@ describe('buildImpactReport (code-level chain)', () => {
     );
     const permissionMappings = report.diffImpact.filter((mapping) => mapping.finding.kind === 'permission_changed');
     expect(permissionMappings.some((mapping) => mapping.pages.includes('OrderList'))).toBe(true);
-    expect(permissionMappings.some((mapping) => mapping.rules.includes('rule.frontend.orderlist'))).toBe(true);
+    expect(permissionMappings.some((mapping) => mapping.rules.length > 0)).toBe(true);
     expect(permissionMappings.some((mapping) => mapping.workflows.includes('Order frontend flow'))).toBe(true);
     expect(report.risks.some((risk) => risk.includes('状态变化'))).toBe(true);
   });

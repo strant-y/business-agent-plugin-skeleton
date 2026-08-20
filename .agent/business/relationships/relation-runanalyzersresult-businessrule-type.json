@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-businessrule-type",
+  "source": "RunAnalyzersResult",
+  "target": "BusinessRule",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → BusinessRule.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

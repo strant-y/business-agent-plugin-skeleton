@@ -1,0 +1,10 @@
+{
+  "id": "relation.retrievaldocument-retrievalhit",
+  "source": "RetrievalDocument",
+  "target": "RetrievalHit",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between RetrievalDocument and RetrievalHit.",
+  "confidence": "low",
+  "evidence": []
+}

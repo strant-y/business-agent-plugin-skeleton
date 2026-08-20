@@ -1,0 +1,10 @@
+{
+  "id": "relation.promoteoptions-captureoptions",
+  "source": "PromoteOptions",
+  "target": "CaptureOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between PromoteOptions and CaptureOptions.",
+  "confidence": "low",
+  "evidence": []
+}

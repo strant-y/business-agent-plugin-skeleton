@@ -1,0 +1,12 @@
+{
+  "id": "relation.contextmanifest-statemachine-type",
+  "source": "ContextManifest",
+  "target": "StateMachine",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in ContextManifest → StateMachine.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

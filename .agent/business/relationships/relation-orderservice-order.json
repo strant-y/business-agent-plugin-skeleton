@@ -1,0 +1,10 @@
+{
+  "id": "relation.orderservice-order",
+  "source": "OrderService",
+  "target": "Order",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between OrderService and Order.",
+  "confidence": "low",
+  "evidence": []
+}

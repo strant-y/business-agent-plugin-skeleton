@@ -1,0 +1,12 @@
+{
+  "id": "relation.sql-analyzer-uses_entity",
+  "source": "Sql",
+  "target": "Analyzer",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Sql references frontend entity Analyzer.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\sql.ts"
+  ]
+}

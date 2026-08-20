@@ -1,0 +1,12 @@
+{
+  "id": "relation.capture-impactreport-uses_entity",
+  "source": "Capture",
+  "target": "ImpactReport",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Capture references frontend entity ImpactReport.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\capture.ts"
+  ]
+}

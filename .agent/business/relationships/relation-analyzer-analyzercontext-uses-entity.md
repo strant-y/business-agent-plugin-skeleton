@@ -1,0 +1,9 @@
+# Analyzer → AnalyzerContext
+
+> Relationship: uses_entity | Cardinality: unknown | Confidence: medium
+
+## Description
+Analyzer references frontend entity AnalyzerContext.
+
+## Evidence
+- src\core\analyzer.ts

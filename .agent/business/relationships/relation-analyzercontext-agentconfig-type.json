@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzercontext-agentconfig-type",
+  "source": "AnalyzerContext",
+  "target": "AgentConfig",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzerContext → AgentConfig.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

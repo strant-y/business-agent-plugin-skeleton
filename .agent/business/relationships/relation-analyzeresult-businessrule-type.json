@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzeresult-businessrule-type",
+  "source": "AnalyzeResult",
+  "target": "BusinessRule",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzeResult → BusinessRule.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

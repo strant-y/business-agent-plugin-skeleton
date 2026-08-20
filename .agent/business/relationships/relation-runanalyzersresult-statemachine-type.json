@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-statemachine-type",
+  "source": "RunAnalyzersResult",
+  "target": "StateMachine",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → StateMachine.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

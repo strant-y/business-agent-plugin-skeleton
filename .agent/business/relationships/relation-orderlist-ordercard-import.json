@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist-ordercard-import",
+  "source": "OrderList",
+  "target": "OrderCard",
+  "relationship": "imports_component",
+  "cardinality": "unknown",
+  "description": "OrderList imports component OrderCard.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\full\\ui\\OrderList.vue"
+  ]
+}

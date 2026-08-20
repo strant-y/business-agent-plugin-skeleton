@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist-useorderdata-uses_composable",
+  "source": "OrderList",
+  "target": "UseOrderData",
+  "relationship": "uses_composable",
+  "cardinality": "unknown",
+  "description": "OrderList uses composable UseOrderData.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.review-decision-uses_entity",
+  "source": "Review",
+  "target": "Decision",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Review references frontend entity Decision.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\review.ts"
+  ]
+}

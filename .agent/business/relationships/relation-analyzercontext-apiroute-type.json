@@ -1,0 +1,12 @@
+{
+  "id": "relation.analyzercontext-apiroute-type",
+  "source": "AnalyzerContext",
+  "target": "ApiRoute",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AnalyzerContext → ApiRoute.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

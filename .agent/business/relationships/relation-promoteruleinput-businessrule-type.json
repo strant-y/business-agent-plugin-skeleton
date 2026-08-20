@@ -1,0 +1,12 @@
+{
+  "id": "relation.promoteruleinput-businessrule-type",
+  "source": "PromoteRuleInput",
+  "target": "BusinessRule",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in PromoteRuleInput → BusinessRule.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

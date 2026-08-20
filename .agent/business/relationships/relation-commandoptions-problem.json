@@ -1,0 +1,10 @@
+{
+  "id": "relation.commandoptions-problem",
+  "source": "CommandOptions",
+  "target": "Problem",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between CommandOptions and Problem.",
+  "confidence": "low",
+  "evidence": []
+}

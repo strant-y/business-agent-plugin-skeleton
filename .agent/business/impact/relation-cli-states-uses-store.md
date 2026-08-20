@@ -1,0 +1,12 @@
+# Impact Map: Cli → States
+
+## Affected Areas
+- uses_store
+
+## Evidence
+- src\cli.ts
+
+## Review Checklist
+- Confirm which business rules, states and workflows are affected.
+- Trace API and database evidence.
+- Update this map before changing business behavior.

@@ -1,0 +1,10 @@
+{
+  "id": "relation.auditstatus-auditcheck",
+  "source": "AuditStatus",
+  "target": "AuditCheck",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between AuditStatus and AuditCheck.",
+  "confidence": "low",
+  "evidence": []
+}

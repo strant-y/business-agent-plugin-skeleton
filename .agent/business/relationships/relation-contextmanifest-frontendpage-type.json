@@ -1,0 +1,12 @@
+{
+  "id": "relation.contextmanifest-frontendpage-type",
+  "source": "ContextManifest",
+  "target": "FrontendPage",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in ContextManifest → FrontendPage.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\context.ts"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "id": "relation.candidateitem-reviewoptions",
+  "source": "CandidateItem",
+  "target": "ReviewOptions",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between CandidateItem and ReviewOptions.",
+  "confidence": "low",
+  "evidence": []
+}

@@ -1,0 +1,12 @@
+{
+  "id": "relation.java-analyzeresult-uses_entity",
+  "source": "Java",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Java references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\java.ts"
+  ]
+}

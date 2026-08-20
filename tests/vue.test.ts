@@ -55,6 +55,27 @@ describe('vueAnalyzer', () => {
     }
   });
 
+  it('aggregates repeated template constraints and keeps nearby context', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-vue-aggregate-'));
+    await fs.writeFile(
+      path.join(dir, 'OrderList.vue'),
+      '<template><button v-if="canEdit">Edit</button><span v-if="canEdit">Edit hint</span><button :disabled="isLocked">Save</button><a :disabled="isLocked">Link</a></template>',
+      'utf8',
+    );
+
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    const result = await vueAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+    const rules = result.rules ?? [];
+    const ifRule = rules.find((rule) => rule.name.includes('v-if'));
+    const disabledRule = rules.find((rule) => rule.name.includes(':disabled'));
+
+    expect(rules).toHaveLength(2);
+    expect(ifRule?.rule).toEqual(['Elements are rendered only when: canEdit.']);
+    expect(ifRule?.context?.[0]).toContain('button v-if="canEdit"');
+    expect(disabledRule?.rule).toEqual(['Controls are disabled when: isLocked.']);
+    expect(disabledRule?.context?.[0]).toContain('button :disabled="isLocked"');
+  });
+
   it('keeps rule ids unique across multiple components (no silent drops)', async () => {
     const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-vue-'));
     await fs.writeFile(

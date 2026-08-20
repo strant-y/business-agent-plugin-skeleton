@@ -1,0 +1,12 @@
+{
+  "id": "relation.config-agentconfig-uses_entity",
+  "source": "Config",
+  "target": "AgentConfig",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Config references frontend entity AgentConfig.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\config.ts"
+  ]
+}

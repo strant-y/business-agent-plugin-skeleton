@@ -1,0 +1,10 @@
+{
+  "id": "relation.llmpayload-llmrelation",
+  "source": "LlmPayload",
+  "target": "LlmRelation",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between LlmPayload and LlmRelation.",
+  "confidence": "low",
+  "evidence": []
+}

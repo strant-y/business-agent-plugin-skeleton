@@ -1,0 +1,12 @@
+{
+  "id": "relation.vue-analyzeresult-uses_entity",
+  "source": "Vue",
+  "target": "AnalyzeResult",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Vue references frontend entity AnalyzeResult.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\vue.ts"
+  ]
+}

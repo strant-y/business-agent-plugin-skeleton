@@ -1,0 +1,12 @@
+{
+  "id": "relation.candidateitem-businessrule-type",
+  "source": "CandidateItem",
+  "target": "BusinessRule",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in CandidateItem → BusinessRule.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\review.ts"
+  ]
+}

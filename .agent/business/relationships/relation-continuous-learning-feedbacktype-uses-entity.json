@@ -1,0 +1,12 @@
+{
+  "id": "relation.continuous-learning-feedbacktype-uses_entity",
+  "source": "Continuous-learning",
+  "target": "FeedbackType",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Continuous-learning references frontend entity FeedbackType.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\continuous-learning.ts"
+  ]
+}

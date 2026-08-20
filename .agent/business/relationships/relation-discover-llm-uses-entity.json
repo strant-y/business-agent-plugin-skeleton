@@ -1,0 +1,12 @@
+{
+  "id": "relation.discover-llm-uses_entity",
+  "source": "Discover",
+  "target": "Llm",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Discover references frontend entity Llm.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\discover.ts"
+  ]
+}

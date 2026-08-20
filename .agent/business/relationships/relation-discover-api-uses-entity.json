@@ -1,0 +1,12 @@
+{
+  "id": "relation.discover-api-uses_entity",
+  "source": "Discover",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Discover references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\discover.ts"
+  ]
+}

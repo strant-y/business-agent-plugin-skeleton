@@ -1,0 +1,12 @@
+{
+  "id": "relation.promote-promoteoptions-uses_entity",
+  "source": "Promote",
+  "target": "PromoteOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Promote references frontend entity PromoteOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\promote.ts"
+  ]
+}

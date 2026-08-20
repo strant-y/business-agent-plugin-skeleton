@@ -1,0 +1,10 @@
+{
+  "id": "relation.promoteruleinput-parsedcandidate",
+  "source": "PromoteRuleInput",
+  "target": "ParsedCandidate",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between PromoteRuleInput and ParsedCandidate.",
+  "confidence": "low",
+  "evidence": []
+}

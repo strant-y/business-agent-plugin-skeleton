@@ -1,0 +1,12 @@
+{
+  "id": "relation.cli-api-uses_entity",
+  "source": "Cli",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Cli references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\cli.ts"
+  ]
+}

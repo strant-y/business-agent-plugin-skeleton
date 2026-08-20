@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-frontendpage-type",
+  "source": "RunAnalyzersResult",
+  "target": "FrontendPage",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → FrontendPage.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

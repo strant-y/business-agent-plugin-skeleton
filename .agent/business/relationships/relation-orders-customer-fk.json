@@ -1,0 +1,12 @@
+{
+  "id": "relation.orders-customer-fk",
+  "source": "Orders",
+  "target": "Customer",
+  "relationship": "references",
+  "cardinality": "N:1",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\deep\\db\\schema.sql"
+  ],
+  "description": "Foreign key: orders references customer."
+}

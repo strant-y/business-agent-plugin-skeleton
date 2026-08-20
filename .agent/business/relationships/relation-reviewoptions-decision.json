@@ -1,0 +1,10 @@
+{
+  "id": "relation.reviewoptions-decision",
+  "source": "ReviewOptions",
+  "target": "Decision",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between ReviewOptions and Decision.",
+  "confidence": "low",
+  "evidence": []
+}

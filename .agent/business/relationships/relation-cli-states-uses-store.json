@@ -1,0 +1,12 @@
+{
+  "id": "relation.cli-states-uses_store",
+  "source": "Cli",
+  "target": "States",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "description": "Cli uses store States.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\cli.ts"
+  ]
+}

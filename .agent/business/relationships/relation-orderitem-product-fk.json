@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderitem-product-fk",
+  "source": "OrderItem",
+  "target": "Product",
+  "relationship": "references",
+  "cardinality": "N:1",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\sample\\db\\schema.sql"
+  ],
+  "description": "Foreign key: order_item references product."
+}

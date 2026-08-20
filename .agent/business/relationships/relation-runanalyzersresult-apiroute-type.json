@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-apiroute-type",
+  "source": "RunAnalyzersResult",
+  "target": "ApiRoute",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → ApiRoute.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

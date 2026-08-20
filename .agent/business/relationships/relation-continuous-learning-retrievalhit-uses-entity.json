@@ -1,0 +1,12 @@
+{
+  "id": "relation.continuous-learning-retrievalhit-uses_entity",
+  "source": "Continuous-learning",
+  "target": "RetrievalHit",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Continuous-learning references frontend entity RetrievalHit.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\continuous-learning.ts"
+  ]
+}

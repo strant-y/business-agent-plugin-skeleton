@@ -1,0 +1,12 @@
+{
+  "id": "relation.llm-api-uses_entity",
+  "source": "Llm",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Llm references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzers\\llm.ts"
+  ]
+}

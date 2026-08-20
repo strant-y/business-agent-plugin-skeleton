@@ -1,0 +1,12 @@
+{
+  "id": "relation.reviewoptions-confidence-type",
+  "source": "ReviewOptions",
+  "target": "Confidence",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in ReviewOptions → Confidence.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\review.ts"
+  ]
+}

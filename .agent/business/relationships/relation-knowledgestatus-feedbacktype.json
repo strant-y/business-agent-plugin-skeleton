@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgestatus-feedbacktype",
+  "source": "KnowledgeStatus",
+  "target": "FeedbackType",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeStatus and FeedbackType.",
+  "confidence": "low",
+  "evidence": []
+}

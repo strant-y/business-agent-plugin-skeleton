@@ -1,0 +1,12 @@
+{
+  "id": "relation.auditcheck-auditstatus-type",
+  "source": "AuditCheck",
+  "target": "AuditStatus",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in AuditCheck → AuditStatus.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\audit.ts"
+  ]
+}

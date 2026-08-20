@@ -10,7 +10,7 @@ const DEEP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixture
 describe('astAnalyzer', () => {
   it('extracts entity attributes from TS interfaces and classes', async () => {
     const scan = await scanProject(DEEP, DEFAULT_CONFIG);
-    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [], relations: [] });
 
     const customer = (result.entities ?? []).find((e) => e.name === 'Customer');
     expect(customer).toBeDefined();
@@ -26,7 +26,7 @@ describe('astAnalyzer', () => {
 
   it('extracts typed references as relations', async () => {
     const scan = await scanProject(DEEP, DEFAULT_CONFIG);
-    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [], relations: [] });
 
     const rel = (result.relations ?? []).find((r) => r.source === 'Customer' && r.target === 'Order');
     expect(rel).toBeDefined();
@@ -35,7 +35,7 @@ describe('astAnalyzer', () => {
 
   it('does not treat string-literal enum values as type references', async () => {
     const scan = await scanProject(DEEP, DEFAULT_CONFIG);
-    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+    const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [], relations: [] });
 
     const targets = (result.relations ?? []).map((r) => r.target);
     expect(targets).not.toContain('DRAFT');

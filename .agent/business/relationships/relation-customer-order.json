@@ -1,0 +1,10 @@
+{
+  "id": "relation.customer-order",
+  "source": "Customer",
+  "target": "Order",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between Customer and Order.",
+  "confidence": "low",
+  "evidence": []
+}

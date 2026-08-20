@@ -1,0 +1,12 @@
+{
+  "id": "relation.task-taskcommandoptions-uses_entity",
+  "source": "Task",
+  "target": "TaskCommandOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Task references frontend entity TaskCommandOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\task.ts"
+  ]
+}

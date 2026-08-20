@@ -1,0 +1,12 @@
+{
+  "id": "relation.discover-commandoptions-uses_entity",
+  "source": "Discover",
+  "target": "CommandOptions",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Discover references frontend entity CommandOptions.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\discover.ts"
+  ]
+}

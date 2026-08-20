@@ -1,0 +1,12 @@
+{
+  "id": "relation.task-tasksession-uses_entity",
+  "source": "Task",
+  "target": "TaskSession",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Task references frontend entity TaskSession.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\task.ts"
+  ]
+}

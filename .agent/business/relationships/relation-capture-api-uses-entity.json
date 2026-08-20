@@ -1,0 +1,12 @@
+{
+  "id": "relation.capture-api-uses_entity",
+  "source": "Capture",
+  "target": "Api",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Capture references frontend entity Api.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\capture.ts"
+  ]
+}

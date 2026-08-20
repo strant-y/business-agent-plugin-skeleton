@@ -1,0 +1,12 @@
+{
+  "id": "relation.promote-resolvedcandidate-uses_entity",
+  "source": "Promote",
+  "target": "ResolvedCandidate",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Promote references frontend entity ResolvedCandidate.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\promote.ts"
+  ]
+}

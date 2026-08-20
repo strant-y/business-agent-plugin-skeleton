@@ -1,0 +1,12 @@
+{
+  "id": "relation.frontend-useeffect-frontend-store",
+  "source": "Frontend",
+  "target": "useEffect",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "confidence": "medium",
+  "description": "Frontend uses frontend store useEffect.",
+  "evidence": [
+    "src\\core\\analyzers\\frontend.ts"
+  ]
+}

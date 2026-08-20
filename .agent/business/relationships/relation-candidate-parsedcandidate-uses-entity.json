@@ -1,0 +1,12 @@
+{
+  "id": "relation.candidate-parsedcandidate-uses_entity",
+  "source": "Candidate",
+  "target": "ParsedCandidate",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Candidate references frontend entity ParsedCandidate.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\candidate.ts"
+  ]
+}

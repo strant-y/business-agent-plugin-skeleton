@@ -1,0 +1,10 @@
+{
+  "id": "relation.knowledgerecord-knowledgestatus",
+  "source": "KnowledgeRecord",
+  "target": "KnowledgeStatus",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between KnowledgeRecord and KnowledgeStatus.",
+  "confidence": "low",
+  "evidence": []
+}

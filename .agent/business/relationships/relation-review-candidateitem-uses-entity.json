@@ -1,0 +1,12 @@
+{
+  "id": "relation.review-candidateitem-uses_entity",
+  "source": "Review",
+  "target": "CandidateItem",
+  "relationship": "uses_entity",
+  "cardinality": "unknown",
+  "description": "Review references frontend entity CandidateItem.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\review.ts"
+  ]
+}

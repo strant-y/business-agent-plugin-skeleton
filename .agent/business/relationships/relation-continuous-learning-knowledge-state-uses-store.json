@@ -1,0 +1,12 @@
+{
+  "id": "relation.continuous-learning-knowledge-state-uses_store",
+  "source": "Continuous-learning",
+  "target": "Knowledge-state",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "description": "Continuous-learning uses store Knowledge-state.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\commands\\continuous-learning.ts"
+  ]
+}

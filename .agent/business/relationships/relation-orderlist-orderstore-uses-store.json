@@ -1,0 +1,12 @@
+{
+  "id": "relation.orderlist-orderstore-uses_store",
+  "source": "OrderList",
+  "target": "OrderStore",
+  "relationship": "uses_store",
+  "cardinality": "unknown",
+  "description": "OrderList uses store OrderStore.",
+  "confidence": "medium",
+  "evidence": [
+    "tests\\fixtures\\linkage\\ui\\OrderList.vue"
+  ]
+}

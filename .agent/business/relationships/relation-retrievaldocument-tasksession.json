@@ -1,0 +1,10 @@
+{
+  "id": "relation.retrievaldocument-tasksession",
+  "source": "RetrievalDocument",
+  "target": "TaskSession",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between RetrievalDocument and TaskSession.",
+  "confidence": "low",
+  "evidence": []
+}

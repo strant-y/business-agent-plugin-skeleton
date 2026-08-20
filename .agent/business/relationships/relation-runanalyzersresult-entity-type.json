@@ -1,0 +1,12 @@
+{
+  "id": "relation.runanalyzersresult-entity-type",
+  "source": "RunAnalyzersResult",
+  "target": "Entity",
+  "relationship": "references",
+  "cardinality": "unknown",
+  "description": "Type reference in RunAnalyzersResult → Entity.",
+  "confidence": "medium",
+  "evidence": [
+    "src\\core\\analyzer.ts"
+  ]
+}

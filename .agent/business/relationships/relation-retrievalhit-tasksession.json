@@ -1,0 +1,10 @@
+{
+  "id": "relation.retrievalhit-tasksession",
+  "source": "RetrievalHit",
+  "target": "TaskSession",
+  "relationship": "references_or_contains",
+  "cardinality": "unknown",
+  "description": "Potential business relationship discovered between RetrievalHit and TaskSession.",
+  "confidence": "low",
+  "evidence": []
+}
