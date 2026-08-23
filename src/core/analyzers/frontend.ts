@@ -74,6 +74,39 @@ function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: s
   return unique(steps);
 }
 
+function actionBody(text: string, name: string): string {
+  const functionMatch = text.match(new RegExp(`(?:function\\s+${name}\\s*\\([^)]*\\)|${name}\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>)\\s*\\{`));
+  if (!functionMatch || functionMatch.index === undefined) return text;
+  const open = text.indexOf('{', functionMatch.index + functionMatch[0].length - 1);
+  if (open === -1) return text;
+  let depth = 0;
+  for (let index = open; index < text.length; index++) {
+    if (text[index] === '{') depth++;
+    if (text[index] === '}') {
+      depth--;
+      if (depth === 0) return text.slice(open + 1, index);
+    }
+  }
+  return text.slice(open + 1);
+}
+
+function actionUsesStore(text: string, action: UserAction, store: string): boolean {
+  const body = actionBody(text, action.name);
+  const storeBase = store.replace(/^use|Store$/g, '').toLowerCase();
+  const aliases = [...text.matchAll(new RegExp(`(?:const|let)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${store}\\s*\\(`, 'g'))].map(
+    (match) => match[1],
+  );
+  return aliases.some((alias) => new RegExp(`\\b${alias}\\s*(?:\\.|\\()`).test(body)) ||
+    new RegExp(`\\b${store}\\s*\\(`).test(body) ||
+    (storeBase.length > 1 && new RegExp(`\\b${storeBase}\\w*\\s*(?:\\.|\\()`, 'i').test(body));
+}
+
+function actionUsesApi(text: string, action: UserAction, api: string): boolean {
+  const body = actionBody(text, action.name);
+  const path = api.split(/[?#]/)[0].replace(/\/+$/, '');
+  return body.includes(path) || new RegExp(`(?:axios|fetch|request|api)\\s*(?:\\.\\w+)?\\s*\\(`, 'i').test(body);
+}
+
 function analyzeSample(
   file: string,
   text: string,
@@ -153,7 +186,21 @@ function analyzeSample(
       evidence: [file],
     });
   const relations: Relation[] = [];
-  for (const store of stores)
+  if (page) {
+    for (const action of actions) {
+      relations.push({
+        id: `relation.${source.toLowerCase()}-${action.id.toLowerCase()}-page-action`,
+        source,
+        target: action.id,
+        relationship: 'triggers_action',
+        cardinality: 'unknown',
+        confidence: 'high',
+        description: `${source} triggers user action ${action.name}.`,
+        evidence: [file],
+      });
+    }
+  }
+  for (const store of stores) {
     relations.push({
       id: `relation.${source.toLowerCase()}-${store.toLowerCase()}-frontend-store`,
       source,
@@ -164,7 +211,8 @@ function analyzeSample(
       description: `${source} uses frontend store ${store}.`,
       evidence: [file],
     });
-  for (const api of apiCalls)
+  }
+  for (const api of apiCalls) {
     relations.push({
       id: `relation.${source.toLowerCase()}-${api.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-frontend-api`,
       source,
@@ -175,29 +223,34 @@ function analyzeSample(
       description: `${source} calls API path ${api}.`,
       evidence: [file],
     });
+  }
   for (const action of actions) {
-    for (const store of stores)
+    for (const store of stores) {
+      if (!actionUsesStore(text, action, store)) continue;
       relations.push({
         id: `relation.${action.id}-${store.toLowerCase()}-action-store`,
         source: action.name,
         target: store,
         relationship: 'action_updates_store',
         cardinality: 'unknown',
-        confidence: 'medium',
-        description: `${action.name} reads or writes ${store}.`,
+        confidence: 'high',
+        description: `${action.name} invokes ${store}.`,
         evidence: [file],
       });
-    for (const api of apiCalls)
+    }
+    for (const api of apiCalls) {
+      if (!actionUsesApi(text, action, api)) continue;
       relations.push({
         id: `relation.${action.id}-${api.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-action-api`,
         source: action.name,
         target: api,
         relationship: 'action_calls_api',
         cardinality: 'unknown',
-        confidence: 'medium',
-        description: `${action.name} calls ${api}.`,
+        confidence: 'high',
+        description: `${action.name} calls API path ${api}.`,
         evidence: [file],
       });
+    }
   }
   const rules: BusinessRule[] = [];
   if (conditions.length || permissions.length || /required|minLength|maxLength|validate|rules?\s*[:=(]/i.test(text)) {

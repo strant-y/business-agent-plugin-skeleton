@@ -15,12 +15,13 @@ describe('frontendAnalyzer', () => {
       path.join(dir, 'views/OrderEdit.vue'),
       `<template><form @submit="submit"><button @click="save" :disabled="order.status === 'AUDIT'">Save</button></form></template>
 <script setup lang="ts">
+import axios from 'axios';
 import { useOrderStore } from '../stores/orderStore';
 import { postOrder } from '../api/orderApi';
 const orderStore = useOrderStore();
 const permission = hasPermission('order.edit');
 const rules = { required: true, minLength: 3 };
-function submit() { orderStore.status = 'AUDITING'; postOrder(); }
+function submit() { orderStore.status = 'AUDITING'; axios.post('/api/order'); }
 function save() { submit(); }
 </script>`,
       'utf8',
@@ -46,6 +47,13 @@ function save() { submit(); }
     expect(result.rules?.[0]?.rule.join(' ')).toContain('Form validation');
     expect(result.workflows?.[0]?.steps).toEqual(
       expect.arrayContaining(['Action: submit', 'Action: save', 'State: AUDITING']),
+    );
+    expect(result.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'OrderEdit', relationship: 'triggers_action' }),
+        expect.objectContaining({ relationship: 'action_updates_store', target: 'useOrderStore' }),
+        expect.objectContaining({ relationship: 'action_calls_api', target: '/api/order' }),
+      ]),
     );
   });
 

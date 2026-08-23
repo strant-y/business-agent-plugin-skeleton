@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { exists, readText, writeJson } from '../utils/fs.js';
 import type { Confidence } from './types.js';
-import type { EvidenceRef } from './evidence.js';
+import { validateEvidence, type EvidenceRef } from './evidence.js';
 
 export type KnowledgeStatus =
   'candidate' | 'corroborated' | 'confirmed' | 'verified' | 'stale' | 'contradicted' | 'deprecated';
@@ -91,6 +91,35 @@ function createLock(owner: string): KnowledgeStateLock {
     updatedAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + KNOWLEDGE_LOCK_TTL_MS).toISOString(),
   };
+}
+
+export interface KnowledgeEvidenceDrift {
+  recordId: string;
+  status: KnowledgeStatus;
+  evidenceId: string;
+  file?: string;
+  warnings: string[];
+}
+
+export async function findKnowledgeEvidenceDrift(root: string): Promise<KnowledgeEvidenceDrift[]> {
+  const records = Object.values(await loadKnowledgeStateMap(root));
+  const drift: KnowledgeEvidenceDrift[] = [];
+  for (const record of records) {
+    for (const evidence of record.evidence) {
+      if (!evidence.file) continue;
+      const validation = await validateEvidence(evidence, root);
+      if (!validation.valid) {
+        drift.push({
+          recordId: record.id,
+          status: record.status,
+          evidenceId: evidence.id,
+          file: evidence.file,
+          warnings: validation.warnings,
+        });
+      }
+    }
+  }
+  return drift;
 }
 
 export function transitionKnowledge(

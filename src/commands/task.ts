@@ -1,3 +1,4 @@
+import { dispatchLifecycleEvent, type TaskLifecycleEvent as ExtendedTaskLifecycleEvent } from '../core/lifecycle.js';
 import {
   buildTaskContext,
   checkpointTask,
@@ -21,6 +22,7 @@ export interface TaskCommandOptions {
   summary?: string;
   learn?: string;
   sessionId?: string;
+  event?: string;
 }
 
 function output(value: unknown, json?: boolean): void {
@@ -56,7 +58,7 @@ export async function taskCommand(
   options: TaskCommandOptions = {},
 ): Promise<void> {
   if (!subcommand || subcommand === 'help') {
-    console.log('Usage: business-agent task start|context|predict-impact|checkpoint|test|finish [options]');
+    console.log('Usage: business-agent task start|context|predict-impact|checkpoint|test|finish|event [options]');
     return;
   }
   if (subcommand === 'start') {
@@ -72,6 +74,27 @@ export async function taskCommand(
       printSession(result.session);
       printContext(result.context);
     }
+    return;
+  }
+
+  if (subcommand === 'event') {
+    if (!options.event) throw new Error('Usage: business-agent task event --event <json>');
+    let event: ExtendedTaskLifecycleEvent;
+    try {
+      event = JSON.parse(options.event) as ExtendedTaskLifecycleEvent;
+    } catch (error) {
+      throw new Error('Invalid lifecycle event JSON.', { cause: error });
+    }
+    if (!event || typeof event !== 'object') throw new Error('Lifecycle event must be a JSON object.');
+    const result = await dispatchLifecycleEvent({
+      ...event,
+      root,
+      source: event.source ?? 'cli',
+      eventId: event.eventId ?? `${event.taskId}-${event.phase}-${Date.now()}`,
+      timestamp: event.timestamp ?? new Date().toISOString(),
+    });
+    output(result, options.json);
+    if (!options.json) printSession(result.session);
     return;
   }
 

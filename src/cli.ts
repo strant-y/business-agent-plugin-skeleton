@@ -57,7 +57,7 @@ const HELP: Record<string, string> = {
   capture:
     'Usage: business-agent capture [message...] [--learn <fact>] [--entity <name>] [--since last-commit] [--quiet] [--json] [--dry-run]\n\nRecord the closing summary of a task: writes a task-history record with the change impact chain, and optionally records a verified business fact as a reviewable candidate.',
   hook: 'Usage: business-agent hook install|remove\n\nInstall or remove the post-commit hook that runs `capture --since last-commit --quiet` after every commit.',
-  task: 'Usage: business-agent task start|context|predict-impact|checkpoint|test|finish|feedback\n\nRun the Agent task lifecycle and persist structured task knowledge.\n\nFeedback:\n  business-agent task feedback <type> <targetId> [--reason <text>] [--correction <text>]\n\nKnowledge:\n  business-agent knowledge status <targetId>\n  business-agent knowledge verify <targetId> [--reason <text>]\n  business-agent knowledge stale --id <id> [--reason <text>]',
+  task: 'Usage: business-agent task start|context|predict-impact|checkpoint|test|finish|event|feedback\n\nRun the Agent task lifecycle and persist structured task knowledge.\n\nEvent:\n  business-agent task event --event <json>\n\nFeedback:\n  business-agent task feedback <type> <targetId> [--reason <text>] [--correction <text>]\n\nKnowledge:\n  business-agent knowledge status <targetId>\n  business-agent knowledge verify <targetId> [--reason <text>]\n  business-agent knowledge stale --id <id> [--reason <text>]',
   retrieve:
     'Usage: business-agent retrieve <query> [--include-unhealthy] [--include-low-confidence]\n\nRetrieve ranked business context. By default stale/contradicted/deprecated knowledge and low-confidence candidates are filtered out; use the flags to include them.',
   audit:
@@ -275,6 +275,7 @@ async function main(): Promise<void> {
         message: subcommand === 'finish' ? values.join(' ').trim() || undefined : undefined,
         learn: opts.learn,
         sessionId: opts.session,
+        event: opts.event,
       });
       break;
     }

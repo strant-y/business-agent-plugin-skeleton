@@ -118,7 +118,44 @@ describe('runAudit', () => {
     expect(evidence?.message).toContain('证据文件缺失');
   });
 
-  it('passes a healthy project and reports the hook as uninstalled', async () => {
+  it('warns when knowledge-state evidence has drifted', async () => {
+    const root = await tempRoot();
+    await writeJson(root, '.agent/business-agent.json', {});
+    await fs.mkdir(path.join(root, 'src'), { recursive: true });
+    await fs.writeFile(path.join(root, 'src/Order.ts'), 'export class Order {}\n', 'utf8');
+    await writeJson(root, '.agent/memory/discovery-manifest.json', manifest());
+    await writeJson(root, '.agent/memory/knowledge-state.json', {
+      'rule.audit-locked': {
+        id: 'rule.audit-locked',
+        type: 'rule',
+        subject: 'Order',
+        claim: '审核中的订单不能修改',
+        confidence: 'high',
+        confidenceScore: 0.9,
+        status: 'confirmed',
+        source: 'human-confirmed',
+        evidence: [
+          {
+            id: 'evidence-order',
+            kind: 'source',
+            file: 'src/Order.ts',
+            snippet: 'class MissingOrder',
+            capturedAt: new Date().toISOString(),
+          },
+        ],
+        relatedTasks: [],
+        version: 1,
+        firstSeenAt: new Date().toISOString(),
+      },
+    });
+
+    const report = await runAudit(root);
+    const drift = report.checks.find((check) => check.id === 'knowledge-evidence-drift');
+    expect(drift?.status).toBe('warn');
+    expect(drift?.message).toContain('证据漂移');
+  });
+
+  it('passes knowledge evidence drift when snippets remain valid', async () => {
     const root = await tempRoot();
     await writeJson(root, '.agent/business-agent.json', {});
     await fs.mkdir(path.join(root, 'src'), { recursive: true });

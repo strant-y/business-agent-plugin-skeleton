@@ -84,7 +84,7 @@ export const PROMOTE_KEYS = new Set([
 
 export const CAPTURE_KEYS = new Set(['learn', 'since', 'entity']);
 
-export const TASK_KEYS = new Set(['command', 'passed', 'summary', 'learn', 'session', 'files']);
+export const TASK_KEYS = new Set(['command', 'passed', 'summary', 'learn', 'session', 'files', 'event']);
 
 function parseValueOptions(args: string[], keys: Set<string>, label: string): Record<string, string> {
   const opts: Record<string, string> = {};

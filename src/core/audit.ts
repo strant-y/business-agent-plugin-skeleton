@@ -2,6 +2,7 @@ import path from 'node:path';
 import { exists, readText } from '../utils/fs.js';
 import { validateManifest, validateKnowledgeDir } from './validate.js';
 import { normalizeEvidence, validateEvidence } from './evidence.js';
+import { findKnowledgeEvidenceDrift } from './knowledge-state.js';
 import type { DiscoverManifest } from './types.js';
 
 export type AuditStatus = 'ok' | 'warn' | 'error';
@@ -152,6 +153,17 @@ async function checkEvidence(root: string, manifest: DiscoverManifest | undefine
   return ok('evidence', `已确认知识的证据文件可追溯（抽查 ${checked} 条）`);
 }
 
+async function checkKnowledgeEvidenceDrift(root: string): Promise<AuditCheck> {
+  const drift = await findKnowledgeEvidenceDrift(root);
+  if (!drift.length) return ok('knowledge-evidence-drift', '知识状态中的证据均可追溯');
+  const stale = drift.filter((item) => item.status === 'stale').length;
+  const affected = [...new Set(drift.map((item) => item.recordId))];
+  return warn(
+    'knowledge-evidence-drift',
+    `发现 ${drift.length} 条知识证据漂移，涉及 ${affected.length} 条记录（已有 stale ${stale} 条），建议复核后运行 knowledge verify 或 stale`,
+  );
+}
+
 async function checkHook(root: string): Promise<AuditCheck> {
   const logFile = path.join(root, '.agent', 'memory', 'hook-errors.log');
   if (await exists(logFile)) {
@@ -192,6 +204,7 @@ export async function runAudit(root: string): Promise<AuditReport> {
   checks.push(await checkSchema(root, manifest));
   checks.push(checkNoise(manifest));
   checks.push(await checkKnowledgeState(root));
+  checks.push(await checkKnowledgeEvidenceDrift(root));
   checks.push(await checkEvidence(root, manifest));
   checks.push(await checkHook(root));
   checks.push(await checkSessions(root));

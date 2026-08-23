@@ -379,4 +379,30 @@ describe('task lifecycle', () => {
     expect(completed.session.status).toBe('completed');
     expect(completed.experience?.testsRun).toHaveLength(1);
   });
+
+  it('accepts lifecycle events through the task command', async () => {
+    const dir = await setup();
+    let output = '';
+    const original = console.log;
+    console.log = (value: string) => {
+      output += value;
+    };
+    try {
+      await taskCommand(dir, 'event', [], {
+        json: true,
+        event: JSON.stringify({
+          eventId: 'cli-event-1',
+          taskId: 'cli-task-1',
+          phase: 'before_task',
+          task: '通过 CLI 启动 Order 任务',
+        }),
+      });
+    } finally {
+      console.log = original;
+    }
+    const result = JSON.parse(output) as { eventId: string; session: { status: string } };
+    expect(result.eventId).toBe('cli-event-1');
+    expect(result.session.status).toBe('active');
+    expect(await fs.stat(path.join(dir, '.agent/memory/events/cli-event-1.json'))).toBeDefined();
+  });
 });

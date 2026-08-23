@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseArgs, parsePromoteOptions, rejectUnexpectedArgs } from '../src/cli-args.js';
+import { parseArgs, parsePromoteOptions, parseTaskOptions, rejectUnexpectedArgs } from '../src/cli-args.js';
 
 describe('parseArgs', () => {
   it('collects global flags and leaves positionals in order', () => {
@@ -58,6 +58,14 @@ describe('parsePromoteOptions', () => {
   it('rejects options without a value', () => {
     expect(() => parsePromoteOptions(['--entity'])).toThrow(/--entity requires a value/);
     expect(() => parsePromoteOptions(['--entity', '--type', 'rule'])).toThrow(/--entity requires a value/);
+  });
+});
+
+describe('parseTaskOptions', () => {
+  it('parses lifecycle event payloads', () => {
+    expect(parseTaskOptions(['--event', '{"phase":"before_task"}'])).toEqual({
+      event: '{"phase":"before_task"}',
+    });
   });
 });
 
