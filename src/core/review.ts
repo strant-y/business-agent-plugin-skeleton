@@ -93,7 +93,9 @@ function uniqStrings(items: string[]): string[] {
 
 export function buildCandidateContext(rule: BusinessRule): string[] {
   const lines = uniqStrings(rule.context ?? []);
-  return lines.length ? lines : ['Review the cited code paths before promoting this candidate.'];
+  if (lines.length) return lines;
+  const evidence = uniqStrings(rule.evidence.map((item) => `${item}: matched candidate rule signal`));
+  return evidence.length ? evidence : ['Review the cited code paths before promoting this candidate.'];
 }
 
 export async function writeCandidate(

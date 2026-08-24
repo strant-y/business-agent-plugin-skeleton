@@ -11,9 +11,9 @@ async function tempRoot(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ba-deep-'));
 }
 
-describe('discover --deep', () => {
-  it('runs sql, api and ast analyzers in dry-run', async () => {
-    const manifest = await discover(DEEP, { dryRun: true, analyzers: ['sql', 'api', 'ast'] });
+describe('discover analyzers', () => {
+  it('runs sql, api and ast analyzers by default in dry-run', async () => {
+    const manifest = await discover(DEEP, { dryRun: true });
 
     expect(manifest.apis.length).toBeGreaterThanOrEqual(3);
     expect(manifest.apis.map((a) => a.path)).toEqual(
@@ -26,12 +26,15 @@ describe('discover --deep', () => {
     const customer = manifest.entities.find((e) => e.name === 'Customer');
     expect(customer?.confidence).toBe('high');
     expect(customer?.attributes?.some((a) => a.name === 'orders')).toBe(true);
+    expect(manifest.apis.find((api) => api.path === '/api/orders')?.fields).toEqual(
+      expect.arrayContaining([expect.objectContaining({ entity: 'Order', field: 'id' })]),
+    );
   });
 
   it('writes relationships to confirmed store and candidate rules to memory/candidates', async () => {
     const dir = await tempRoot();
     await fs.cp(DEEP, dir, { recursive: true });
-    await discover(dir, { analyzers: ['sql', 'api', 'ast'] });
+    await discover(dir);
 
     const rulesDir = path.join(dir, '.agent/business/rules');
     const relsDir = path.join(dir, '.agent/business/relationships');
@@ -50,7 +53,9 @@ describe('discover --deep', () => {
     expect(candidate).toContain('# Candidate:');
     expect(candidate).toContain('## Hypothesis');
     expect(candidate).toContain('## Evidence');
+    expect(candidate).toContain('## Context');
     expect(candidate).toContain('Customer.ts');
+    expect(candidate).toMatch(/Context\n- .*Customer\.ts:/);
 
     const relFiles = (await fs.readdir(relsDir)).filter((f) => f.endsWith('.json'));
     expect(relFiles.length).toBeGreaterThan(0);

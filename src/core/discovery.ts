@@ -1,10 +1,12 @@
 import path from 'node:path';
-import type { DiscoverManifest, Entity, BusinessRule, Relation } from './types.js';
+import { buildModuleDescriptor } from './module-id.js';
+import { buildAliasMap, loadGlossary, resolveCanonicalName } from './glossary.js';
+import type { DiscoverManifest, Entity, BusinessRule, Relation, FieldIndexEntry, FieldRef } from './types.js';
 import { scanProject, type SampleFile } from './scanner.js';
 import { loadConfig, type AgentConfig, type AnalyzerName } from './config.js';
 import { validateManifest } from './validate.js';
 import { heuristicScorer } from './evidence.js';
-import { runAnalyzers, resolveAnalyzers } from './analyzer.js';
+import { runAnalyzers, resolveAnalyzers, uniqEntities, uniqStrings } from './analyzer.js';
 import { detectConflicts } from './conflicts.js';
 import { writeRule, writeRelation, buildIndex } from './knowledge.js';
 import { writeJson, writeText, readText, exists } from '../utils/fs.js';
@@ -97,7 +99,7 @@ const RULE_PATTERNS: Array<{ id: string; name: string; pattern: RegExp }> = [
   {
     id: 'thrown-error',
     name: 'Explicit validation error thrown',
-    pattern: /throw new (?:Error|RuntimeException|IllegalArgumentException)/,
+    pattern: /throw new (?:Error|RuntimeException|IllegalArgumentException|\w*(?:Business|Service|Biz)\w*Exception)/,
   },
 ];
 
@@ -109,6 +111,46 @@ function buildEvidenceContext(evidence: string[], samples: SampleFile[]): string
     const lineIndex = lines.findIndex((value) => /status|disabled|v-if|throw new|validation/i.test(value));
     const line = lineIndex >= 0 ? lines[lineIndex] : lines.find((value) => value.trim());
     return `${file}:${lineIndex >= 0 ? lineIndex + 1 : 1}: ${line?.trim() ?? 'matched business signal'}`;
+  });
+}
+
+function ruleEvidenceSignals(rule: BusinessRule): string[] {
+  const signals = new Set<string>();
+  for (const evidence of rule.evidence) {
+    const snippet = evidence.includes(': ') ? evidence.split(': ').slice(1).join(': ').trim() : '';
+    if (snippet) signals.add(snippet);
+    for (const state of evidence.match(/["'`](\w*[A-Z][A-Z0-9_-]*)["'`]/g) ?? []) {
+      signals.add(state.replace(/["'`]/g, ''));
+    }
+  }
+  for (const text of [rule.name, ...(rule.rule ?? []), ...(rule.preconditions ?? []), ...(rule.context ?? [])]) {
+    for (const token of text.match(/[A-Za-z][A-Za-z0-9_-]{3,}/g) ?? []) {
+      signals.add(token);
+    }
+  }
+  return [...signals].filter((signal) => signal.length >= 4);
+}
+
+function buildRuleCoveringTests(
+  rules: BusinessRule[],
+  testFiles: string[],
+  fileText: Record<string, string>,
+  aliases: Record<string, string[]>,
+): BusinessRule[] {
+  return rules.map((rule) => {
+    const entityTokens = [rule.entity, ...(aliases[rule.entity] ?? [])]
+      .map((token) => token.toLowerCase())
+      .filter((token) => token && token !== 'unknown');
+    const signals = ruleEvidenceSignals(rule);
+    const coveringTests = testFiles.filter((testFile) => {
+      const lowerPath = testFile.toLowerCase();
+      if (entityTokens.length && !entityTokens.some((token) => lowerPath.includes(token.toLowerCase()))) return false;
+      const text = fileText[testFile];
+      if (!text) return false;
+      const lowerText = text.toLowerCase();
+      return signals.some((signal) => lowerText.includes(signal.toLowerCase()));
+    });
+    return coveringTests.length ? { ...rule, coveringTests } : rule;
   });
 }
 
@@ -136,6 +178,106 @@ function detectRules(samples: SampleFile[]): BusinessRule[] {
     rules.push(rule);
   }
   return rules;
+}
+
+function mergeEntitiesByAlias(entities: Entity[], aliases: Record<string, string[]>): Entity[] {
+  const merged = new Map<string, Entity>();
+  for (const entity of entities) {
+    const canonical = resolveCanonicalName(entity.name, aliases);
+    const existing = merged.get(canonical);
+    const next: Entity = {
+      ...entity,
+      id: canonical === entity.name ? entity.id : entityId(canonical),
+      name: canonical,
+      description:
+        canonical === entity.name
+          ? entity.description
+          : `Discovered business candidate: ${canonical}`,
+      evidence: uniqStrings([...(existing?.evidence ?? []), ...entity.evidence]).slice(0, 8),
+      tags: uniqStrings([...(existing?.tags ?? []), ...(entity.tags ?? []), entity.name]).filter((tag) => tag !== canonical),
+      attributes: mergeEntityAttributes(existing?.attributes, entity.attributes),
+      confidence:
+        rankConfidence(entity.confidence) > rankConfidence(existing?.confidence ?? 'low')
+          ? entity.confidence
+          : (existing?.confidence ?? entity.confidence),
+      type: existing?.type ?? entity.type,
+    };
+    merged.set(canonical, existing ? { ...existing, ...next } : next);
+  }
+  return [...merged.values()];
+}
+
+function mergeEntityAttributes(a?: Entity['attributes'], b?: Entity['attributes']): Entity['attributes'] | undefined {
+  const out = new Map<string, NonNullable<Entity['attributes']>[number]>();
+  for (const attr of [...(a ?? []), ...(b ?? [])]) {
+    if (!out.has(attr.name)) out.set(attr.name, attr);
+  }
+  return out.size ? [...out.values()] : undefined;
+}
+
+function rankConfidence(c: Entity['confidence']): number {
+  if (c === 'high') return 3;
+  if (c === 'medium') return 2;
+  return 1;
+}
+
+function buildFieldIndex(
+  entities: Entity[],
+  apis: DiscoverManifest['apis'],
+  pages: DiscoverManifest['pages'],
+  actions: DiscoverManifest['actions'],
+  relations: DiscoverManifest['relations'],
+  tests: string[],
+): Record<string, FieldIndexEntry> {
+  const index = new Map<string, FieldIndexEntry>();
+  const ensure = (entity: string, field: string): FieldIndexEntry => {
+    const key = `${entity}.${field}`.toLowerCase();
+    const existing = index.get(key);
+    if (existing) return existing;
+    const created: FieldIndexEntry = { entity, field, apis: [], stores: [], storeActions: [], pages: [], tests: [] };
+    index.set(key, created);
+    return created;
+  };
+  const actionStoreIndex = new Map<string, string[]>();
+  for (const relation of relations ?? []) {
+    if (relation.relationship !== 'action_updates_store') continue;
+    const stores = actionStoreIndex.get(relation.source) ?? [];
+    if (!stores.includes(relation.target)) stores.push(relation.target);
+    actionStoreIndex.set(relation.source, stores);
+  }
+  for (const entity of entities) {
+    for (const attribute of entity.attributes ?? []) {
+      const entry = ensure(entity.name, attribute.name);
+      entry.tests.push(...tests.filter((test) => test.toLowerCase().includes(entity.name.toLowerCase())));
+    }
+  }
+  for (const api of apis ?? []) {
+    for (const field of api.fields ?? []) ensure(field.entity, field.field).apis.push(`${api.method} ${api.path}`);
+  }
+  for (const page of pages ?? []) {
+    for (const field of page.fields ?? []) ensure(field.entity, field.field).pages.push(page.component);
+  }
+  for (const action of actions ?? []) {
+    for (const field of action.fields ?? []) {
+      const entry = ensure(field.entity, field.field);
+      entry.pages.push(action.source);
+      entry.stores.push(...(action.stores ?? actionStoreIndex.get(action.name) ?? []));
+      entry.storeActions?.push(action.name);
+    }
+  }
+  return Object.fromEntries(
+    [...index.entries()].map(([key, entry]) => [
+      key,
+      {
+        ...entry,
+        apis: [...new Set(entry.apis)],
+        stores: [...new Set(entry.stores)],
+        storeActions: [...new Set(entry.storeActions ?? [])],
+        pages: [...new Set(entry.pages)],
+        tests: [...new Set(entry.tests)],
+      },
+    ]),
+  );
 }
 
 function entityMarkdown(e: Entity): string {
@@ -200,12 +342,15 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   const warn = options.onWarning ?? ((): void => {});
   const config = options.config ?? (await loadConfig(root, warn));
   const scan = await scanProject(root, config);
+  const glossary = await loadGlossary(root);
   const entities = detectEntities(scan.sampleText, scan.files, config.preferredEntities, config.maxEntities);
-  const relations = detectRelations(entities, scan.sampleText, config.relationWindow);
+  const aliases = buildAliasMap(entities, glossary);
+  const canonicalEntities = mergeEntitiesByAlias(entities, aliases);
+  const relations = detectRelations(canonicalEntities, scan.sampleText, config.relationWindow);
   const rules = detectRules(scan.samples);
 
   const analyzers = resolveAnalyzers(config, options.analyzers ?? [], warn);
-  let finalEntities = entities;
+  let finalEntities = canonicalEntities;
   let finalRules = rules;
   let finalRelations = relations;
   let apis: DiscoverManifest['apis'] = [];
@@ -235,7 +380,17 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   for (const rule of autoPromoted) markReviewed(reviewState, rule, 'accepted', rule.id);
   finalRules = [...persistedRules, ...confirmedRules];
 
+  finalEntities = mergeEntitiesByAlias(finalEntities, aliases);
+  const manifestAliases = buildAliasMap(finalEntities, glossary);
   const conflicts = detectConflicts(finalRules);
+
+  const modules = scan.files
+    .filter((file) => /\.(vue|tsx|jsx|ts|js)$/i.test(file))
+    .map((file) => buildModuleDescriptor(file));
+
+  const testFiles = scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file));
+  finalRules = buildRuleCoveringTests(finalRules, testFiles, scan.fileText, manifestAliases);
+  const fieldIndex = buildFieldIndex(finalEntities, apis, pages, actions, relations, testFiles);
 
   const manifest: DiscoverManifest = {
     generatedAt: new Date().toISOString(),
@@ -246,11 +401,14 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     relations: finalRelations,
     apis,
     conflicts,
-    tests: scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file)),
+    tests: testFiles,
     states,
     workflows,
     pages,
     actions,
+    modules,
+    aliases: manifestAliases,
+    fieldIndex,
   };
   const problems = await validateManifest(manifest);
   if (problems.length > 0) {

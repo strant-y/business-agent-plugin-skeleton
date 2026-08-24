@@ -3,6 +3,7 @@ import { exists, readText, writeJson } from '../utils/fs.js';
 import { normalizeEvidence, type EvidenceRef } from './evidence.js';
 import { loadFeedback } from './feedback.js';
 import { loadRules, buildIndex } from './knowledge.js';
+import { resolveCanonicalName } from './glossary.js';
 import type { DiscoverManifest } from './types.js';
 import type { KnowledgeRecord, KnowledgeStatus } from './knowledge-state.js';
 import type { TaskExperience } from './task.js';
@@ -108,6 +109,7 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
   const knowledgeRecords = await loadKnowledgeRecords(root);
   if (await exists(manifestPath(root))) {
     const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
+    const aliases = manifest.aliases ?? {};
     for (const entity of manifest.entities ?? []) {
       const knowledge = knowledgeRecords[entity.id];
       documents.push({
@@ -117,7 +119,7 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         tokens: tokens(
           `${entity.name} ${entity.description} ${(entity.tags ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: entity.tags ?? [],
+        aliases: [...new Set([...(entity.tags ?? []), ...(aliases[entity.name] ?? [])])],
         relatedIds: knowledge?.relatedTasks ?? [],
         status: knowledge?.status,
         confidence:
@@ -136,17 +138,17 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         // rule.context carries source snippets (often Chinese UI copy) that make
         // business terms like 缴费/特约 searchable in the retrieval index.
         tokens: tokens(
-          `${rule.name} ${rule.entity} ${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+          `${rule.name} ${rule.entity} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: [rule.entity],
-        relatedIds: [rule.entity, ...(knowledge?.relatedTasks ?? [])],
+        aliases: [...new Set([rule.entity, ...(aliases[rule.entity] ?? [])])],
+        relatedIds: [resolveCanonicalName(rule.entity, aliases), ...(knowledge?.relatedTasks ?? [])],
         status:
           knowledge?.status ??
           (rule.status === 'deprecated' ? 'deprecated' : rule.status === 'confirmed' ? 'confirmed' : 'candidate'),
         confidence:
           knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
         updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+        text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
         evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
       });
     }
@@ -162,15 +164,15 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         type: 'rule',
         title: rule.name,
         tokens: tokens(
-          `${rule.name} ${rule.entity} ${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+          `${rule.name} ${rule.entity} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: [rule.entity],
-        relatedIds: [rule.entity, ...(knowledge?.relatedTasks ?? [])],
-        status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : rule.status ?? 'confirmed'),
+        aliases: [...new Set([rule.entity, ...(aliases[rule.entity] ?? [])])],
+        relatedIds: [resolveCanonicalName(rule.entity, aliases), ...(knowledge?.relatedTasks ?? [])],
+        status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : (rule.status ?? 'confirmed')),
         confidence:
           knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
         updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${rule.rule.join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+        text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
         evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
       });
     }
@@ -334,61 +336,61 @@ export async function retrieveTaskContext(
   const query = tokens(task);
   const score = (includeLowConfidence: boolean): RetrievalHit[] =>
     documents
-    .filter((document) => {
-      if (!(options.includeUnhealthy ?? false) && isUnhealthy(document)) return false;
-      if (!includeLowConfidence && isLowConfidence(document)) return false;
-      return true;
-    })
-    .map((document) => {
-      const matched = query.filter(
-        (token) =>
-          document.tokens.includes(token) || document.aliases.some((alias) => alias.toLowerCase().includes(token)),
-      );
-      const coverage = matched.length / Math.max(query.length, 1);
-      const relatedMatch = matched.length && document.relatedIds.some((id) => query.includes(id.toLowerCase()));
-      const reasons = matched.map((token) => `关键词匹配: ${token}`);
-      const warnings: string[] = [];
-      let score = coverage;
-      if (relatedMatch) {
-        score += 0.12;
-        reasons.push('关联实体匹配');
-      }
-      const status = statusWeight(document.status);
-      score *= status.multiplier;
-      if (status.reason) reasons.push(status.reason);
-      if (status.warning) warnings.push(status.warning);
-      const feedback = feedbackWeight(document);
-      score *= feedback.multiplier;
-      if (feedback.reason) reasons.push(feedback.reason);
-      if (feedback.warning) warnings.push(feedback.warning);
-      const experience = experienceWeight(document);
-      score *= experience.multiplier;
-      if (experience.reason) reasons.push(experience.reason);
-      const evidence = evidenceWeight(document.evidence);
-      score *= evidence.multiplier;
-      if (evidence.reason) reasons.push(evidence.reason);
-      const recency = recencyWeight(document.updatedAt);
-      score *= recency.multiplier;
-      reasons.push(recency.reason);
-      if (document.confidence !== undefined) {
-        score *= 0.85 + Math.min(Math.max(document.confidence, 0), 1) * 0.3;
-        reasons.push(`基础置信度：${document.confidence.toFixed(2)}`);
-      }
-      const confidence: RetrievalHit['confidence'] = score >= 0.72 ? 'high' : score >= 0.38 ? 'medium' : 'low';
-      return {
-        id: document.id,
-        type: document.type,
-        title: document.title,
-        score: Number(Math.min(score, 1).toFixed(4)),
-        confidence,
-        reasons: uniqueStrings(reasons),
-        evidence: document.evidence ?? [],
-        warnings: uniqueStrings(warnings),
-      };
-    })
-    .filter((hit) => hit.score > 0)
-    .sort((a, b) => b.score - a.score || b.evidence.length - a.evidence.length || a.title.localeCompare(b.title))
-    .slice(0, limit);
+      .filter((document) => {
+        if (!(options.includeUnhealthy ?? false) && isUnhealthy(document)) return false;
+        if (!includeLowConfidence && isLowConfidence(document)) return false;
+        return true;
+      })
+      .map((document) => {
+        const matched = query.filter(
+          (token) =>
+            document.tokens.includes(token) || document.aliases.some((alias) => alias.toLowerCase().includes(token)),
+        );
+        const coverage = matched.length / Math.max(query.length, 1);
+        const relatedMatch = matched.length && document.relatedIds.some((id) => query.includes(id.toLowerCase()));
+        const reasons = matched.map((token) => `关键词匹配: ${token}`);
+        const warnings: string[] = [];
+        let score = coverage;
+        if (relatedMatch) {
+          score += 0.12;
+          reasons.push('关联实体匹配');
+        }
+        const status = statusWeight(document.status);
+        score *= status.multiplier;
+        if (status.reason) reasons.push(status.reason);
+        if (status.warning) warnings.push(status.warning);
+        const feedback = feedbackWeight(document);
+        score *= feedback.multiplier;
+        if (feedback.reason) reasons.push(feedback.reason);
+        if (feedback.warning) warnings.push(feedback.warning);
+        const experience = experienceWeight(document);
+        score *= experience.multiplier;
+        if (experience.reason) reasons.push(experience.reason);
+        const evidence = evidenceWeight(document.evidence);
+        score *= evidence.multiplier;
+        if (evidence.reason) reasons.push(evidence.reason);
+        const recency = recencyWeight(document.updatedAt);
+        score *= recency.multiplier;
+        reasons.push(recency.reason);
+        if (document.confidence !== undefined) {
+          score *= 0.85 + Math.min(Math.max(document.confidence, 0), 1) * 0.3;
+          reasons.push(`基础置信度：${document.confidence.toFixed(2)}`);
+        }
+        const confidence: RetrievalHit['confidence'] = score >= 0.72 ? 'high' : score >= 0.38 ? 'medium' : 'low';
+        return {
+          id: document.id,
+          type: document.type,
+          title: document.title,
+          score: Number(Math.min(score, 1).toFixed(4)),
+          confidence,
+          reasons: uniqueStrings(reasons),
+          evidence: document.evidence ?? [],
+          warnings: uniqueStrings(warnings),
+        };
+      })
+      .filter((hit) => hit.score > 0)
+      .sort((a, b) => b.score - a.score || b.evidence.length - a.evidence.length || a.title.localeCompare(b.title))
+      .slice(0, limit);
   const hits = score(options.includeLowConfidence ?? false);
   // Chinese content typically lives in low-confidence candidate rules (source
   // snippets); when the strict pass finds nothing, retry once with low-confidence

@@ -1,4 +1,4 @@
-import type { Entity, Relation } from '../types.js';
+import type { BusinessRule, Entity, Relation } from '../types.js';
 
 export function pascal(name: string): string {
   return name
@@ -23,6 +23,7 @@ export function escapeRegExp(value: string): string {
 export interface SqlParseResult {
   entities: Entity[];
   relations: Relation[];
+  rules: BusinessRule[];
 }
 
 function tableName(value: string): string | undefined {
@@ -66,9 +67,78 @@ function addJoinRelations(
   }
 }
 
+function ruleId(file: string, index: number): string {
+  return `rule.sql.check-${file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${index}`;
+}
+
+function normalizeCheckValues(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((value) => value.trim().replace(/^["'`]|["'`]$/g, ''))
+    .filter(Boolean);
+}
+
+function addCheckConstraintRules(text: string, file: string, addEntity: (table: string) => string, rules: BusinessRule[]): void {
+  const createTableRe = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(/gi;
+  let index = 0;
+  for (const match of text.matchAll(createTableRe)) {
+    const table = tableName(match[1]);
+    if (!table || match.index === undefined) continue;
+    const openIndex = text.indexOf('(', match.index + match[0].length - 1);
+    if (openIndex === -1) continue;
+    let depth = 0;
+    let closeIndex = -1;
+    for (let i = openIndex; i < text.length; i++) {
+      if (text[i] === '(') depth++;
+      else if (text[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          closeIndex = i;
+          break;
+        }
+      }
+    }
+    if (closeIndex === -1) continue;
+    const entity = addEntity(table);
+    const body = text.slice(openIndex + 1, closeIndex);
+    const inChecks = /check\s*\(\s*([a-z_][a-z0-9_$]*)\s+in\s*\(([^)]+)\)\s*\)/gi;
+    for (const check of body.matchAll(inChecks)) {
+      const field = check[1];
+      const values = normalizeCheckValues(check[2]);
+      if (!values.length) continue;
+      rules.push({
+        id: ruleId(file, index++),
+        name: 'SQL CHECK constraint',
+        entity,
+        rule: [`Field constraint on ${entity}.${field}: value must be one of ${values.join(', ')}.`],
+        confidence: 'low',
+        evidence: [file],
+        context: [`${file}: CHECK (${field} IN (${values.join(', ')})) on table ${table}.`],
+        status: 'candidate',
+      });
+    }
+    const eqChecks = /check\s*\(\s*([a-z_][a-z0-9_$]*)\s*=\s*(["'`][^"'`]+["'`]|[A-Z0-9_-]+)\s*\)/gi;
+    for (const check of body.matchAll(eqChecks)) {
+      const field = check[1];
+      const value = check[2].replace(/^["'`]|["'`]$/g, '');
+      if (!value) continue;
+      rules.push({
+        id: ruleId(file, index++),
+        name: 'SQL CHECK constraint',
+        entity,
+        rule: [`Field constraint on ${entity}.${field}: value must equal ${value}.`],
+        confidence: 'low',
+        evidence: [file],
+        status: 'candidate',
+      });
+    }
+  }
+}
+
 export function parseSqlRelations(text: string, file: string, evidenceFiles: string[] = []): SqlParseResult {
   const entities: Entity[] = [];
   const relations: Relation[] = [];
+  const rules: BusinessRule[] = [];
   const knownTables = new Set<string>();
   const relationKeys = new Set<string>();
 
@@ -136,6 +206,7 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
   const subqueryRe = /\b(?:in|exists)\s*\(([\s\S]*?)\)/gi;
   for (const match of text.matchAll(subqueryRe)) addTableNames(match[1], names);
   for (const table of names) addEntity(table);
+  addCheckConstraintRules(text, file, addEntity, rules);
 
-  return { entities, relations };
+  return { entities, relations, rules };
 }

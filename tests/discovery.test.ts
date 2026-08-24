@@ -21,7 +21,7 @@ describe('discover', () => {
   });
 
   it('uses preferredEntities from config and marks them medium confidence', async () => {
-    const config = { ...DEFAULT_CONFIG, preferredEntities: ['Order'] };
+    const config = { ...DEFAULT_CONFIG, analyzers: [], preferredEntities: ['Order'] };
     const manifest = await discover(FIXTURE, { dryRun: true, config });
     const order = manifest.entities.find((e) => e.name === 'Order');
     expect(order?.confidence).toBe('medium');
@@ -35,6 +35,23 @@ describe('discover', () => {
     const names = manifest.entities.map((e) => e.name);
     expect(names).toContain('Planning');
     expect(names).not.toContain('Plan');
+  });
+
+  it('merges glossary aliases into one canonical entity and writes alias map', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent/business'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'Order.ts'), 'export interface Order {}', 'utf8');
+    await fs.writeFile(path.join(dir, 'OrderDTO.ts'), 'export interface OrderDTO {}', 'utf8');
+    await fs.writeFile(
+      path.join(dir, '.agent/business/glossary.md'),
+      '| 术语 | 别名 | 实体 |\n| --- | --- | --- |\n| 缴费 | OrderDTO, orders | Order |\n',
+      'utf8',
+    );
+
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    expect(manifest.entities.filter((e) => e.name === 'Order')).toHaveLength(1);
+    expect(manifest.entities.some((e) => e.name === 'OrderDTO')).toBe(false);
+    expect(manifest.aliases?.Order).toEqual(expect.arrayContaining(['缴费', 'OrderDTO', 'orders']));
   });
 
   it('detects relations between entities appearing near each other', async () => {
@@ -88,6 +105,8 @@ describe('discover', () => {
     const candidatesDir = path.join(dir, '.agent/memory/candidates');
     const candidateFiles = (await fs.readdir(candidatesDir)).filter((f) => f.endsWith('.md'));
     expect(candidateFiles.length).toBeGreaterThan(0);
+    const candidate = await fs.readFile(path.join(candidatesDir, candidateFiles[0]), 'utf8');
+    expect(candidate).toContain('## Context');
   });
 
   it('preserves manual edits to entity files across discover runs', async () => {
@@ -105,6 +124,20 @@ describe('discover', () => {
     const after = await fs.readFile(productMd, 'utf8');
     expect(after).toContain('<!-- MANUAL EDIT -->');
     expect(warnings.join('\n')).toContain('Preserved manual edits');
+  });
+
+  it('captures full fileText for test matching during discovery', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(path.join(dir, 'Order.ts'), 'interface Order {}\n', 'utf8');
+    await fs.mkdir(path.join(dir, 'tests'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'tests', 'order.test.ts'),
+      "describe('Order rule', () => {\n  it('mentions AUDIT', () => expect('AUDIT').toBe('AUDIT'));\n});\n",
+      'utf8',
+    );
+
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    expect(manifest.tests).toEqual(expect.arrayContaining(['tests\\order.test.ts']));
   });
 
   it('honors the maxEntities config limit', async () => {

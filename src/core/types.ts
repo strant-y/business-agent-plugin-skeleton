@@ -35,7 +35,16 @@ export interface BusinessRule {
   context?: string[];
   confidence: Confidence;
   evidence: string[];
+  coveringTests?: string[];
   status?: 'candidate' | 'confirmed' | 'deprecated';
+}
+
+export interface RuleViolation {
+  ruleId: string;
+  ruleName: string;
+  evidence: string;
+  reason: string;
+  severity: 'confirmed-missing' | 'likely-modified';
 }
 
 export interface Relation {
@@ -49,12 +58,19 @@ export interface Relation {
   evidence: string[];
 }
 
+export interface FieldRef {
+  entity: string;
+  field: string;
+  via?: string;
+}
+
 export interface ApiRoute {
   id: string;
   method: string;
   path: string;
   handler?: string;
   entity?: string;
+  fields?: FieldRef[];
   /** backend = real API route; frontend = client-side router path (not linkable to entities). */
   kind?: 'backend' | 'frontend';
   confidence: Confidence;
@@ -97,6 +113,7 @@ export interface FrontendPage {
   permissions: string[];
   stores: string[];
   apiCalls: string[];
+  fields?: FieldRef[];
   actions: string[];
   evidence: string[];
 }
@@ -110,6 +127,8 @@ export interface UserAction {
   stateReads: string[];
   stateWrites: string[];
   apiCalls: string[];
+  stores?: string[];
+  fields?: FieldRef[];
   successEffects: string[];
   failureEffects: string[];
   evidence: string[];
@@ -121,6 +140,22 @@ export interface WorkflowTemplate {
   description: string;
   steps: string[];
   status: 'draft';
+}
+
+export interface ModuleDescriptor {
+  id: string;
+  name: string;
+  file: string;
+}
+
+export interface FieldIndexEntry {
+  entity: string;
+  field: string;
+  apis: string[];
+  stores: string[];
+  storeActions?: string[];
+  pages: string[];
+  tests: string[];
 }
 
 export interface DiscoverManifest {
@@ -137,4 +172,7 @@ export interface DiscoverManifest {
   workflows?: WorkflowTemplate[];
   pages?: FrontendPage[];
   actions?: UserAction[];
+  modules?: ModuleDescriptor[];
+  aliases?: Record<string, string[]>;
+  fieldIndex?: Record<string, FieldIndexEntry>;
 }

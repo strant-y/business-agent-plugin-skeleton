@@ -15,6 +15,7 @@
     "context": { "type": "array", "items": { "type": "string" } },
     "confidence": { "enum": ["high", "medium", "low"] },
     "evidence": { "type": "array", "items": { "type": "string" } },
+    "coveringTests": { "type": "array", "items": { "type": "string" } },
     "status": { "enum": ["candidate", "confirmed", "deprecated"] }
   }
 }

@@ -42,6 +42,20 @@ describe('javaAnalyzer', () => {
     expect((result.rules ?? []).some((r) => r.name.includes('State-dependent'))).toBe(true);
   });
 
+  it('extracts validation annotations and authorization guards as candidate rules', async () => {
+    const scan = await scanProject(FULL, DEFAULT_CONFIG);
+    const result = await javaAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+
+    const rules = result.rules ?? [];
+    expect(rules.some((rule) => rule.rule[0]?.includes('Field constraint on Order.total'))).toBe(true);
+    expect(rules.some((rule) => rule.rule[0]?.includes('Field constraint on Order.status'))).toBe(true);
+    expect(rules.some((rule) => rule.rule[0]?.includes('nested value must be valid'))).toBe(true);
+    const authRule = rules.find((rule) => rule.name.includes('PreAuthorize'));
+    expect(authRule?.preconditions).toContain("hasRole('ORDER_VIEWER')");
+    const filterRule = rules.find((rule) => rule.name.includes('PreFilter'));
+    expect(filterRule?.preconditions).toContain("filterObject.status == 'DRAFT'");
+  });
+
   it('extracts combined @RestController routes with class prefix', async () => {
     const scan = await scanProject(FULL, DEFAULT_CONFIG);
     const result = await javaAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });

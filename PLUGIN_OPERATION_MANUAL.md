@@ -71,9 +71,40 @@ npx business-agent discover --deep
 
 ```bash
 cd your-vue-project
-npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-0.1.1.tgz"
+npm install "d:\work\business-agent-plugin-skeleton\business-agent-0.1.1.tgz"
 npx business-agent discover --deep
 ```
+
+升级插件程序不会自动覆盖项目中的业务知识库。项目知识库保存在项目目录的 `.agent/` 下，重新安装新的 `.tgz` 只会更新 `business-agent` 程序代码，通常会保留以下内容：
+
+- `.agent/business/`：已确认的实体、规则、关系和工作流
+- `.agent/memory/candidates/`：候选知识
+- `.agent/memory/task-history/`：任务历史
+- `.agent/memory/feedback/`：反馈记录
+- `.agent/memory/discovery-manifest.json`：扫描结果
+- `.agent/business-agent.json`：项目配置
+
+升级前建议备份知识库：
+
+```bash
+cp -R .agent .agent.backup
+```
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .agent .agent.backup -Recurse
+```
+
+升级后建议检查并重建索引：
+
+```bash
+npx business-agent audit
+npx business-agent validate
+npx business-agent index rebuild
+```
+
+`index rebuild` 只会根据现有知识重建检索索引，不会清空知识库。已有 `.agent/` 时，不要直接执行 `business-agent init --force`；该选项会重新应用模板文件，只有在确认需要更新模板时才使用。
 
 #### 方式 C：只做本地静态扫描
 

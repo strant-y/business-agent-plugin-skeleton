@@ -23,4 +23,13 @@ describe('sqlAnalyzer', () => {
     expect(relation?.confidence).toBe('medium');
     expect(relation?.evidence.some((f) => f.endsWith('schema.sql'))).toBe(true);
   });
+
+  it('extracts SQL CHECK constraints as candidate rules', async () => {
+    const scan = await scanProject(DEEP, DEFAULT_CONFIG);
+    const result = await sqlAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
+
+    const rules = result.rules ?? [];
+    expect(rules.some((rule) => rule.rule[0]?.includes('Orders.status') && rule.rule[0]?.includes('DRAFT, APPROVED'))).toBe(true);
+    expect(rules.some((rule) => rule.rule[0]?.includes('AuditLog.event_type') && rule.rule[0]?.includes('ORDER_UPDATED'))).toBe(true);
+  });
 });

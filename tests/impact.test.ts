@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { buildModuleDescriptor, moduleNodeId } from '../src/core/module-id.js';
 import { buildImpactReport, impactMarkdown } from '../src/core/impact.js';
 
 const ORDER_DIFF = `diff --git a/src/views/OrderList.vue b/src/views/OrderList.vue
@@ -53,11 +54,60 @@ async function setupProject(): Promise<string> {
         { name: 'OrderStore', description: 'Order state', confidence: 'medium', evidence: [] },
         { name: 'Customer', description: 'A buyer', confidence: 'low', evidence: [] },
       ],
-      rules: [],
+      modules: [
+        buildModuleDescriptor('src/views/OrderList.vue'),
+        buildModuleDescriptor('src/stores/orderStore.ts'),
+        buildModuleDescriptor('src/api/orderApi.ts'),
+        buildModuleDescriptor('src/views/OrderDirectory.vue'),
+      ],
+      aliases: {
+        OrderStore: [moduleNodeId('src/stores/orderStore.ts')],
+        Order: ['orders'],
+      },
+      fieldIndex: {
+        'order.status': {
+          entity: 'Order',
+          field: 'status',
+          apis: ['GET /api/orders'],
+          stores: ['OrderStore'],
+          storeActions: ['submitOrder'],
+          pages: ['OrderList'],
+          tests: ['tests/frontend.test.ts'],
+        },
+        'order.total_amount': {
+          entity: 'Order',
+          field: 'total_amount',
+          apis: ['GET /api/orders'],
+          stores: ['OrderStore'],
+          pages: ['OrderList'],
+          tests: ['tests/stores.test.ts'],
+        },
+      },
+      rules: [
+        {
+          id: 'rule.covered',
+          name: 'Covered order rule',
+          entity: 'Order',
+          rule: ['Covered by an order flow test.'],
+          confidence: 'medium',
+          evidence: ['src/views/OrderList.vue'],
+          coveringTests: ['tests/order-flow.test.ts'],
+          status: 'confirmed',
+        },
+        {
+          id: 'rule.uncovered',
+          name: 'Uncovered order rule',
+          entity: 'Order',
+          rule: ['Needs test protection.'],
+          confidence: 'low',
+          evidence: ['src/views/OrderList.vue'],
+          status: 'confirmed',
+        },
+      ],
       relations: [
         {
           id: 'relation.orderlist-orderstore-uses-store',
-          source: 'OrderList',
+          source: moduleNodeId('src/views/OrderList.vue'),
           target: 'OrderStore',
           relationship: 'uses_store',
           cardinality: 'unknown',
@@ -66,7 +116,7 @@ async function setupProject(): Promise<string> {
         },
         {
           id: 'relation.orderstore-order-uses-entity',
-          source: 'OrderStore',
+          source: moduleNodeId('src/stores/orderStore.ts'),
           target: 'Order',
           relationship: 'uses_entity',
           cardinality: 'unknown',
@@ -86,7 +136,7 @@ async function setupProject(): Promise<string> {
         },
       ],
       conflicts: [],
-      tests: ['tests/impact.test.ts', 'tests/frontend.test.ts', 'tests/stores.test.ts'],
+      tests: ['tests/impact.test.ts', 'tests/frontend.test.ts', 'tests/stores.test.ts', 'tests/order-flow.test.ts'],
       pages: [
         {
           id: 'page.orderlist',
@@ -108,6 +158,7 @@ async function setupProject(): Promise<string> {
           stateReads: ['AUDIT'],
           stateWrites: ['AUDITING'],
           apiCalls: ['/api/orders'],
+          stores: ['OrderStore'],
           successEffects: ['State changes to AUDITING.'],
           failureEffects: [],
           evidence: ['src/views/OrderList.vue'],
@@ -160,11 +211,29 @@ async function setupProject(): Promise<string> {
       entity: 'Order',
       rule: ['draft rows are hidden'],
       confidence: 'low',
-      evidence: ['src/views/OrderList.vue'],
+      evidence: [
+        {
+          id: 'evidence-orderlist-direct',
+          kind: 'source',
+          file: 'src/views/OrderList.vue',
+          lineStart: 1,
+          snippet: "order.status === 'AUDIT'",
+          capturedAt: '2026-08-20T00:00:00.000Z',
+        },
+      ],
       status: 'confirmed',
     }),
     'utf8',
   );
+  await fs.mkdir(path.join(dir, 'src/views'), { recursive: true });
+  await fs.mkdir(path.join(dir, 'src/services'), { recursive: true });
+  await fs.writeFile(
+    path.join(dir, 'src/views/OrderList.vue'),
+    "const canEdit = order.status === 'AUDIT';\nconst permission = hasPermission('order.view');\n",
+    'utf8',
+  );
+  await fs.writeFile(path.join(dir, 'src/services/orderService.ts'), "throw new Error('locked');\n", 'utf8');
+  await fs.writeFile(path.join(dir, 'src/services/customerService.ts'), 'return hasConsent(customer);\n', 'utf8');
   return dir;
 }
 
@@ -175,7 +244,11 @@ describe('buildImpactReport (code-level chain)', () => {
 
     const chain = report.chain.map((step) => `${step.file}:${step.node}@${step.depth}`);
     expect(chain).toEqual(
-      expect.arrayContaining(['src/views/OrderList.vue:OrderList@0', 'src/views/OrderList.vue:OrderStore@1']),
+      expect.arrayContaining([
+        `src/views/OrderList.vue:${moduleNodeId('src/views/OrderList.vue')}@0`,
+        'src/views/OrderList.vue:OrderStore@1',
+        'src/views/OrderList.vue:Order@2',
+      ]),
     );
     const orderStep = report.chain.find((step) => step.node === 'Order');
     expect(orderStep?.depth).toBe(2);
@@ -190,7 +263,7 @@ describe('buildImpactReport (code-level chain)', () => {
 
     expect(report.apis.map((api) => api.path)).toEqual(expect.arrayContaining(['/api/orders']));
     expect(report.workflows.map((workflow) => workflow.name)).toContain('Order frontend flow');
-    expect(report.tests.some((test) => test.startsWith('Review tests related to:'))).toBe(true);
+    expect(report.tests).toEqual(expect.arrayContaining(['tests/order-flow.test.ts']));
     expect(report.diffFindings.map((finding) => finding.kind)).toEqual(
       expect.arrayContaining(['state_removed', 'state_transition_changed', 'permission_changed', 'validation_changed']),
     );
@@ -198,17 +271,20 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(permissionMappings.some((mapping) => mapping.pages.includes('OrderList'))).toBe(true);
     expect(permissionMappings.some((mapping) => mapping.rules.length > 0)).toBe(true);
     expect(permissionMappings.some((mapping) => mapping.workflows.includes('Order frontend flow'))).toBe(true);
+    const markdown = impactMarkdown(report);
+    expect(markdown).toContain('stores=OrderStore; storeActions=submitOrder');
+    expect(markdown).toContain('ruleCoveringTests=tests/order-flow.test.ts; fieldTests=tests/frontend.test.ts; tests=tests/order-flow.test.ts, tests/frontend.test.ts');
+    expect(markdown).toContain('fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> tests/order-flow.test.ts, tests/frontend.test.ts');
+    expect(markdown).not.toContain('fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> Review tests related to:');
     expect(report.risks.some((risk) => risk.includes('状态变化'))).toBe(true);
   });
 
-  it('reports inbound dependents of a changed module', async () => {
+  it('does not build a chain from legacy-free modules when only the old file path changes', async () => {
     const dir = await setupProject();
     const report = await buildImpactReport(dir, ['src/stores/orderStore.ts']);
 
-    const inbound = report.chain.find((step) => step.node === 'OrderList' && step.direction === 'in');
-    expect(inbound).toBeDefined();
-    expect(inbound?.relationship).toBe('uses_store');
-    expect(report.entities).toEqual(expect.arrayContaining(['Order', 'OrderStore']));
+    expect(report.chain).toEqual([]);
+    expect(report.entities).toEqual([]);
   });
 
   it('falls back to file-name evidence when no graph node matches', async () => {
@@ -227,17 +303,99 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(markdown).toContain('## Diff Findings');
     expect(markdown).toContain('## Diff To Impact Mapping');
     expect(markdown).toContain('## Affected Chain');
-    expect(markdown).toContain('src/views/OrderList.vue = OrderList (changed module)');
+    expect(markdown).toContain(`src/views/OrderList.vue = ${moduleNodeId('src/views/OrderList.vue')} (changed module)`);
     expect(markdown).toContain('→ OrderStore (uses_store, depth 1)');
+    expect(markdown).toContain('## Affected Rules');
+    expect(markdown).toContain('- rule.covered: Covered order rule');
+    expect(markdown).toContain('- rule.orderlist-direct: Order list hides draft rows');
     expect(markdown).toContain('## Affected Workflows');
+    expect(markdown).toContain('## Impact Graph');
+    expect(markdown).toContain('```mermaid');
+    expect(markdown).toContain('graph LR');
+    expect(markdown).toContain('style module_src_views_orderlist_vue fill:#f96');
+    expect(markdown).toContain('module_src_views_orderlist_vue -->|uses_store/unknown| OrderStore');
     expect(markdown).toContain('## Suggested Tests');
-    expect(markdown).toContain('Review tests related to:');
+    expect(markdown).toContain('### Rule Covering Tests');
+    expect(markdown).toContain('tests/order-flow.test.ts');
+    expect(markdown).toContain('### Field Tests');
+    expect(markdown).toContain('tests/frontend.test.ts');
+    expect(markdown).toContain('### Review Hints');
+    expect(markdown).toContain('### Review Hints\n- None identified');
   });
 
   it('falls back to review hints when no concrete test file matches', async () => {
     const dir = await setupProject();
     const report = await buildImpactReport(dir, ['src/services/customerService.ts']);
     expect(report.tests.some((test) => test.startsWith('Review tests related to:'))).toBe(true);
+  });
+
+  it('prioritizes covering tests from affected rules in suggested tests', async () => {
+    const dir = await setupProject();
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue'], ORDER_DIFF);
+
+    expect(report.tests[0]).toBe('tests/order-flow.test.ts');
+    expect(report.tests).toContain('tests/order-flow.test.ts');
+    const mapping = report.diffImpact.find((item) => item.finding.kind === 'state_removed');
+    expect(mapping?.ruleCoveringTests).toEqual(['tests/order-flow.test.ts']);
+    expect(mapping?.fieldTests).toEqual(['tests/frontend.test.ts']);
+    expect(mapping?.reviewHints).toEqual([]);
+  });
+
+  it('reports likely-modified violations when confirmed rule evidence lines change', async () => {
+    const dir = await setupProject();
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue'], ORDER_DIFF);
+
+    expect(report.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: 'rule.orderlist-direct',
+          severity: 'likely-modified',
+          evidence: 'src/views/OrderList.vue:1',
+        }),
+      ]),
+    );
+    expect(report.risks[0]).toContain('rule.orderlist-direct');
+    const markdown = impactMarkdown(report);
+    expect(markdown).toContain('## Rule Violations');
+    expect(markdown).toContain('## Test Coverage');
+    expect(markdown).toContain('### Protected Rules');
+    expect(markdown).toContain('rule.covered: Covered order rule -> tests/order-flow.test.ts');
+    expect(markdown).toContain('### Missing Coverage');
+    expect(markdown).toContain('rule.uncovered: Uncovered order rule (建议补测试)');
+  });
+
+  it('renders protected and missing rule coverage groups in the impact report', async () => {
+    const dir = await setupProject();
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue'], ORDER_DIFF);
+    const markdown = impactMarkdown(report);
+
+    expect(markdown).toContain('## Test Coverage');
+    expect(markdown).toContain('### Protected Rules');
+    expect(markdown).toContain('rule.covered: Covered order rule -> tests/order-flow.test.ts');
+    expect(markdown).toContain('### Missing Coverage');
+    expect(markdown).toContain('rule.uncovered: Uncovered order rule (建议补测试)');
+  });
+
+  it('reports confirmed-missing violations when confirmed rule evidence files are deleted', async () => {
+    const dir = await setupProject();
+    await fs.rm(path.join(dir, 'src/services/orderService.ts'));
+
+    const report = await buildImpactReport(dir, ['src/services/orderService.ts']);
+    expect(report.violations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          ruleId: 'rule.order-locked',
+          severity: 'confirmed-missing',
+          evidence: 'src/services/orderService.ts',
+        }),
+      ]),
+    );
+  });
+
+  it('does not report violations for unrelated changes', async () => {
+    const dir = await setupProject();
+    const report = await buildImpactReport(dir, ['src/services/customerService.ts']);
+    expect(report.violations).toEqual([]);
   });
 
   it('detects database field changes and maps the impact chain', async () => {
@@ -249,14 +407,8 @@ describe('buildImpactReport (code-level chain)', () => {
       ]),
     );
     const dbMappings = report.diffImpact.filter((mapping) => mapping.finding.kind === 'database_field_changed');
-    expect(dbMappings).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          entities: expect.arrayContaining(['Order']),
-          apis: expect.arrayContaining(['GET /api/orders']),
-        }),
-      ]),
-    );
+    expect(dbMappings).toHaveLength(2);
+    expect(dbMappings.some((mapping) => mapping.entities.includes('Order'))).toBe(true);
     expect(report.risks.some((risk) => risk.includes('数据库字段变化'))).toBe(true);
   });
 
@@ -274,5 +426,65 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(report.diffFindings.some((finding) => finding.kind === 'response_type_changed')).toBe(true);
     expect(report.risks.some((risk) => risk.includes('字段类型变化'))).toBe(true);
     expect(report.risks.some((risk) => risk.includes('API 变更'))).toBe(true);
+  });
+
+  it('keeps same-name modules separated by module id', async () => {
+    const dir = await setupProject();
+    const agentRoot = path.join(dir, '.agent');
+    const manifest = JSON.parse(await fs.readFile(path.join(agentRoot, 'memory/discovery-manifest.json'), 'utf8'));
+    manifest.relations.push({
+      id: 'relation.admin-orderlist-orderstore-uses-store',
+      source: moduleNodeId('src/admin/OrderList.vue'),
+      target: 'Customer',
+      relationship: 'uses_entity',
+      cardinality: 'unknown',
+      confidence: 'medium',
+      evidence: ['src/admin/OrderList.vue'],
+    });
+    manifest.modules.push({
+      id: moduleNodeId('src/admin/OrderList.vue'),
+      name: 'OrderList',
+      file: 'src/admin/OrderList.vue',
+    });
+    await fs.writeFile(path.join(agentRoot, 'memory/discovery-manifest.json'), JSON.stringify(manifest), 'utf8');
+
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue']);
+    expect(report.entities).toContain('Order');
+    expect(report.entities).not.toContain('Customer');
+    expect(report.chain.some((step) => step.node === moduleNodeId('src/admin/OrderList.vue'))).toBe(false);
+  });
+
+  it('keeps impact chain stable after file rename when manifest module id matches changed file', async () => {
+    const dir = await setupProject();
+    const agentRoot = path.join(dir, '.agent');
+    const manifestPath = path.join(agentRoot, 'memory/discovery-manifest.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.modules[0] = {
+      id: moduleNodeId('src/views/OrderDirectory.vue'),
+      name: 'OrderList',
+      file: 'src/views/OrderDirectory.vue',
+    };
+    manifest.relations[0].source = moduleNodeId('src/views/OrderDirectory.vue');
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+    const report = await buildImpactReport(dir, ['src/views/OrderDirectory.vue']);
+    expect(report.chain.map((step) => step.node)).toEqual(
+      expect.arrayContaining([moduleNodeId('src/views/OrderDirectory.vue'), 'OrderStore', 'Order']),
+    );
+    expect(report.entities).toContain('Order');
+  });
+
+  it('does not fall back to legacy module names when manifest has modules', async () => {
+    const dir = await setupProject();
+    const agentRoot = path.join(dir, '.agent');
+    const manifestPath = path.join(agentRoot, 'memory/discovery-manifest.json');
+    const manifest = JSON.parse(await fs.readFile(manifestPath, 'utf8'));
+    manifest.modules = [buildModuleDescriptor('src/admin/OrderList.vue')];
+    manifest.relations[0].source = 'OrderList';
+    await fs.writeFile(manifestPath, JSON.stringify(manifest), 'utf8');
+
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue']);
+    expect(report.chain).toEqual([]);
+    expect(report.entities).toContain('Order');
   });
 });

@@ -33,7 +33,7 @@ const VERSION = getVersion();
 const HELP: Record<string, string> = {
   init: 'Usage: business-agent init [--force]\n\nInitialize the .agent/ structure in the current project.\n\nOptions:\n  --force     Re-apply template files to an existing .agent/ directory.',
   discover:
-    'Usage: business-agent discover [--deep] [--dry-run] [--json]\n\nScan source files and create initial business entity/rule/relation candidates.\n\nOptions:\n  --deep      Run deep analyzers (SQL, API routes, TS AST, Vue SFC, Java, MyBatis XML, cross-end linkage, conflict detection).\n  --dry-run   Do not write any files.\n  --json      Emit the manifest as JSON.',
+    'Usage: business-agent discover [--deep] [--dry-run] [--json]\n\nScan source files and create initial business entity/rule/relation candidates.\n\nOptions:\n  --deep      Add the extended analyzer set on top of the default sql/api/ast analyzers (Vue SFC, stores, frontend flows, Java, MyBatis XML, cross-end linkage).\n  --dry-run   Do not write any files.\n  --json      Emit the manifest as JSON.',
   context:
     'Usage: business-agent context <subject> [--json] [--dry-run]\n\nBuild a task-oriented business context package for <subject>.',
   evolve:

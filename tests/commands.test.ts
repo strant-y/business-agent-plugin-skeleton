@@ -7,6 +7,7 @@ import { evolveCommand } from '../src/commands/evolve.js';
 import { promoteCommand } from '../src/commands/promote.js';
 import { contextCommand } from '../src/commands/context.js';
 import { validateCommand } from '../src/commands/validate.js';
+import { discoverCommand } from '../src/commands/discover.js';
 
 async function tempRoot(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ba-cmd-'));
@@ -141,8 +142,34 @@ describe('contextCommand', () => {
           { name: 'Order', description: 'A purchase', confidence: 'high' },
           { name: 'Customer', description: 'A buyer', confidence: 'low' },
         ],
-        rules: [],
-        relations: [],
+        rules: [
+          {
+            id: 'rule.order-a',
+            name: 'Order rule',
+            entity: 'Order',
+            evidence: [
+              {
+                id: 'e-order-a',
+                kind: 'source',
+                capturedAt: '2026-08-20T00:00:00.000Z',
+                file: 'src/order.ts',
+                lineStart: 1,
+              },
+            ],
+          },
+        ],
+        relations: [
+          {
+            id: 'relation.order-page',
+            source: 'module:src/views/orderlist.vue',
+            target: 'Order',
+            relationship: 'renders',
+            cardinality: '1:N',
+            confidence: 'medium',
+            evidence: ['src/views/OrderList.vue'],
+          },
+        ],
+        aliases: { Order: ['订单', 'OrderDTO'] },
         apis: [
           {
             id: 'api.get-orders',
@@ -177,7 +204,15 @@ describe('contextCommand', () => {
         entity: 'Order',
         rule: ['orders are locked under audit'],
         confidence: 'low',
-        evidence: [],
+        evidence: [
+          {
+            id: 'e-order-a',
+            kind: 'source',
+            capturedAt: '2026-08-20T00:00:00.000Z',
+            file: 'src/order.ts',
+            lineStart: 1,
+          },
+        ],
         status: 'confirmed',
       }),
       'utf8',
@@ -190,7 +225,15 @@ describe('contextCommand', () => {
         entity: 'Customer',
         rule: ['customers need consent'],
         confidence: 'low',
-        evidence: [],
+        evidence: [
+          {
+            id: 'e-customer-b',
+            kind: 'source',
+            capturedAt: '2026-08-20T00:00:00.000Z',
+            file: 'src/customer.ts',
+            lineStart: 1,
+          },
+        ],
         status: 'confirmed',
       }),
       'utf8',
@@ -215,6 +258,19 @@ describe('contextCommand', () => {
     expect(content).toContain('GET /api/orders');
     expect(content).toContain('rule-order-a.md');
     expect(content).not.toContain('rule-customer-b.md');
+    expect(content).toContain('```mermaid');
+    expect(content).toContain('graph LR');
+    expect(content).toContain('module_src_views_orderlist_vue -->|renders/1:N| Order');
+    expect(content).not.toContain('|renders/unknown|');
+  });
+
+  it('supports glossary aliases when filtering business context', async () => {
+    const dir = await setupContextProject();
+    await contextCommand(dir, '订单');
+
+    const content = await fs.readFile(path.join(dir, '.agent/memory/active-context.md'), 'utf8');
+    expect(content).toContain('Order rule');
+    expect(content).toContain('[aliases: 订单, OrderDTO]');
   });
 
   it('emits machine-readable output with --json', async () => {
@@ -232,6 +288,23 @@ describe('contextCommand', () => {
     const parsed = JSON.parse(output) as { rules: Array<{ name: string }>; conflicts: Array<{ id: string }> };
     expect(parsed.rules.map((r) => r.name)).toEqual(['Order rule']);
     expect(parsed.conflicts.map((c) => c.id)).toEqual(['conflict.a-vs-b']);
+  });
+});
+
+describe('discoverCommand', () => {
+  it('treats --deep as additive on top of default analyzers', async () => {
+    const dir = await tempRoot();
+    const logs: string[] = [];
+    const original = console.log;
+    console.log = (message: string) => {
+      logs.push(message);
+    };
+    try {
+      await discoverCommand(dir, { deep: true, dryRun: true });
+    } finally {
+      console.log = original;
+    }
+    expect(logs.some((line) => line.startsWith('Scanned '))).toBe(true);
   });
 });
 

@@ -15,10 +15,13 @@ describe('frontendAnalyzer', () => {
       path.join(dir, 'views/OrderEdit.vue'),
       `<template><form @submit="submit"><button @click="save" :disabled="order.status === 'AUDIT'">Save</button></form></template>
 <script setup lang="ts">
+import { ref } from 'vue';
 import axios from 'axios';
 import { useOrderStore } from '../stores/orderStore';
 import { postOrder } from '../api/orderApi';
+interface OrderDTO { id: string; status: string; totalAmount: number }
 const orderStore = useOrderStore();
+const order = ref<OrderDTO>({ id: '1', status: 'DRAFT', totalAmount: 1 });
 const permission = hasPermission('order.edit');
 const rules = { required: true, minLength: 3 };
 function submit() { orderStore.status = 'AUDITING'; axios.post('/api/order'); }
@@ -29,7 +32,21 @@ function save() { submit(); }
     const scan = await scanProject(dir, DEFAULT_CONFIG);
     const result = await frontendAnalyzer.analyze(scan, {
       config: DEFAULT_CONFIG,
-      entities: [],
+      entities: [
+        {
+          id: 'entity.order',
+          name: 'Order',
+          type: 'business_entity',
+          description: 'Order entity',
+          confidence: 'high',
+          evidence: ['Order.ts'],
+          attributes: [
+            { name: 'id', type: 'string' },
+            { name: 'status', type: 'string' },
+            { name: 'totalAmount', type: 'number' },
+          ],
+        },
+      ],
       rules: [],
       relations: [],
     });
@@ -38,15 +55,21 @@ function save() { submit(); }
     );
     expect(result.actions).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ trigger: 'submit' }),
-        expect.objectContaining({ trigger: 'click' }),
+        expect.objectContaining({ trigger: 'submit', stores: ['useOrderStore'] }),
+        expect.objectContaining({ trigger: 'click', stores: ['useOrderStore'] }),
       ]),
     );
     expect(result.rules?.[0]?.rule.join(' ')).toContain('AUDIT');
     expect(result.rules?.[0]?.rule.join(' ')).toContain('order.edit');
     expect(result.rules?.[0]?.rule.join(' ')).toContain('Form validation');
     expect(result.workflows?.[0]?.steps).toEqual(
-      expect.arrayContaining(['Action: submit', 'Action: save', 'State: AUDITING']),
+      expect.arrayContaining(['Action: submit', 'Action: save', 'State: AUDITING', 'Field: Order.status']),
+    );
+    expect(result.pages?.[0]?.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity: 'Order', field: 'status' }),
+        expect.objectContaining({ entity: 'Order', field: 'totalAmount' }),
+      ]),
     );
     expect(result.relations).toEqual(
       expect.arrayContaining([

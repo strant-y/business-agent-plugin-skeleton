@@ -15,9 +15,12 @@ const METHOD_MAPPING_RE =
   /@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*(?:\(\s*"([^"]+)"\s*\))?/g;
 const CLASS_MAPPING_RE = /@RequestMapping\s*\(\s*(?:value\s*=\s*)?["']?([^"')]+)["']?/i;
 const THROW_RE =
-  /throw\s+new\s+(?:RuntimeException|IllegalArgumentException|IllegalStateException|BusinessException|ValidationException)\s*\(\s*"([^"]+)"\s*\)/g;
+  /throw\s+new\s+(?:RuntimeException|IllegalArgumentException|IllegalStateException|BusinessException|ValidationException|\w*(?:Business|Service|Biz)\w*Exception)\s*\(\s*"([^"]+)"\s*\)/g;
 const IF_COND_RE = /if\s*\(((?:[^()]|\([^)]*\))*)\)/g;
 const STATUS_STATES = /(AUDIT|AUDITING|APPROVED|DRAFT|REJECT|SUBMIT|PENDING)/i;
+const VALIDATION_FIELD_RE =
+  /@((?:NotNull|NotBlank|NotEmpty|Size|Min|Max|Valid))(?:\(([^)]*)\))?[\s\S]{0,200}?\b([A-Za-z_$][\w$]*(?:<[^>]+>)?(?:\[\])*)\s+([a-zA-Z_$][\w$]*)\s*;/g;
+const PREAUTHORIZE_RE = /@(PreAuthorize|PreFilter)\s*\(\s*"([^"]+)"\s*\)/g;
 
 function hasStatusCondition(body: string): boolean {
   for (const m of body.matchAll(IF_COND_RE)) {
@@ -125,6 +128,14 @@ function matchRouteEntity(path: string, entities: Entity[]): string | undefined 
   return undefined;
 }
 
+function validationRuleText(annotation: string, args: string | undefined, entity: string, field: string): string {
+  const target = `${entity}.${field}`;
+  if (annotation === 'Valid') return `Field constraint on ${target}: nested value must be valid.`;
+  const normalizedArgs = args?.replace(/\s+/g, ' ').trim();
+  if (!normalizedArgs) return `Field constraint on ${target}: @${annotation}.`;
+  return `Field constraint on ${target}: @${annotation}(${normalizedArgs}).`;
+}
+
 export const javaAnalyzer: Analyzer = {
   name: 'java',
   analyze(scan, ctx) {
@@ -204,6 +215,24 @@ export const javaAnalyzer: Analyzer = {
           });
         }
 
+        if (isEntity) {
+          let validationIndex = 0;
+          for (const vm of body.matchAll(VALIDATION_FIELD_RE)) {
+            const annotation = vm[1];
+            const args = vm[2];
+            const field = vm[4];
+            rules.push({
+              id: `rule.java.validation-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${validationIndex++}`,
+              name: `Field constraint via @${annotation}`,
+              entity: className,
+              rule: [validationRuleText(annotation, args, className, field)],
+              confidence: 'low',
+              evidence: [sample.file],
+              status: 'candidate',
+            });
+          }
+        }
+
         if (isEndpoint || isService) {
           const ruleEntity = isEntity ? className : ruleEntityName(className);
           let n = 0;
@@ -232,12 +261,28 @@ export const javaAnalyzer: Analyzer = {
               rule: ['Service logic branches on status values (AUDIT/AUDITING/APPROVED/DRAFT/REJECT/SUBMIT/PENDING).'],
               confidence: 'low',
               evidence: [sample.file],
+              context: [`${sample.file}: service logic checks order status before proceeding.`],
               status: 'candidate',
             });
           }
         }
 
         if (isEndpoint) {
+          let authIndex = 0;
+          for (const pm of body.matchAll(PREAUTHORIZE_RE)) {
+            rules.push({
+              id: `rule.java.auth-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${authIndex++}`,
+              name: `${pm[1]} authorization guard`,
+              entity: ruleEntityName(className),
+              preconditions: [pm[2]],
+              rule: [`Endpoint access requires: ${pm[2]}.`],
+              confidence: 'low',
+              evidence: [sample.file],
+              context: [`${sample.file}: ${pm[1]}("${pm[2]}") on ${className}.`],
+              status: 'candidate',
+            });
+          }
+
           let base = '';
           const cmm = CLASS_MAPPING_RE.exec(before);
           if (cmm?.[1]) base = cmm[1].replace(/^\/|\/$/g, '');

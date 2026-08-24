@@ -1,5 +1,6 @@
 import type { Analyzer, AnalyzerContext } from '../analyzer.js';
-import type { ApiRoute, Relation } from '../types.js';
+import { fileModuleName, moduleNodeId } from '../module-id.js';
+import type { ApiRoute, ModuleDescriptor, Relation } from '../types.js';
 import { pascal } from './parse.js';
 
 const CALL_RE = /(?:axios|fetch|\$http|request|api)\s*(?:\.\w+)?\s*\(\s*["'`](\/[^"'`]+)["'`]/gi;
@@ -8,16 +9,6 @@ const SIDE_EFFECT_IMPORT_RE = /import\s+["']([^"']+)["']/g;
 
 function componentName(file: string): string {
   return fileModuleName(file);
-}
-
-/** Pascal-case module name for a source file: the shared node identity used by the relation graph. */
-export function fileModuleName(file: string): string {
-  const base =
-    file
-      .split(/[\\/]/)
-      .pop()
-      ?.replace(/\.(vue|tsx|jsx|ts|js)$/i, '') ?? '';
-  return pascal(base);
 }
 
 function pathMatches(callPath: string, routePath: string): boolean {
@@ -65,16 +56,22 @@ function relativeModuleName(importPath: string): string | undefined {
   return base ? pascal(base) : undefined;
 }
 
+function moduleIdByName(name: string, modules: ModuleDescriptor[] = []): string | undefined {
+  return modules.find((item) => item.name === name)?.id;
+}
+
 export function linkFrontendModules(
   scan: { samples: Array<{ file: string; text: string }> },
   apis: ApiRoute[],
   entities: Array<{ name: string }>,
+  modules: ModuleDescriptor[] = [],
 ): Relation[] {
   const relations: Relation[] = [];
   const entityNames = new Set(entities.map((entity) => entity.name));
   for (const sample of scan.samples) {
     if (!/\.(vue|tsx|jsx|ts|js)$/i.test(sample.file)) continue;
     const source = moduleName(sample.file);
+    const sourceId = moduleNodeId(sample.file);
     const add = (target: string, relationship: string, description: string, evidence: string[] = [sample.file]) => {
       if (
         !target ||
@@ -87,11 +84,11 @@ export function linkFrontendModules(
         return;
       relations.push({
         id: `relation.${source.toLowerCase()}-${target.toLowerCase()}-${relationship}`,
-        source,
+        source: sourceId,
         target,
         relationship,
         cardinality: 'unknown',
-        description,
+        description: `${description} [module:${source}]`,
         confidence: 'medium',
         evidence,
       });
@@ -99,15 +96,17 @@ export function linkFrontendModules(
     for (const match of sample.text.matchAll(IMPORT_RE)) {
       const imported = relativeModuleName(match[2]);
       if (!imported) continue;
+      const importedId = moduleIdByName(imported, modules);
       if (/use[A-Z]|composable/i.test(imported))
-        add(imported, 'uses_composable', `${source} uses composable ${imported}.`);
-      if (/store|state/i.test(imported)) add(imported, 'uses_store', `${source} uses store ${imported}.`);
-      if (/\.vue$/i.test(match[2])) add(imported, 'imports_component', `${source} imports component ${imported}.`);
+        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`);
+      if (/store|state/i.test(imported)) add(importedId ?? imported, 'uses_store', `${source} uses store ${imported}.`);
+      if (/\.vue$/i.test(match[2])) add(importedId ?? imported, 'imports_component', `${source} imports component ${imported}.`);
     }
     for (const match of sample.text.matchAll(SIDE_EFFECT_IMPORT_RE)) {
       const imported = relativeModuleName(match[1]);
+      const importedId = imported ? moduleIdByName(imported, modules) : undefined;
       if (imported && /use[A-Z]|composable/i.test(imported))
-        add(imported, 'uses_composable', `${source} uses composable ${imported}.`);
+        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`);
     }
     for (const entity of entityNames) {
       if (new RegExp(`\\b${entity}\\b`, 'i').test(sample.text)) {
@@ -137,7 +136,7 @@ export function linkViewsToApis(
       if (relations.some((r) => r.description?.includes(already))) continue;
       relations.push({
         id: `relation.${source.toLowerCase()}-${matched.entity.toLowerCase()}-api`,
-        source,
+        source: moduleNodeId(sample.file),
         target: matched.entity,
         relationship: 'calls_api',
         cardinality: 'unknown',

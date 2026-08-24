@@ -6,7 +6,7 @@ A minimal Business-First, Project-aware Agent Harness CLI for Node.js + TypeScri
 
 - `init` installs a reusable `.agent/` structure into any repository (`--force` re-applies template files).
 - `discover` scans source files and creates initial business entity/rule/relation candidates. Candidate rules are stored under `.agent/memory/candidates/` so they can be verified and promoted; only confirmed knowledge lands in `.agent/business/`. Manual edits to entity files are preserved across runs.
-  - `discover --deep` additionally runs pluggable analyzers (SQL foreign keys, API routes, TypeScript AST, Vue SFC, Pinia/Vuex stores, composables and API wrappers, frontend pages/actions, React JSX/Hook patterns, Java, MyBatis XML, cross-end linkage) and rule-conflict detection.
+  - `discover` runs the default SQL, API route and TypeScript AST analyzers; `discover --deep` adds the extended analyzer set (Vue SFC, Pinia/Vuex stores, composables and API wrappers, frontend pages/actions, React JSX/Hook patterns, Java, MyBatis XML, cross-end linkage) on top of those defaults.
 - `context` creates a task-oriented business context package including relevant rules, relationships, conflicts, API routes and impact maps (`--json` for machine-readable output).
 - `review` interactively accepts, rejects, or skips candidate rules; use `--non-interactive --accept medium --reject low` for scripted review.
 - `evolve` stores candidate knowledge for later verification and promotion.
@@ -22,7 +22,7 @@ A minimal Business-First, Project-aware Agent Harness CLI for Node.js + TypeScri
 - `retrieve`, `index rebuild`, and `knowledge status|verify|stale` provide the continuous-learning loop: retrieve prior context, rebuild indexes from accumulated memory, inspect current knowledge state, verify a record, or mark stale knowledge after evidence re-checks.
 - `audit` is the periodic health check for accumulated knowledge: it verifies init/manifest/schema integrity, flags pending low-confidence candidate noise, stale/contradicted/deprecated knowledge-state records, evidence files that drifted or disappeared, hook installation status and failures, and unfinished task sessions. Exits `1` when issues are found, so it can gate CI or a weekly review routine.
 
-The default discovery engine is intentionally conservative. Deep analysis is opt-in via `--deep` or the `analyzers` config.
+The default discovery engine runs the low-dependency `sql`, `api` and `ast` analyzers. Additional analysis is opt-in via `--deep` or the `analyzers` config; explicitly setting `analyzers` to `[]` disables all analyzers.
 
 ## Library usage
 
@@ -48,7 +48,7 @@ npm link
 
 cd your-project
 business-agent init
-business-agent discover --deep
+business-agent discover
 business-agent context Plan
 business-agent evolve "审核中的方案不能修改核心险种"
 business-agent promote "审核中的方案不能修改核心险种" --entity Plan
@@ -109,7 +109,7 @@ Global options:
   --json                Emit machine-readable output
 ```
 
-Example: `business-agent discover --deep --json` emits the full manifest without writing files.
+Example: `business-agent discover --deep --json` emits the full manifest without writing files; plain `business-agent discover` already runs the default `sql`, `api`, and `ast` analyzers.
 
 Task lifecycle example:
 
@@ -225,30 +225,30 @@ This makes retrieval suitable for both human operators and agent orchestration.
 `init` creates `.agent/business-agent.json`. All keys are optional and merge over the defaults
 (array values replace the defaults entirely):
 
-| Key                 | Default                                                          | Meaning                                                                                                                              |
-| ------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `ignoreDirs`        | `node_modules, .git, dist, build, ...`                           | Directories skipped during scanning                                                                                                  |
-| `allowedExt`        | `.ts, .tsx, .vue, .java, .sql, .xml, .js, .jsx`                  | File extensions scanned                                                                                                              |
-| `preferredEntities` | `[]`                                                             | Terms treated as medium-confidence entities (word-boundary matched)                                                                  |
-| `maxFileBytes`      | `1048576`                                                        | Files larger than this are skipped                                                                                                   |
-| `maxEntities`       | `100`                                                            | Maximum entities reported                                                                                                            |
-| `maxSampleFiles`    | `40`                                                             | Maximum files read for pattern analysis                                                                                              |
-| `maxSamplesPerExt`  | `20`                                                             | Per-file-extension sample cap (balances front/back-end in monorepos)                                                                 |
-| `maxSampleChars`    | `8000`                                                           | Per-file sample size                                                                                                                 |
-| `relationWindow`    | `150`                                                            | Max distance for relation hints                                                                                                      |
-| `analyzers`         | `[]`                                                             | Deep analyzers to run on `discover` (`sql`, `api`, `ast`, `vue`, `stores`, `frontend`, `java`, `xml`, `linkage`, `llm`, `llm-rules`) |
-| `llm`               | `{ provider: 'openai-compatible', apiKeyEnv: 'OPENAI_API_KEY' }` | Optional LLM enrichment; `model`/`baseUrl` default to `gpt-4o-mini` / `https://api.openai.com/v1` when empty                         |
-| `autoPromote`       | `never`                                                          | Automatic candidate promotion threshold: `never`, `high`, or `medium`                                                                |
+| Key                 | Default                                                          | Meaning                                                                                                                                                                        |
+| ------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ignoreDirs`        | `node_modules, .git, dist, build, ...`                           | Directories skipped during scanning                                                                                                                                            |
+| `allowedExt`        | `.ts, .tsx, .vue, .java, .sql, .xml, .js, .jsx`                  | File extensions scanned                                                                                                                                                        |
+| `preferredEntities` | `[]`                                                             | Terms treated as medium-confidence entities (word-boundary matched)                                                                                                            |
+| `maxFileBytes`      | `1048576`                                                        | Files larger than this are skipped                                                                                                                                             |
+| `maxEntities`       | `100`                                                            | Maximum entities reported                                                                                                                                                      |
+| `maxSampleFiles`    | `40`                                                             | Maximum files read for pattern analysis                                                                                                                                        |
+| `maxSamplesPerExt`  | `20`                                                             | Per-file-extension sample cap (balances front/back-end in monorepos)                                                                                                           |
+| `maxSampleChars`    | `8000`                                                           | Per-file sample size                                                                                                                                                           |
+| `relationWindow`    | `150`                                                            | Max distance for relation hints                                                                                                                                                |
+| `analyzers`         | `['sql', 'api', 'ast']`                                          | Analyzers to run on `discover`; arrays replace defaults, so `[]` disables all (`sql`, `api`, `ast`, `vue`, `stores`, `frontend`, `java`, `xml`, `linkage`, `llm`, `llm-rules`) |
+| `llm`               | `{ provider: 'openai-compatible', apiKeyEnv: 'OPENAI_API_KEY' }` | Optional LLM enrichment; `model`/`baseUrl` default to `gpt-4o-mini` / `https://api.openai.com/v1` when empty                                                                   |
+| `autoPromote`       | `never`                                                          | Automatic candidate promotion threshold: `never`, `high`, or `medium`                                                                                                          |
 
 ## Deep analysis
 
-`discover --deep` (or `analyzers` in config) runs:
+`discover --deep` runs the full analyzer set; `analyzers` in config selects a specific set. The default `discover` run includes `sql`, `api` and `ast`:
 
 P1 frontend models are available by adding `"frontend"` to `analyzers`; the generated manifest includes `pages` and `actions` for context and impact analysis.
 
 - **sql** — extracts `CREATE TABLE` as entities and `REFERENCES`/`JOIN` as relations (shared SQL parser in `src/core/analyzers/parse.ts`).
 - **api** — extracts Express/Nest/Vue-router/Spring route registrations. Frontend router paths are tagged `kind: "frontend"` and never participate in cross-end linkage.
-- **ast** — TypeScript interface/class attributes and typed references (requires `typescript` at runtime; skipped with a warning otherwise).
+- **ast** — TypeScript interface/class attributes and typed references (requires `typescript` at runtime; if it is missing you will see a warning telling you to install `typescript`, and discovery continues without AST results).
 - **vue** — Vue SFC analyzer: parses `<script lang="ts">` via the shared TS AST logic, maps `defineProps`/`defineEmits` to entity attributes, `.vue` component imports to relations, and `<template>` `v-if` / `:disabled` to candidate rules.
 - **stores** — frontend business-logic analyzer: Pinia (`defineStore`) and Vuex (`createStore`) stores, `useXxx` composables and API wrapper modules become typed technical entities; state fields / `ref<T>` declarations become attributes; status assignments, `setStatus` calls, status guards and thrown validation errors become candidate rules; `Promise<T>` response types link API wrappers to their entities, and referenced entities/composables become relations.
 - **frontend** — frontend business-flow analyzer for Vue, React JSX and TypeScript/JavaScript modules: classifies pages/components, detects page routes, Store and API usage, user actions, state reads/writes, permissions, `v-if`/`disabled` conditions and form validation signals. It writes structured `pages` and `actions` to the discovery manifest and connects page -> action -> Store/API relationships.

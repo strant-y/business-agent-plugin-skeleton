@@ -26,7 +26,7 @@ export interface AgentConfig {
 
 export const DEFAULT_CONFIG: AgentConfig = {
   ignoreDirs: ['node_modules', '.git', 'dist', 'build', '.idea', '.vscode', '.agent', 'coverage'],
-  allowedExt: ['.ts', '.tsx', '.vue', '.java', '.sql', '.xml', '.js', '.jsx'],
+  allowedExt: ['.ts', '.tsx', '.vue', '.java', '.sql', '.xml', '.js', '.jsx', '.json'],
   preferredEntities: [],
   maxFileBytes: 1024 * 1024,
   maxEntities: 100,
@@ -34,7 +34,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   maxSamplesPerExt: 20,
   maxSampleChars: 8000,
   relationWindow: 150,
-  analyzers: [],
+  analyzers: ['sql', 'api', 'ast'],
   autoPromote: 'never',
   // A default llm block keeps the key mergeable in mergeConfig: user-provided
   // llm settings are merged over these defaults instead of being dropped.
@@ -56,6 +56,7 @@ export const AVAILABLE_ANALYZERS = [
   'llm-rules',
   'states',
   'frontend',
+  'openapi',
 ] as const;
 export type AnalyzerName = (typeof AVAILABLE_ANALYZERS)[number];
 

@@ -12,6 +12,7 @@ export interface ProjectScan {
   files: string[];
   sampleText: string;
   samples: SampleFile[];
+  fileText: Record<string, string>;
 }
 
 function isBinary(text: string): boolean {
@@ -72,12 +73,14 @@ export async function scanProject(root: string, config: AgentConfig = DEFAULT_CO
 
   const files: string[] = [];
   const samples: SampleFile[] = [];
+  const fileText: Record<string, string> = {};
   const perExt = new Map<string, number>();
   for (let i = 0; i < candidates.length; i++) {
     const text = contents[i];
     if (text === null) continue;
     const rel = candidates[i];
     files.push(rel);
+    fileText[rel] = text;
     const ext = path.extname(rel).toLowerCase();
     const extCount = perExt.get(ext) ?? 0;
     if (samples.length < config.maxSampleFiles && extCount < config.maxSamplesPerExt) {
@@ -87,5 +90,5 @@ export async function scanProject(root: string, config: AgentConfig = DEFAULT_CO
   }
 
   const sampleText = samples.map((s) => `\n--- ${s.file} ---\n${s.text}`).join('\n');
-  return { files, sampleText, samples };
+  return { files, sampleText, samples, fileText };
 }

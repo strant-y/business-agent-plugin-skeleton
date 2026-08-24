@@ -27,6 +27,17 @@ describe('loadConfig', () => {
     expect(config.preferredEntities).toEqual(['Plan', 'Product']);
     expect(config.maxEntities).toBe(DEFAULT_CONFIG.maxEntities);
     expect(config.allowedExt).toEqual(DEFAULT_CONFIG.allowedExt);
+    expect(config.analyzers).toEqual(['sql', 'api', 'ast']);
+  });
+
+  it('defaults discover analyzers to sql, api and ast', () => {
+    expect(DEFAULT_CONFIG.analyzers).toEqual(['sql', 'api', 'ast']);
+  });
+
+  it('allows explicitly disabling all analyzers', async () => {
+    const dir = await tempProject({ analyzers: [] });
+    const config = await loadConfig(dir);
+    expect(config.analyzers).toEqual([]);
   });
 
   it('falls back to defaults and warns on invalid JSON', async () => {

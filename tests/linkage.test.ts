@@ -13,6 +13,7 @@ import {
   staticCallPath,
 } from '../src/core/analyzers/linkage.js';
 import { runAnalyzers } from '../src/core/analyzer.js';
+import { buildModuleDescriptor, moduleNodeId } from '../src/core/module-id.js';
 import type { ApiRoute, Entity } from '../src/core/types.js';
 
 const LINK = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/linkage');
@@ -39,7 +40,7 @@ describe('linkageAnalyzer', () => {
 
     const rel = relations.find((r) => r.relationship === 'calls_api');
     expect(rel).toBeDefined();
-    expect(rel?.source).toBe('OrderList');
+    expect(rel?.source).toBe(moduleNodeId('ui/OrderList.vue'));
     expect(rel?.target).toBe('Order');
     expect(rel?.description).toContain('GET /api/orders');
     expect(rel?.evidence.some((f) => f.endsWith('OrderList.vue'))).toBe(true);
@@ -61,13 +62,34 @@ describe('linkageAnalyzer', () => {
         },
       ],
       [ORDER_ENTITY],
+      [
+        buildModuleDescriptor('ui/OrderList.vue'),
+        buildModuleDescriptor('stores/orderStore.ts'),
+        buildModuleDescriptor('composables/useOrderData.ts'),
+      ],
     );
     expect(relations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ source: 'OrderList', target: 'OrderStore', relationship: 'uses_store' }),
-        expect.objectContaining({ source: 'OrderList', target: 'UseOrderData', relationship: 'uses_composable' }),
-        expect.objectContaining({ source: 'OrderList', target: 'Order', relationship: 'uses_entity' }),
-        expect.objectContaining({ source: 'OrderStore', target: 'UseOrderData', relationship: 'uses_composable' }),
+        expect.objectContaining({
+          source: moduleNodeId('ui/OrderList.vue'),
+          target: moduleNodeId('stores/orderStore.ts'),
+          relationship: 'uses_store',
+        }),
+        expect.objectContaining({
+          source: moduleNodeId('ui/OrderList.vue'),
+          target: moduleNodeId('composables/useOrderData.ts'),
+          relationship: 'uses_composable',
+        }),
+        expect.objectContaining({
+          source: moduleNodeId('ui/OrderList.vue'),
+          target: 'Order',
+          relationship: 'uses_entity',
+        }),
+        expect.objectContaining({
+          source: moduleNodeId('stores/orderStore.ts'),
+          target: moduleNodeId('composables/useOrderData.ts'),
+          relationship: 'uses_composable',
+        }),
       ]),
     );
   });
@@ -136,6 +158,16 @@ describe('linkageAnalyzer', () => {
     const relations = linkViewsToApis(scan, backend);
     expect(relations.length).toBe(1);
     expect(relations[0].target).toBe('Order');
+  });
+});
+
+describe('module-id', () => {
+  it('builds stable module descriptors from file paths', () => {
+    expect(buildModuleDescriptor('src/views/OrderList.vue')).toEqual({
+      id: moduleNodeId('src/views/OrderList.vue'),
+      name: 'OrderList',
+      file: 'src/views/OrderList.vue',
+    });
   });
 });
 

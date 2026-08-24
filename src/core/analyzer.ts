@@ -14,6 +14,8 @@ import { llmAnalyzer } from './analyzers/llm.js';
 import { llmRulesAnalyzer } from './analyzers/llm-rules.js';
 import { statesAnalyzer } from './analyzers/states.js';
 import { frontendAnalyzer } from './analyzers/frontend.js';
+import { openapiAnalyzer } from './analyzers/openapi.js';
+import { buildModuleDescriptor } from './module-id.js';
 
 export interface AnalyzerContext {
   config: AgentConfig;
@@ -54,6 +56,7 @@ const REGISTRY: Record<AnalyzerName, Analyzer> = {
   'llm-rules': llmRulesAnalyzer,
   states: statesAnalyzer,
   frontend: frontendAnalyzer,
+  openapi: openapiAnalyzer,
 };
 
 export function resolveAnalyzers(
@@ -137,7 +140,7 @@ export interface RunAnalyzersResult {
  * regardless of which parallel analyzer finishes first.
  */
 const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend'];
-const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'llm', 'llm-rules'];
+const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'openapi', 'llm', 'llm-rules'];
 
 export async function runAnalyzers(
   scan: ProjectScan,
@@ -225,6 +228,7 @@ export async function runAnalyzers(
         scan,
         accApis,
         uniqEntities([...baseEntities, ...accEntities]).map((entity) => ({ name: entity.name })),
+        scan.files.filter((file) => /\.(vue|tsx|jsx|ts|js)$/i.test(file)).map((file) => buildModuleDescriptor(file)),
       ),
     );
     const finalCtx: AnalyzerContext = {

@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { moduleNodeId } from '../src/core/module-id.js';
 import { discover } from '../src/core/discovery.js';
 
 const FULL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/full');
@@ -28,9 +29,13 @@ describe('discover --deep with frontend + backend analyzers', () => {
     ).toBe(true);
 
     const callsApi = manifest.relations.find(
-      (r) => r.relationship === 'calls_api' && r.source === 'OrderList' && r.target === 'Order',
+      (r) => r.relationship === 'calls_api' && r.source === moduleNodeId('ui/OrderList.vue') && r.target === 'Order',
     );
     expect(callsApi).toBeDefined();
+
+    expect(manifest.modules).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: moduleNodeId('ui/OrderList.vue'), name: 'OrderList', file: 'ui/OrderList.vue' })]),
+    );
 
     const apis = manifest.apis.map((a) => `${a.method} ${a.path}`);
     expect(apis).toEqual(expect.arrayContaining(['POST /api/orders', 'GET /api/orders/{id}']));

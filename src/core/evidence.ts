@@ -49,27 +49,40 @@ export function contentHash(value: string | Buffer): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function normalizeEvidenceItem(item: string | EvidenceRef, kind: EvidenceKind, index: number): EvidenceRef {
-  if (typeof item !== 'string') {
+function normalizeEvidenceItem(
+  item: string | EvidenceRef | null | undefined,
+  kind: EvidenceKind,
+  index: number,
+): EvidenceRef {
+  if (typeof item === 'string') {
+    const match = item.match(/^(.*?):(\d+)(?:-(\d+))?$/);
+    const file = match?.[1] ?? item;
+    const lineStart = match ? Number(match[2]) : undefined;
+    const lineEnd = match?.[3] ? Number(match[3]) : undefined;
     return {
-      ...item,
-      kind: item.kind ?? kind,
-      capturedAt: item.capturedAt || new Date().toISOString(),
-      strength: item.strength ?? (kind === 'human' ? 'direct' : 'linked'),
+      id: `evidence-${contentHash(item).slice(0, 16)}-${index}`,
+      kind,
+      strength: kind === 'human' ? 'direct' : 'linked',
+      file,
+      lineStart,
+      lineEnd,
+      capturedAt: new Date().toISOString(),
     };
   }
-  const match = item.match(/^(.*?):(\d+)(?:-(\d+))?$/);
-  const file = match?.[1] ?? item;
-  const lineStart = match ? Number(match[2]) : undefined;
-  const lineEnd = match?.[3] ? Number(match[3]) : undefined;
+  if (!item || typeof item !== 'object') {
+    return {
+      id: `evidence-${contentHash(String(item ?? '')).slice(0, 16)}-${index}`,
+      kind,
+      strength: kind === 'human' ? 'direct' : 'linked',
+      file: String(item ?? ''),
+      capturedAt: new Date().toISOString(),
+    };
+  }
   return {
-    id: `evidence-${contentHash(item).slice(0, 16)}-${index}`,
-    kind,
-    strength: kind === 'human' ? 'direct' : 'linked',
-    file,
-    lineStart,
-    lineEnd,
-    capturedAt: new Date().toISOString(),
+    ...item,
+    kind: item.kind ?? kind,
+    capturedAt: item.capturedAt || new Date().toISOString(),
+    strength: item.strength ?? (kind === 'human' ? 'direct' : 'linked'),
   };
 }
 

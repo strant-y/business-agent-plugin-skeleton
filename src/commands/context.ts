@@ -1,6 +1,8 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
+import { resolveCanonicalName } from '../core/glossary.js';
+import { buildGraph, renderMermaidSubgraph } from '../core/graph.js';
 import { retrieveTaskContext } from '../core/retrieval.js';
 import type {
   ApiRoute,
@@ -17,13 +19,14 @@ function escapeRegExp(value: string): string {
 
 interface ContextManifest {
   entities?: Array<{ name: string; description: string; confidence: string }>;
-  rules?: Array<{ id: string; name: string; entity: string }>;
+  rules?: Array<{ id: string; name: string; entity: string; evidence?: Array<unknown> }>;
   apis?: ApiRoute[];
   conflicts?: RuleConflict[];
   states?: StateMachine[];
   workflows?: WorkflowTemplate[];
   pages?: FrontendPage[];
   actions?: UserAction[];
+  aliases?: Record<string, string[]>;
 }
 
 export interface ContextOptions {
@@ -47,7 +50,9 @@ export async function contextCommand(root: string, subject: string, options: Con
       console.warn(`Warning: ignoring unreadable manifest at ${manifestFile}`);
     }
   }
-  const subjectLower = subject.toLowerCase();
+  const aliasMap = manifest?.aliases ?? {};
+  const canonicalSubject = resolveCanonicalName(subject, aliasMap);
+  const subjectLower = canonicalSubject.toLowerCase();
   // Exact match first, then word-boundary match, then a conservative substring
   // fallback so "der" does not match "Order".
   const entities = manifest?.entities ?? [];
@@ -93,6 +98,11 @@ export async function contextCommand(root: string, subject: string, options: Con
     matched = entities.filter((e) => names.has(e.name));
   }
   const matchedNames = new Set(matched.map((e) => e.name));
+  for (const [canonical, aliases] of Object.entries(aliasMap)) {
+    if (canonical.toLowerCase() === subjectLower || aliases.some((alias) => alias.toLowerCase() === subjectLower)) {
+      matchedNames.add(canonical);
+    }
+  }
 
   const relevantRules = rules.filter((r) => matchedNames.has(r.entity) || r.entity.toLowerCase() === subjectLower);
   const relevantRelations = relations.filter((r) => matchedNames.has(r.source) || matchedNames.has(r.target));
@@ -122,18 +132,35 @@ export async function contextCommand(root: string, subject: string, options: Con
   for (const rule of relevantRules) relevantImpactFiles.add(`${safeFileId(rule.id)}.md`);
   for (const relation of relevantRelations) relevantImpactFiles.add(`${safeFileId(relation.id)}.md`);
   const relevantImpacts = impacts.filter((i) => relevantImpactFiles.has(path.basename(i)));
+  const graphRelations = [...(manifest?.relations ?? []), ...relations];
+  const graph = buildGraph(manifest ?? {}, relations);
+  const relationshipGraph = matchedNames.size
+    ? renderMermaidSubgraph({
+        graph,
+        manifest: manifest ?? {},
+        relations: graphRelations,
+        starts: [...matchedNames],
+        maxDepth: 2,
+      })
+    : undefined;
 
   const lines = [
     '# Active Business Context',
     '',
     `Subject: ${subject}`,
     ...(retrievalFallback
-      ? ['', '> Note: no exact entity-name match; entities below resolved via content retrieval (Chinese terms supported).']
+      ? [
+          '',
+          '> Note: no exact entity-name match; entities below resolved via content retrieval (Chinese terms supported).',
+        ]
       : []),
     '',
     '## Relevant Entities',
     ...(matched.length
-      ? matched.map((e) => `- ${e.name} (${e.confidence}): ${e.description}`)
+      ? matched.map(
+          (e) =>
+            `- ${e.name} (${e.confidence}): ${e.description}${aliasMap[e.name]?.length ? ` [aliases: ${aliasMap[e.name].join(', ')}]` : ''}`,
+        )
       : ['- No exact entity match. Review Business Index.']),
     '',
     '## Relevant Rules',
@@ -147,6 +174,9 @@ export async function contextCommand(root: string, subject: string, options: Con
     ...(relevantRelations.length
       ? relevantRelations.map((r) => `- ${r.source} --(${r.relationship}, ${r.cardinality})--> ${r.target}`)
       : ['- None yet.']),
+    ...(relationshipGraph?.mermaid
+      ? ['', '```mermaid', relationshipGraph.mermaid, '```', ...(relationshipGraph.truncated ? ['- Graph truncated at 40 nodes.'] : [])]
+      : []),
     '',
     '## Rule Conflicts',
     ...(relevantConflicts.length

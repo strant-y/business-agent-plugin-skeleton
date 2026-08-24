@@ -1,6 +1,6 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
 import type { Entity, StateMachine, StateTransition } from '../types.js';
-import { fileModuleName } from './linkage.js';
+import { fileModuleName } from '../module-id.js';
 
 const STATUS_NAMES = /\b(?:status|state)\b\s*(?:===?|!==?|==|in|:)?\s*["']([A-Z][A-Z0-9_-]*)["']/gi;
 const ENUM_RE = /enum\s+\w+\s*\{([\s\S]*?)\}/gi;

@@ -258,6 +258,40 @@ describe('retrieveTaskContext', () => {
     expect(hits.slice(0, 2).map((hit) => hit.id)).toContain('task-doc');
   });
 
+  it('uses manifest aliases for glossary and synonym recall', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-alias-'));
+    const now = new Date().toISOString();
+    await fs.mkdir(path.join(root, '.agent/memory'), { recursive: true });
+    await fs.writeFile(
+      path.join(root, '.agent/memory/discovery-manifest.json'),
+      JSON.stringify({
+        generatedAt: now,
+        projectRoot: root,
+        filesScanned: 1,
+        entities: [
+          {
+            id: 'entity.order',
+            name: 'Order',
+            type: 'business_entity',
+            description: '订单',
+            confidence: 'high',
+            evidence: [],
+            tags: [],
+          },
+        ],
+        rules: [],
+        relations: [],
+        apis: [],
+        conflicts: [],
+        aliases: { Order: ['订单', 'OrderDTO'] },
+      }),
+      'utf8',
+    );
+
+    const hits = await retrieveTaskContext(root, '订单');
+    expect(hits.map((hit) => hit.title)).toContain('Order');
+  });
+
   it('keeps feedback correction records retrievable with explicit reasons and warnings', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-feedback-'));
     const now = new Date().toISOString();

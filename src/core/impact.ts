@@ -1,8 +1,19 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { loadRules, loadRelations } from './knowledge.js';
-import { fileModuleName } from './analyzers/linkage.js';
-import type { BusinessRule, DiscoverManifest, FrontendPage, Relation, UserAction, WorkflowTemplate } from './types.js';
+import { fileModuleName } from './module-id.js';
+import { buildGraph, renderMermaidSubgraph, resolveStartNodes, traceGraph } from './graph.js';
+import { normalizeEvidence, validateEvidence } from './evidence.js';
+import type {
+  BusinessRule,
+  DiscoverManifest,
+  FrontendPage,
+  Relation,
+  RuleViolation,
+  UserAction,
+  WorkflowTemplate,
+  FieldIndexEntry,
+} from './types.js';
 
 export interface DiffFinding {
   kind:
@@ -37,6 +48,14 @@ export interface DiffImpactMapping {
   workflows: string[];
   entities: string[];
   apis: string[];
+  stores?: string[];
+  storeActions?: string[];
+  ruleContexts?: string[];
+  ruleCoveringTests?: string[];
+  fieldTests?: string[];
+  reviewHints?: string[];
+  contractDrift?: string[];
+  fieldPath?: string[];
 }
 
 interface PendingDiffLine {
@@ -74,84 +93,14 @@ export interface ImpactReport {
   tests: string[];
   diffFindings: DiffFinding[];
   diffImpact: DiffImpactMapping[];
+  violations: RuleViolation[];
   risks: string[];
   chain: ImpactChainStep[];
+  impactGraph?: string;
+  impactGraphTruncated?: boolean;
   warnings: string[];
 }
 
-const MAX_DEPTH = 3;
-const MAX_CHAIN_STEPS = 300;
-
-interface Graph {
-  nodes: Set<string>;
-  out: Map<string, Map<string, string>>;
-  in: Map<string, Map<string, string>>;
-}
-
-function addEdge(graph: Graph, source: string, target: string, relationship: string): void {
-  if (source === target) return;
-  graph.nodes.add(source);
-  graph.nodes.add(target);
-  let outEdges = graph.out.get(source);
-  if (!outEdges) {
-    outEdges = new Map();
-    graph.out.set(source, outEdges);
-  }
-  if (!outEdges.has(target)) outEdges.set(target, relationship);
-  let inEdges = graph.in.get(target);
-  if (!inEdges) {
-    inEdges = new Map();
-    graph.in.set(target, inEdges);
-  }
-  if (!inEdges.has(source)) inEdges.set(source, relationship);
-}
-
-function buildGraph(manifest: Partial<DiscoverManifest>, relations: Relation[]): Graph {
-  const graph: Graph = { nodes: new Set(), out: new Map(), in: new Map() };
-  for (const entity of manifest.entities ?? []) graph.nodes.add(entity.name);
-  for (const relation of [...(manifest.relations ?? []), ...relations]) {
-    addEdge(graph, relation.source, relation.target, relation.relationship);
-  }
-  return graph;
-}
-
-/** Walk the relation graph in both directions, recording reachable nodes. */
-function traceChain(file: string, start: string, graph: Graph): ImpactChainStep[] {
-  const steps: ImpactChainStep[] = [];
-  const seen = new Set<string>([start]);
-  const queue: Array<{ node: string; depth: number; relationship?: string; direction: 'out' | 'in' }> = [
-    { node: start, depth: 0, direction: 'out' },
-  ];
-  while (queue.length && steps.length < MAX_CHAIN_STEPS) {
-    const current = queue.shift()!;
-    steps.push({
-      file,
-      node: current.node,
-      depth: current.depth,
-      relationship: current.relationship,
-      direction: current.direction,
-    });
-    if (current.depth >= MAX_DEPTH) continue;
-    const neighbors = new Map<string, { relationship: string; direction: 'out' | 'in' }>();
-    for (const [node, rel] of graph.out.get(current.node) ?? []) {
-      neighbors.set(node, { relationship: rel, direction: 'out' });
-    }
-    for (const [node, rel] of graph.in.get(current.node) ?? []) {
-      if (!neighbors.has(node)) neighbors.set(node, { relationship: rel, direction: 'in' });
-    }
-    for (const [node, edge] of neighbors) {
-      if (seen.has(node)) continue;
-      seen.add(node);
-      queue.push({
-        node,
-        depth: current.depth + 1,
-        relationship: edge.relationship,
-        direction: edge.direction,
-      });
-    }
-  }
-  return steps;
-}
 
 export async function buildImpactReport(root: string, changedFiles: string[], diffText = ''): Promise<ImpactReport> {
   const agentRoot = path.join(root, '.agent');
@@ -169,23 +118,34 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
   }
 
   const normalized = changedFiles.map((file) => file.replaceAll('\\', '/').toLowerCase());
-  const evidenceMatches = (evidence: string[] | undefined): boolean =>
-    (evidence ?? []).some((item) => normalized.some((file) => file.endsWith(item.replaceAll('\\', '/').toLowerCase())));
+  const evidenceMatches = (evidence: Array<string | { file?: string }> | undefined): boolean =>
+    (evidence ?? []).some((item) => {
+      const target = typeof item === 'string' ? item : item.file;
+      if (!target) return false;
+      return normalized.some((file) => file.endsWith(target.replaceAll('\\', '/').toLowerCase()));
+    });
 
   const rules = await loadRules(agentRoot);
   const relations = await loadRelations(agentRoot);
   const graph = buildGraph(manifest, relations);
+  const manifestModules = manifest.modules ?? [];
 
   const affectedEntities = new Set<string>(
     (manifest.entities ?? []).filter((entity) => evidenceMatches(entity.evidence)).map((entity) => entity.name),
   );
-  const entityTableAliases = buildEntityTableAliases((manifest.entities ?? []).map((entity) => entity.name));
+  const entityTableAliases = buildEntityTableAliases(manifest.aliases ?? {});
   const chain: ImpactChainStep[] = [];
   const chainNodes = new Set<string>();
   for (const file of changedFiles) {
-    const module = fileModuleName(file);
-    if (graph.nodes.has(module) || affectedEntities.has(module)) {
-      const steps = traceChain(file, module, graph);
+    const moduleIds = resolveStartNodes(file, manifest);
+    if (!manifestModules.length) {
+      if (!warnings.includes('Legacy manifest: node identity may be unstable; re-run discover.')) {
+        warnings.push('Legacy manifest: node identity may be unstable; re-run discover.');
+      }
+    }
+    for (const start of moduleIds) {
+      if (!graph.nodes.has(start)) continue;
+      const steps = traceGraph(file, start, graph);
       for (const step of steps) chainNodes.add(step.node);
       chain.push(...steps);
     }
@@ -235,9 +195,7 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     ),
   );
   const diffFindings = analyzeDiff(changedFiles, diffText);
-  const tests = [
-    ...new Set(reportTests(manifest, changedFiles, pages, actions, workflows, matchedRules, diffFindings)),
-  ];
+  const tests = reportTests(manifest, changedFiles, pages, actions, workflows, matchedRules, diffFindings);
   const diffImpact = mapDiffImpact(
     diffFindings,
     [...affectedEntities],
@@ -249,8 +207,22 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     matchedRules,
     workflows,
     tests,
+    manifest.fieldIndex ?? {},
+    manifest.apis ?? [],
   );
-  const risks = deriveRisks(diffFindings, pages, actions, matchedRules, workflows, tests);
+  const impactGraphResult = chain.length
+    ? renderMermaidSubgraph({
+        graph,
+        manifest,
+        relations: [...(manifest.relations ?? []), ...relations],
+        starts: [...new Set(chain.filter((step) => step.depth === 0).map((step) => step.node))],
+        maxDepth: 3,
+        highlightNodes: [...new Set(chain.filter((step) => step.depth === 0).map((step) => step.node))],
+      })
+    : undefined;
+  const violations = await detectRuleViolations(root, changedFiles, diffFindings, matchedRules, warnings);
+  const contractDrift = summarizeContractDrift(diffImpact);
+  const risks = deriveRisks(diffFindings, pages, actions, matchedRules, workflows, tests, violations, contractDrift);
   return {
     files: changedFiles,
     entities: [...affectedEntities],
@@ -263,8 +235,12 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     tests,
     diffFindings,
     diffImpact,
+    violations,
+    contractDrift,
     risks,
     chain,
+    impactGraph: impactGraphResult?.mermaid,
+    impactGraphTruncated: impactGraphResult?.truncated,
     warnings,
   };
 }
@@ -765,6 +741,17 @@ function reportTests(
       .map((test) => test.replaceAll('\\', '/'))
       .filter((test) => /\.(test|spec)\.[jt]sx?$/.test(test)),
   );
+  const normalizedTests = new Map([...availableTests].map((test) => [test.toLowerCase(), test]));
+  const ruleCoveringTests = [
+    ...new Set(
+      rules.flatMap((rule) =>
+        (rule.coveringTests ?? [])
+          .map((test) => test.replaceAll('\\', '/'))
+          .map((test) => normalizedTests.get(test.toLowerCase()))
+          .filter((test): test is string => Boolean(test)),
+      ),
+    ),
+  ];
   const keywords = [
     ...changedFiles.map((file) => fileModuleName(file)),
     ...pages.map((page) => page.component),
@@ -780,7 +767,8 @@ function reportTests(
     const lower = test.toLowerCase();
     return keywords.some((keyword) => lower.includes(keyword.replace(/[^a-z0-9]+/g, '')) || lower.includes(keyword));
   });
-  if (matchedTests.length > 0) return matchedTests.slice(0, 20);
+  const prioritizedTests = [...new Set([...ruleCoveringTests, ...matchedTests])].slice(0, 20);
+  if (prioritizedTests.length > 0) return prioritizedTests;
   return keywords.slice(0, 8).map((keyword) => `Review tests related to: ${keyword}`);
 }
 
@@ -795,6 +783,8 @@ function mapDiffImpact(
   rules: BusinessRule[],
   workflows: WorkflowTemplate[],
   tests: string[],
+  fieldIndex: Record<string, FieldIndexEntry>,
+  manifestApis: NonNullable<DiscoverManifest['apis']>,
 ): DiffImpactMapping[] {
   return findings.map((finding) => {
     const databaseField =
@@ -803,19 +793,32 @@ function mapDiffImpact(
         : undefined;
     const inferredEntities = inferDatabaseEntities(databaseField, entityTableAliases);
     const inferredApis = inferDatabaseApis(inferredEntities, apiEntityIndex);
+    const fieldEntry = resolveFieldIndexEntry(finding, fieldIndex, databaseField);
     const relatedEntities = [
-      ...new Set([...(entities ?? []).filter((entity) => matchesFinding(finding, [entity])), ...inferredEntities]),
+      ...new Set([
+        ...(entities ?? []).filter((entity) => matchesFinding(finding, [entity])),
+        ...inferredEntities,
+        ...(fieldEntry ? [fieldEntry.entity] : []),
+      ]),
     ];
     const relatedApis = [
-      ...new Set([...(apis ?? []).filter((api) => matchesFinding(finding, [api])), ...inferredApis]),
+      ...new Set([
+        ...(apis ?? []).filter((api) => matchesFinding(finding, [api])),
+        ...inferredApis,
+        ...(fieldEntry?.apis ?? []),
+      ]),
     ];
     const relatedPages = pages.filter((page) =>
+      (fieldEntry?.pages ?? []).includes(page.component) ||
       matchesFinding(finding, [page.component, page.route, ...(page.permissions ?? []), ...(page.apiCalls ?? [])]),
     );
     const relatedActions = actions.filter((action) =>
+      (fieldEntry?.pages ?? []).includes(action.source) ||
+      (fieldEntry?.stores ?? []).some((store) => (action.stores ?? []).includes(store)) ||
       matchesFinding(finding, [
         action.name,
         action.source,
+        ...((action.stores ?? []).map((store) => `store:${store}`) ?? []),
         ...(action.preconditions ?? []),
         ...(action.stateReads ?? []),
         ...(action.stateWrites ?? []),
@@ -832,32 +835,70 @@ function mapDiffImpact(
       ]),
     );
     const relatedWorkflows = (workflows ?? []).filter((workflow) =>
+      (fieldEntry ? workflow.steps.some((step) => step.includes(`Field: ${fieldEntry.entity}.${fieldEntry.field}`)) : false) ||
       matchesFinding(finding, [workflow.name, workflow.description, ...(workflow.steps ?? [])]),
     );
-    const relatedTests = (tests ?? []).filter((test) => matchesFinding(finding, [test]));
+    const ruleCoveringTests = [
+      ...new Set(
+        relatedRules.flatMap((rule) => (rule.coveringTests ?? []).filter((test) => (tests ?? []).includes(test))),
+      ),
+    ];
+    const fieldTests = [...new Set(fieldEntry?.tests ?? [])];
+    const reviewHints = [
+      ...new Set(
+        (tests ?? [])
+          .filter((test) => test.startsWith('Review tests related to:'))
+          .filter((test) => matchesFinding(finding, [test])),
+      ),
+    ];
+    const relatedTests = [...new Set([...ruleCoveringTests, ...fieldTests, ...reviewHints])];
+    const storeActions = [
+      ...new Set([
+        ...(fieldEntry?.storeActions ?? []),
+        ...relatedActions
+          .filter((action) => (fieldEntry?.stores ?? []).some((store) => (action.stores ?? []).includes(store)))
+          .map((action) => action.name),
+      ]),
+    ];
+    const relatedTestFiles = [...new Set([...ruleCoveringTests, ...fieldTests])];
+    const contractDrift = detectContractDrift(finding, relatedApis, manifestApis);
+    const fieldPath = fieldEntry
+      ? [
+          `${fieldEntry.entity}.${fieldEntry.field}`,
+          ...(fieldEntry.apis.length ? [fieldEntry.apis.join(', ')] : []),
+          ...(fieldEntry.stores.length ? [fieldEntry.stores.join(', ')] : []),
+          ...(storeActions.length ? [storeActions.join(', ')] : []),
+          ...(fieldEntry.pages.length ? [fieldEntry.pages.join(', ')] : []),
+          ...(relatedTestFiles.length ? [relatedTestFiles.join(', ')] : []),
+        ]
+      : undefined;
     return {
       finding,
       pages: relatedPages.map((page) => page.component),
       actions: relatedActions.map((action) => action.name),
       rules: relatedRules.map((rule) => rule.id),
       tests: relatedTests,
+      ruleCoveringTests,
+      fieldTests,
+      reviewHints,
+      contractDrift,
       workflows: relatedWorkflows.map((workflow) => workflow.name),
       entities: relatedEntities,
       apis: relatedApis,
+      stores: fieldEntry?.stores ?? [],
+      storeActions,
+      fieldPath,
     };
   });
 }
 
-function buildEntityTableAliases(entities: string[]): Map<string, string[]> {
-  const aliases = new Map<string, string[]>();
-  for (const entity of entities) {
-    const lower = entity.toLowerCase();
-    const values = new Set<string>([lower, `${lower}s`]);
-    if (lower.endsWith('y')) values.add(`${lower.slice(0, -1)}ies`);
-    if (lower.endsWith('s')) values.add(lower.slice(0, -1));
-    aliases.set(entity, [...values]);
-  }
-  return aliases;
+function buildEntityTableAliases(aliases: Record<string, string[]> = {}): Map<string, string[]> {
+  return new Map(
+    Object.entries(aliases).map(([entity, values]) => [
+      entity,
+      [...new Set([entity.toLowerCase(), ...values.map((value) => value.toLowerCase())])],
+    ]),
+  );
 }
 
 function buildApiEntityIndex(apis: DiscoverManifest['apis']): Map<string, string[]> {
@@ -884,6 +925,120 @@ function inferDatabaseEntities(
 
 function inferDatabaseApis(entities: string[], apiEntityIndex: Map<string, string[]>): string[] {
   return [...new Set(entities.flatMap((entity) => apiEntityIndex.get(entity.toLowerCase()) ?? []))];
+}
+
+function resolveFieldIndexEntry(
+  finding: DiffFinding,
+  fieldIndex: Record<string, FieldIndexEntry>,
+  databaseField?: { field: string; definition: string; table?: string },
+): FieldIndexEntry | undefined {
+  const direct = fieldIndex[finding.subject.toLowerCase()];
+  if (direct) return direct;
+  if (databaseField?.table) {
+    return fieldIndex[`${databaseField.table}.${databaseField.field}`.toLowerCase()];
+  }
+  const tail = finding.subject.split('.').pop()?.toLowerCase();
+  if (tail) {
+    const byField = Object.values(fieldIndex).find((entry) => entry.field.toLowerCase() === tail);
+    if (byField) return byField;
+  }
+  const changedPage = fileModuleName(finding.file).toLowerCase();
+  return Object.values(fieldIndex).find((entry) =>
+    entry.pages.some((page) => page.toLowerCase() === changedPage),
+  );
+}
+
+function splitSuggestedTests(tests: string[]): { files: string[]; hints: string[] } {
+  return tests.reduce(
+    (result, test) => {
+      if (test.startsWith('Review tests related to:')) result.hints.push(test);
+      else result.files.push(test);
+      return result;
+    },
+    { files: [] as string[], hints: [] as string[] },
+  );
+}
+
+function summarizeSuggestedTests(
+  report: ImpactReport,
+): { ruleCoveringTests: string[]; fieldTests: string[]; reviewHints: string[]; tests: string[] } {
+  const ruleCoveringTests = [
+    ...new Set(report.diffImpact.flatMap((mapping) => mapping.ruleCoveringTests ?? []).filter(Boolean)),
+  ];
+  const fieldTests = [
+    ...new Set(
+      report.diffImpact
+        .flatMap((mapping) => mapping.fieldTests ?? [])
+        .filter((test) => Boolean(test) && !ruleCoveringTests.includes(test)),
+    ),
+  ];
+  const reviewHints = [
+    ...new Set(
+      report.diffImpact.flatMap((mapping) => mapping.reviewHints ?? []).filter(Boolean),
+    ),
+  ];
+  const tests = [
+    ...new Set([
+      ...ruleCoveringTests,
+      ...fieldTests,
+      ...report.tests.filter(
+        (test) => !test.startsWith('Review tests related to:') && !ruleCoveringTests.includes(test) && !fieldTests.includes(test),
+      ),
+    ]),
+  ];
+  return { ruleCoveringTests, fieldTests, reviewHints, tests };
+}
+
+function formatMappingTests(mapping: Pick<DiffImpactMapping, 'tests' | 'ruleCoveringTests' | 'fieldTests' | 'reviewHints'>): string {
+  const ruleCoveringTests = mapping.ruleCoveringTests ?? [];
+  const fieldTests = mapping.fieldTests ?? [];
+  const reviewHints = mapping.reviewHints ?? [];
+  const mergedFiles = mapping.tests.length
+    ? mapping.tests
+    : [...new Set([...ruleCoveringTests, ...fieldTests])];
+  const parts = [];
+  if (ruleCoveringTests.length) parts.push(`ruleCoveringTests=${ruleCoveringTests.join(', ')}`);
+  if (fieldTests.length) parts.push(`fieldTests=${fieldTests.join(', ')}`);
+  if (mergedFiles.length) parts.push(`tests=${mergedFiles.join(', ')}`);
+  if (reviewHints.length) parts.push(`reviewHints=${reviewHints.join(', ')}`);
+  return parts.join('; ') || 'tests=none';
+}
+
+function detectContractDrift(
+  finding: DiffFinding,
+  relatedApis: string[],
+  manifestApis: NonNullable<DiscoverManifest['apis']>,
+): string[] {
+  if (!['api_path_changed', 'api_method_changed', 'request_param_changed', 'response_type_changed'].includes(finding.kind)) {
+    return [];
+  }
+  const matchedRoutes = manifestApis.filter((api) => relatedApis.includes(`${api.method} ${api.path}`));
+  if (!matchedRoutes.length) {
+    if (finding.kind === 'api_path_changed' || finding.kind === 'api_method_changed') {
+      return [`契约漂移: ${finding.subject} 的代码路由变更后未在 OpenAPI 契约中命中对应接口。`];
+    }
+    return [];
+  }
+  return matchedRoutes.map((api) => `契约漂移: ${finding.kind} 影响 ${api.method} ${api.path}${api.entity ? ` (${api.entity})` : ''}，请同步校验 OpenAPI 契约。`);
+}
+
+function summarizeContractDrift(mappings: DiffImpactMapping[]): string[] {
+  return [...new Set(mappings.flatMap((mapping) => mapping.contractDrift ?? []).filter(Boolean))];
+}
+
+function formatRuleCoverage(rules: BusinessRule[]): string[] {
+  const protectedRules = rules.filter((rule) => (rule.coveringTests?.length ?? 0) > 0);
+  const uncoveredRules = rules.filter((rule) => !rule.coveringTests?.length);
+  return [
+    '## Test Coverage',
+    ...(protectedRules.length
+      ? ['### Protected Rules', ...protectedRules.map((rule) => `- ${rule.id}: ${rule.name} -> ${(rule.coveringTests ?? []).join(', ')}`)]
+      : ['### Protected Rules', '- None identified']),
+    '',
+    ...(uncoveredRules.length
+      ? ['### Missing Coverage', ...uncoveredRules.map((rule) => `- ${rule.id}: ${rule.name} (建议补测试)`)]
+      : ['### Missing Coverage', '- None identified']),
+  ];
 }
 
 function matchesFinding(finding: DiffFinding, candidates: Array<string | undefined>): boolean {
@@ -914,6 +1069,91 @@ function matchesFinding(finding: DiffFinding, candidates: Array<string | undefin
   });
 }
 
+async function detectRuleViolations(
+  root: string,
+  changedFiles: string[],
+  findings: DiffFinding[],
+  rules: BusinessRule[],
+  warnings: string[],
+): Promise<RuleViolation[]> {
+  const normalizedChanged = new Set(changedFiles.map((file) => file.replaceAll('\\', '/').toLowerCase()));
+  const violations: RuleViolation[] = [];
+  for (const rule of rules) {
+    if (rule.status !== 'confirmed') continue;
+    const evidenceRefs = normalizeEvidence(rule.evidence).filter((ref) => ref.file);
+    const relevantRefs = evidenceRefs.filter((ref) =>
+      normalizedChanged.has(ref.file!.replaceAll('\\', '/').toLowerCase()),
+    );
+    for (const ref of relevantRefs) {
+      const findingMatch = matchesEvidenceFinding(ref, findings);
+      if (findingMatch) {
+        violations.push({
+          ruleId: rule.id,
+          ruleName: rule.name,
+          evidence: formatEvidenceLabel(ref),
+          reason: `Related diff finding detected: ${findingMatch.kind} (${findingMatch.subject})`,
+          severity: 'likely-modified',
+        });
+        continue;
+      }
+      try {
+        const result = await validateEvidence(ref, root);
+        if (result.valid) continue;
+        const hasMissingFile = result.warnings.some((warning) => warning.startsWith('Evidence file not found:'));
+        const hasOnlyRangeWarnings = result.warnings.every(
+          (warning) =>
+            warning === 'Evidence line is outside the file.' || warning === 'Evidence line range is outside the file.',
+        );
+        if (!hasMissingFile && !ref.contentHash && !ref.snippet && hasOnlyRangeWarnings) continue;
+        violations.push({
+          ruleId: rule.id,
+          ruleName: rule.name,
+          evidence: formatEvidenceLabel(ref),
+          reason: result.warnings.join('; '),
+          severity: hasMissingFile ? 'confirmed-missing' : 'likely-modified',
+        });
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        warnings.push(`Evidence validation failed for rule ${rule.id}: ${detail}`);
+      }
+    }
+  }
+  return dedupeViolations(violations);
+}
+
+function matchesEvidenceFinding(
+  ref: { file?: string; lineStart?: number; snippet?: string },
+  findings: DiffFinding[],
+): DiffFinding | undefined {
+  if (!ref.file) return undefined;
+  const normalizedFile = ref.file.replaceAll('\\', '/').toLowerCase();
+  const fileName = path.basename(ref.file);
+  return findings.find((finding) => {
+    if (finding.file.replaceAll('\\', '/').toLowerCase() !== normalizedFile) return false;
+    if (ref.lineStart && finding.line && finding.line === ref.lineStart) return true;
+    if (ref.snippet && finding.evidence.includes(ref.snippet)) return true;
+    return finding.evidence.includes(fileName);
+  });
+}
+
+function formatEvidenceLabel(ref: { file?: string; lineStart?: number; lineEnd?: number }): string {
+  if (!ref.file) return 'unknown';
+  if (ref.lineStart && ref.lineEnd && ref.lineEnd !== ref.lineStart)
+    return `${ref.file}:${ref.lineStart}-${ref.lineEnd}`;
+  if (ref.lineStart) return `${ref.file}:${ref.lineStart}`;
+  return ref.file;
+}
+
+function dedupeViolations(violations: RuleViolation[]): RuleViolation[] {
+  const seen = new Set<string>();
+  return violations.filter((violation) => {
+    const key = `${violation.ruleId}|${violation.evidence}|${violation.severity}|${violation.reason}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function deriveRisks(
   findings: DiffFinding[],
   pages: NonNullable<DiscoverManifest['pages']>,
@@ -921,8 +1161,13 @@ function deriveRisks(
   rules: BusinessRule[],
   workflows: NonNullable<DiscoverManifest['workflows']>,
   tests: string[],
+  violations: RuleViolation[],
+  contractDrift: string[],
 ): string[] {
-  const risks: string[] = [];
+  const risks: string[] = violations.map(
+    (violation) =>
+      `规则证据异常 [${violation.severity}] ${violation.ruleId} (${violation.ruleName}): ${violation.evidence} — ${violation.reason}`,
+  );
   if (findings.some((finding) => finding.kind.startsWith('state_'))) {
     risks.push('状态变化可能导致页面显示条件、按钮禁用逻辑和状态机不一致。');
   }
@@ -942,6 +1187,7 @@ function deriveRisks(
   if (findings.some((finding) => finding.kind === 'field_type_changed')) {
     risks.push('字段类型变化可能影响序列化、表单输入和接口返回解析。');
   }
+  risks.push(...contractDrift);
   if (findings.some((finding) => finding.kind === 'permission_changed')) {
     risks.push('权限条件变化需要复核路由守卫、菜单按钮和角色测试。');
   }
@@ -958,6 +1204,7 @@ function deriveRisks(
 }
 
 export function impactMarkdown(report: ImpactReport): string {
+  const suggestedTests = summarizeSuggestedTests(report);
   const lines = [
     '# Change Impact Report',
     '',
@@ -978,7 +1225,7 @@ export function impactMarkdown(report: ImpactReport): string {
     ...(report.diffImpact.length
       ? report.diffImpact.map(
           (mapping) =>
-            `- ${mapping.finding.kind}/${mapping.finding.subject}: entities=${(mapping.entities ?? []).join(', ') || 'none'}; apis=${(mapping.apis ?? []).join(', ') || 'none'}; pages=${mapping.pages.join(', ') || 'none'}; actions=${mapping.actions.join(', ') || 'none'}; rules=${mapping.rules.join(', ') || 'none'}; workflows=${mapping.workflows.join(', ') || 'none'}; tests=${mapping.tests.join(', ') || 'none'}`,
+            `- ${mapping.finding.kind}/${mapping.finding.subject}: entities=${(mapping.entities ?? []).join(', ') || 'none'}; apis=${(mapping.apis ?? []).join(', ') || 'none'}; stores=${(mapping.stores ?? []).join(', ') || 'none'}; storeActions=${(mapping.storeActions ?? []).join(', ') || 'none'}; pages=${mapping.pages.join(', ') || 'none'}; actions=${mapping.actions.join(', ') || 'none'}; rules=${mapping.rules.join(', ') || 'none'}; ruleContexts=${(mapping.ruleContexts ?? []).join(' | ') || 'none'}; workflows=${mapping.workflows.join(', ') || 'none'}; ${formatMappingTests(mapping)}${mapping.fieldPath?.length ? `; fieldPath=${mapping.fieldPath.join(' -> ')}` : ''}`,
         )
       : ['- No diff mapping identified.']),
     '',
@@ -990,6 +1237,11 @@ export function impactMarkdown(report: ImpactReport): string {
             (step.depth > 0 ? ` (${step.relationship}, depth ${step.depth})` : ' (changed module)'),
         )
       : ['- No relation-graph chain; matches below rely on file-name evidence.']),
+    '',
+    '## Impact Graph',
+    ...(report.impactGraph
+      ? ['```mermaid', report.impactGraph, '```', ...(report.impactGraphTruncated ? ['- Graph truncated at 40 nodes.'] : [])]
+      : ['- No impacted graph available.']),
     '',
     '## Affected Entities',
     ...(report.entities.length ? report.entities.map((entity) => `- ${entity}`) : ['- None identified']),
@@ -1022,8 +1274,28 @@ export function impactMarkdown(report: ImpactReport): string {
       ? report.workflows.map((workflow) => `- ${workflow.name}: ${workflow.steps.join(' -> ') || 'no steps'}`)
       : ['- None identified']),
     '',
+    '## Rule Violations',
+    ...(report.violations.length
+      ? report.violations.map(
+          (violation) =>
+            `- [${violation.severity}] ${violation.ruleId} (${violation.ruleName}): ${violation.evidence} — ${violation.reason}`,
+        )
+      : ['- None identified']),
+    '',
+    ...formatRuleCoverage(report.rules),
+    '',
     '## Suggested Tests',
-    ...(report.tests.length ? report.tests.map((test) => `- ${test}`) : ['- None identified']),
+    ...(suggestedTests.ruleCoveringTests.length
+      ? ['### Rule Covering Tests', ...suggestedTests.ruleCoveringTests.map((test) => `- ${test}`)]
+      : ['### Rule Covering Tests', '- None identified']),
+    '',
+    ...(suggestedTests.fieldTests.length
+      ? ['### Field Tests', ...suggestedTests.fieldTests.map((test) => `- ${test}`)]
+      : ['### Field Tests', '- None identified']),
+    '',
+    ...(suggestedTests.reviewHints.length
+      ? ['### Review Hints', ...suggestedTests.reviewHints.map((hint) => `- ${hint}`)]
+      : ['### Review Hints', '- None identified']),
     '',
     '## Risks',
     ...(report.risks.length ? report.risks.map((risk) => `- ${risk}`) : ['- None identified']),

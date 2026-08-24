@@ -1,5 +1,5 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
-import type { BusinessRule, Entity, Relation } from '../types.js';
+import type { BusinessRule, Entity, FieldRef, Relation } from '../types.js';
 import { pascal, entityId } from './parse.js';
 
 /**
@@ -31,6 +31,12 @@ const SET_STATUS_CALL_RE = /\b(?:set|update|change)(?:Status|State)\s*\(\s*["'`]
 const STATUS_GUARD_RE = /\b(?:status|state)\b[\s\S]{0,60}?===?\s*["'`]([A-Z][A-Z0-9_-]*)["'`]/g;
 const THROW_RE = /\bthrow\s+new\s+\w+\s*\(\s*["'`]([^"'`]+)["'`]/g;
 const API_CALL_RE = /\b(?:axios|fetch|\$http|request)\b[^;]{0,80}/g;
+const STORE_STATE_ACCESS_RE = /\b(?:store|\w+Store)\.(?:state\.)?([A-Za-z_$][\w$]*)\b/g;
+const DTO_TYPE_RE = /\b([A-Z][A-Za-z0-9_$]*DTO)\b/g;
+const GENERIC_REF_RE = /\b(?:ref|reactive)\s*<\s*([A-Z][A-Za-z0-9_$]*(?:DTO)?)(?:\[\])?\s*>/g;
+const ASSIGN_FROM_DATA_RE = /\b([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:res|response)\.data\b/g;
+const COMPUTED_BOOL_RE =
+  /(?:const|export\s+const)\s+(can[A-Z][A-Za-z0-9_$]*)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*([^;]+)\s*\);?/g;
 
 function matchingBlock(text: string, openIdx: number): string {
   let depth = 0;
@@ -157,7 +163,7 @@ function bodyRules(
       entity: entityName,
       confidence: 'low',
       evidence: [file],
-      context: [`${file}:${lineOf(fullText, at)}: ${linesAround(fullText, at)}`],
+      context: [`${file}:${lineOf(fullText, at)}: ${kind} rule signal -> ${linesAround(fullText, at)}`],
       status: 'candidate',
       ...rule,
     });
@@ -183,6 +189,19 @@ function bodyRules(
     push(
       { name: 'Explicit validation error thrown', rule: [m[1] || 'A validation error is thrown.'] },
       'throw',
+      m.index ?? 0,
+    );
+  }
+  for (const m of body.matchAll(COMPUTED_BOOL_RE)) {
+    const expression = m[2].replace(/\s+/g, ' ').trim();
+    const states = [...new Set([...m[2].matchAll(STORE_STATE_ACCESS_RE)].map((state) => state[1]))];
+    push(
+      {
+        name: 'Computed permission guard',
+        preconditions: states.length ? states.map((state) => `reads state.${state}`) : undefined,
+        rule: [`Computed guard ${m[1]} controls behavior when: ${expression}.`],
+      },
+      'computed',
       m.index ?? 0,
     );
   }
@@ -229,6 +248,33 @@ function composableRelations(body: string, file: string, sourceName: string, rel
       });
     }
   }
+}
+
+function normalizeDtoEntity(typeName: string): string {
+  return pascal(typeName.replace(/DTO$/i, '').replace(/\[\]$/g, ''));
+}
+
+function entityFieldRefs(name: string, entities: Entity[]): FieldRef[] {
+  const target = normalizeDtoEntity(name);
+  const entity = entities.find((item) => item.name.toLowerCase() === target.toLowerCase());
+  return (entity?.attributes ?? []).map((attribute) => ({ entity: entity.name, field: attribute.name, via: name }));
+}
+
+function storeStateFieldRefs(body: string, entities: Entity[]): FieldRef[] {
+  const refs: FieldRef[] = [];
+  const add = (items: FieldRef[]): void => {
+    for (const item of items) {
+      if (!refs.some((ref) => ref.entity === item.entity && ref.field === item.field)) refs.push(item);
+    }
+  };
+  for (const match of body.matchAll(STORE_STATE_ACCESS_RE)) {
+    const field = match[1];
+    const owner = entities.find((entity) => (entity.attributes ?? []).some((attribute) => attribute.name === field));
+    if (owner) add([{ entity: owner.name, field, via: match[0] }]);
+  }
+  for (const match of body.matchAll(DTO_TYPE_RE)) add(entityFieldRefs(match[1], entities));
+  for (const match of body.matchAll(GENERIC_REF_RE)) add(entityFieldRefs(match[1], entities));
+  return refs;
 }
 
 function apiRelations(
@@ -286,7 +332,7 @@ export const storesAnalyzer: Analyzer = {
           attributes: attributesFromBody(store.body),
           evidence: [sample.file],
         });
-        bodyRules(store.body, sample.text, sample.file, name, 'store', rules);
+        bodyRules(sample.text, sample.text, sample.file, name, 'store', rules);
         usesEntityRelations(store.body, sample.file, name, knownNames, relations);
         composableRelations(store.body, sample.file, name, relations);
       }

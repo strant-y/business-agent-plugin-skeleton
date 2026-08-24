@@ -13,6 +13,10 @@ const SCAN: ProjectScan = {
   files: ['service.ts', 'Order.vue'],
   sampleText: '',
   samples: SNIPPETS,
+  fileText: {
+    'service.ts': 'if (status === "AUDIT") { throw new Error("no edits under audit"); }',
+    'Order.vue': '<button :disabled="order.locked">Save</button>',
+  },
 };
 
 const originalFetch = globalThis.fetch;

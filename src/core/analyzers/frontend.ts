@@ -1,6 +1,6 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
-import type { Entity, FrontendPage, Relation, UserAction, BusinessRule, WorkflowTemplate } from '../types.js';
-import { fileModuleName } from './linkage.js';
+import type { Entity, FieldRef, FrontendPage, Relation, UserAction, BusinessRule, WorkflowTemplate } from '../types.js';
+import { fileModuleName } from '../module-id.js';
 
 function entityId(name: string): string {
   return `entity.${name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`;
@@ -19,6 +19,11 @@ const FORM_RE = /(?:required|minLength|maxLength|min|max|pattern|validate|rules?
 const STATUS_WRITE_RE = /(?:status|state)(?:\.value)?\s*=\s*["'`]([A-Z][A-Z0-9_-]*)["'`]/g;
 const STATUS_READ_RE = /(?:status|state)[\s\S]{0,60}?(?:===?|!==?)\s*["'`]([A-Z][A-Z0-9_-]*)["'`]/g;
 const TEST_HINT_RE = /(?:spec|test)\.(?:ts|tsx|js|jsx)$/i;
+const FIELD_ACCESS_RE = /\b([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\b/g;
+const TYPED_REF_RE = /\b(?:ref|reactive)\s*<\s*([A-Z][A-Za-z0-9_$]*(?:DTO)?)(?:\[\])?\s*>/g;
+const DEFINE_PROPS_RE = /defineProps\s*<\s*\{([\s\S]*?)\}\s*>\s*\(/g;
+const INTERFACE_RE = /interface\s+([A-Z][A-Za-z0-9_$]*(?:DTO)?)\s*\{([\s\S]*?)\}/g;
+const TYPE_FIELD_RE = /([A-Za-z_$][\w$]*)\s*:\s*[^;\n]+/g;
 
 function moduleName(file: string): string {
   return fileModuleName(file);
@@ -65,11 +70,22 @@ function inferWorkflowName(source: string): string {
   return source.replace(/(Page|View|List|Edit|Detail)$/i, '') || source;
 }
 
-function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: string[]): string[] {
+function normalizeDtoEntity(typeName: string): string {
+  return typeName.replace(/DTO$/i, '').replace(/\[\]$/g, '');
+}
+
+function fieldRefsForEntityName(name: string, entities: Entity[]): FieldRef[] {
+  const normalized = normalizeDtoEntity(name);
+  const entity = entities.find((item) => item.name.toLowerCase() === normalized.toLowerCase());
+  return (entity?.attributes ?? []).map((attribute) => ({ entity: entity.name, field: attribute.name, via: name }));
+}
+
+function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: string[], fields: FieldRef[]): string[] {
   const steps = [
     ...actions.map((action) => `Action: ${action.name}`),
     ...states.map((state) => `State: ${state}`),
     ...apiCalls.map((api) => `API: ${api}`),
+    ...fields.map((field) => `Field: ${field.entity}.${field.field}`),
   ];
   return unique(steps);
 }
@@ -107,9 +123,35 @@ function actionUsesApi(text: string, action: UserAction, api: string): boolean {
   return body.includes(path) || new RegExp(`(?:axios|fetch|request|api)\\s*(?:\\.\\w+)?\\s*\\(`, 'i').test(body);
 }
 
+function detectFieldRefs(text: string, entities: Entity[]): FieldRef[] {
+  const refs: FieldRef[] = [];
+  const add = (items: FieldRef[]): void => {
+    for (const item of items) {
+      if (!refs.some((ref) => ref.entity === item.entity && ref.field === item.field)) refs.push(item);
+    }
+  };
+  for (const match of text.matchAll(FIELD_ACCESS_RE)) {
+    const field = match[2];
+    const owner = entities.find((entity) => (entity.attributes ?? []).some((attribute) => attribute.name === field));
+    if (!owner) continue;
+    add([{ entity: owner.name, field, via: match[0] }]);
+  }
+  for (const match of text.matchAll(TYPED_REF_RE)) add(fieldRefsForEntityName(match[1], entities));
+  for (const match of text.matchAll(INTERFACE_RE)) add(fieldRefsForEntityName(match[1], entities));
+  for (const match of text.matchAll(DEFINE_PROPS_RE)) {
+    const body = match[1];
+    for (const field of body.matchAll(TYPE_FIELD_RE)) {
+      const owner = entities.find((entity) => (entity.attributes ?? []).some((attribute) => attribute.name === field[1]));
+      if (owner) add([{ entity: owner.name, field: field[1], via: `props.${field[1]}` }]);
+    }
+  }
+  return refs;
+}
+
 function analyzeSample(
   file: string,
   text: string,
+  entitiesIndex: Entity[],
 ): {
   entities: Entity[];
   pages: FrontendPage[];
@@ -137,6 +179,7 @@ function analyzeSample(
     ),
     ...importedModules.filter((name) => /handle|submit|save|delete|create|update/i.test(name)),
   ]);
+  const fields = detectFieldRefs(text, entitiesIndex);
   const actions = actionNames.map((name, index): UserAction => ({
     id: `action.${source.toLowerCase()}-${name.toLowerCase()}-${index}`,
     name,
@@ -146,6 +189,8 @@ function analyzeSample(
     stateReads,
     stateWrites,
     apiCalls,
+    stores,
+    fields,
     successEffects: stateWrites.map((state) => `State changes to ${state}.`),
     failureEffects: matches(text, /throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/g).map((error) => error),
     evidence: [file],
@@ -161,6 +206,7 @@ function analyzeSample(
           permissions,
           stores,
           apiCalls,
+          fields,
           actions: actions.map((action) => action.id),
           evidence: [file],
         },
@@ -283,7 +329,7 @@ function analyzeSample(
             id: `workflow.${source.toLowerCase()}`,
             name: `${inferWorkflowName(source)} frontend flow`,
             description: `${source} links actions, stores, APIs and states into a frontend workflow.`,
-            steps: inferWorkflowSteps(actions, [...stateReads, ...stateWrites], apiCalls),
+            steps: inferWorkflowSteps(actions, [...stateReads, ...stateWrites], apiCalls, fields),
             status: 'draft',
           },
         ]
@@ -293,7 +339,7 @@ function analyzeSample(
 
 export const frontendAnalyzer: Analyzer = {
   name: 'frontend',
-  analyze(scan): AnalyzeResult {
+  analyze(scan, ctx): AnalyzeResult {
     const entities: Entity[] = [];
     const pages: FrontendPage[] = [];
     const actions: UserAction[] = [];
@@ -302,7 +348,7 @@ export const frontendAnalyzer: Analyzer = {
     const workflows: WorkflowTemplate[] = [];
     for (const sample of scan.samples) {
       if (!/\.(vue|tsx|jsx|ts|js)$/i.test(sample.file)) continue;
-      const result = analyzeSample(sample.file, sample.text);
+      const result = analyzeSample(sample.file, sample.text, ctx.entities);
       entities.push(...result.entities);
       pages.push(...result.pages);
       actions.push(...result.actions);
