@@ -1,16 +1,12 @@
 # Business Glossary
 
-使用下表维护项目内的业务术语、中文名、英文名、缩写和同义词。`Canonical` 填标准实体名，`Aliases` 填可用于检索与归并的别名，多个值用逗号分隔。
+使用下表维护业务术语及其对应的标准实体。`实体` 必须填写 discover 产出的标准实体名，多个别名用逗号分隔。
 
-| Canonical | Aliases                         | Notes             |
-| --------- | ------------------------------- | ----------------- |
-| Order     | 订单, OrderDTO, OrderVO, orders | 订单主实体        |
-| Customer  | 客户, CustomerDTO, customers    | 客户主实体        |
-| Payment   | 支付, 缴费, payment_record      | 支付相关术语      |
-| Invoice   | 发票, billing, invoice_record   | 发票/账单相关术语 |
+| 术语 | 别名 | 实体 |
+| --- | --- | --- |
+| 订单 | OrderDTO, OrderVO, orders | Order |
+| 客户 | CustomerDTO, customers | Customer |
+| 缴费 | Payment, payment_record | Payment |
+| 发票 | billing, invoice_record | Invoice |
 
-> 建议：
->
-> - `Canonical` 使用系统内统一实体名
-> - `Aliases` 同时填写中文术语、接口对象名、表名、复数形式
-> - 删除示例行前，先按项目实际术语补齐
+> 删除示例行前，请按项目实际术语补齐。discover 会将术语、别名、单复数和 DTO/VO 后缀统一归并到实体。

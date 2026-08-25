@@ -115,6 +115,26 @@ async function setupProject(): Promise<string> {
           evidence: ['src/views/OrderList.vue'],
         },
         {
+          id: 'relation.submit-order-store',
+          source: 'submitOrder',
+          target: 'OrderStore',
+          relationship: 'calls',
+          subtype: 'action_store_update',
+          cardinality: 'unknown',
+          confidence: 'high',
+          evidence: ['src/views/OrderList.vue'],
+        },
+        {
+          id: 'relation.submit-order-api',
+          source: 'submitOrder',
+          target: '/api/orders',
+          relationship: 'calls',
+          subtype: 'action_api_call',
+          cardinality: 'unknown',
+          confidence: 'high',
+          evidence: ['src/views/OrderList.vue'],
+        },
+        {
           id: 'relation.orderstore-order-uses-entity',
           source: moduleNodeId('src/stores/orderStore.ts'),
           target: 'Order',
@@ -272,9 +292,9 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(permissionMappings.some((mapping) => mapping.rules.length > 0)).toBe(true);
     expect(permissionMappings.some((mapping) => mapping.workflows.includes('Order frontend flow'))).toBe(true);
     const markdown = impactMarkdown(report);
-    expect(markdown).toContain('stores=OrderStore; storeActions=submitOrder');
-    expect(markdown).toContain('ruleCoveringTests=tests/order-flow.test.ts; fieldTests=tests/frontend.test.ts; tests=tests/order-flow.test.ts, tests/frontend.test.ts');
-    expect(markdown).toContain('fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> tests/order-flow.test.ts, tests/frontend.test.ts');
+    expect(markdown).toContain('actions=submitOrder');
+    expect(markdown).toContain('ruleCoveringTests=tests/order-flow.test.ts; tests=tests/order-flow.test.ts');
+    expect(markdown).toContain('### Field Tests\n- None identified');
     expect(markdown).not.toContain('fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> Review tests related to:');
     expect(report.risks.some((risk) => risk.includes('状态变化'))).toBe(true);
   });
@@ -318,7 +338,7 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(markdown).toContain('### Rule Covering Tests');
     expect(markdown).toContain('tests/order-flow.test.ts');
     expect(markdown).toContain('### Field Tests');
-    expect(markdown).toContain('tests/frontend.test.ts');
+    expect(markdown).toContain('### Field Tests\n- None identified');
     expect(markdown).toContain('### Review Hints');
     expect(markdown).toContain('### Review Hints\n- None identified');
   });
@@ -337,7 +357,7 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(report.tests).toContain('tests/order-flow.test.ts');
     const mapping = report.diffImpact.find((item) => item.finding.kind === 'state_removed');
     expect(mapping?.ruleCoveringTests).toEqual(['tests/order-flow.test.ts']);
-    expect(mapping?.fieldTests).toEqual(['tests/frontend.test.ts']);
+    expect(mapping?.fieldTests).toEqual([]);
     expect(mapping?.reviewHints).toEqual([]);
   });
 
@@ -426,6 +446,26 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(report.diffFindings.some((finding) => finding.kind === 'response_type_changed')).toBe(true);
     expect(report.risks.some((risk) => risk.includes('字段类型变化'))).toBe(true);
     expect(report.risks.some((risk) => risk.includes('API 变更'))).toBe(true);
+    expect(
+      report.diffFindings.some(
+        (finding) => finding.kind === 'api_method_changed' && finding.detail.includes('POST to PATCH'),
+      ),
+    ).toBe(true);
+    expect(report.diffFindings.some((finding) => finding.kind === 'response_type_changed')).toBe(true);
+    expect(report.risks.some((risk) => risk.includes('字段类型变化'))).toBe(true);
+    expect(report.risks.some((risk) => risk.includes('API 变更'))).toBe(true);
+  });
+
+  it('uses configured impact depth for longer dependency chains', async () => {
+    const dir = await setupProject();
+    await fs.writeFile(
+      path.join(dir, '.agent/business-agent.json'),
+      JSON.stringify({ impact: { maxDepth: 1 } }),
+      'utf8',
+    );
+    const report = await buildImpactReport(dir, ['src/views/OrderList.vue']);
+    expect(report.chain.some((step) => step.node === 'Order')).toBe(false);
+    expect(report.chain.some((step) => step.node === 'OrderStore')).toBe(true);
   });
 
   it('keeps same-name modules separated by module id', async () => {
@@ -486,5 +526,19 @@ describe('buildImpactReport (code-level chain)', () => {
     const report = await buildImpactReport(dir, ['src/views/OrderList.vue']);
     expect(report.chain).toEqual([]);
     expect(report.entities).toContain('Order');
+  });
+
+  it('does not resolve ambiguous bare field names to the wrong entity', async () => {
+    const dir = await setupProject();
+    const report = await buildImpactReport(
+      dir,
+      ['src/views/OrderList.vue'],
+      `diff --git a/src/views/OrderList.vue b/src/views/OrderList.vue\nindex 1111111..2222222 100644\n--- a/src/views/OrderList.vue\n+++ b/src/views/OrderList.vue\n@@ -1,1 +1,1 @@\n- status: string;\n+ status: number;\n`,
+    );
+    const fieldTypeMapping = report.diffImpact.find((mapping) => mapping.finding.kind === 'field_type_changed');
+    expect(fieldTypeMapping?.fieldTests).toEqual(['tests/frontend.test.ts']);
+    expect(fieldTypeMapping?.fieldPath?.[0]).toBe('Order.status');
+    expect(fieldTypeMapping?.entities).toContain('Order');
+    expect(fieldTypeMapping?.entities).not.toContain('Customer');
   });
 });

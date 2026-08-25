@@ -135,11 +135,17 @@ describe('runAnalyzers', () => {
   });
 
   it('preserves distinct relations and API routes during deduplication', async () => {
-    const relation = (relationship: string): Relation => ({
-      id: `relation.${relationship}`,
+    const relation = (
+      relationship: Relation['relationship'],
+      subtype?: Relation['subtype'],
+      provenance?: Relation['provenance'],
+    ): Relation => ({
+      id: `relation.${relationship}.${subtype ?? 'none'}.${provenance ?? 'none'}`,
       source: 'Order',
       target: 'Customer',
       relationship,
+      subtype,
+      provenance,
       cardinality: 'unknown',
       confidence: 'low',
       evidence: [],
@@ -155,11 +161,27 @@ describe('runAnalyzers', () => {
     const analyzer: Analyzer = {
       name: 'sql',
       analyze() {
-        return { relations: [relation('references'), relation('calls_api')], apis: [api('backend'), api('frontend')] };
+        return {
+          relations: [
+            relation('references'),
+            relation('calls', 'api_route_call', 'frontend_page'),
+            relation('calls', 'api_route_call', 'frontend_linkage'),
+            relation('calls', 'composable_usage', 'store_module'),
+          ],
+          apis: [api('backend'), api('frontend')],
+        };
       },
     };
     const result = await runAnalyzers(SCAN, { config: DEFAULT_CONFIG, entities: [], rules: [] }, [analyzer]);
-    expect(result.relations).toHaveLength(2);
+    expect(result.relations).toHaveLength(4);
+    expect(result.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ relationship: 'references', source: 'Order', target: 'Customer' }),
+        expect.objectContaining({ relationship: 'calls', subtype: 'api_route_call', provenance: 'frontend_page', source: 'Order', target: 'Customer' }),
+        expect.objectContaining({ relationship: 'calls', subtype: 'api_route_call', provenance: 'frontend_linkage', source: 'Order', target: 'Customer' }),
+        expect.objectContaining({ relationship: 'calls', subtype: 'composable_usage', provenance: 'store_module', source: 'Order', target: 'Customer' }),
+      ]),
+    );
     expect(result.apis).toHaveLength(2);
   });
 

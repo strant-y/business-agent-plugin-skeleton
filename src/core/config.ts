@@ -22,6 +22,7 @@ export interface AgentConfig {
   analyzers: string[];
   autoPromote: 'never' | 'high' | 'medium';
   llm?: LlmConfig;
+  impact?: { maxDepth: number };
 }
 
 export const DEFAULT_CONFIG: AgentConfig = {
@@ -39,6 +40,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   // A default llm block keeps the key mergeable in mergeConfig: user-provided
   // llm settings are merged over these defaults instead of being dropped.
   llm: { provider: 'openai-compatible', apiKeyEnv: 'OPENAI_API_KEY', allowSourceUpload: false },
+  impact: { maxDepth: 6 },
 };
 
 export const CONFIG_FILE = 'business-agent.json';
@@ -71,6 +73,14 @@ function mergeConfig(base: AgentConfig, partial: unknown, onWarning?: (message: 
   for (const key of Object.keys(base) as Array<keyof AgentConfig>) {
     const value = partial[key];
     if (value === undefined) continue;
+    if (key === 'impact') {
+      if (!isPlainObject(value) || typeof value.maxDepth !== 'number' || !Number.isFinite(value.maxDepth) || value.maxDepth < 1) {
+        onWarning?.('Ignoring invalid impact configuration; expected maxDepth to be a positive finite number.');
+        continue;
+      }
+      record.impact = { maxDepth: Math.max(1, Math.min(10, Math.floor(value.maxDepth))) };
+      continue;
+    }
     if (key === 'llm') {
       if (!isPlainObject(value)) {
         onWarning?.('Ignoring invalid llm configuration: expected an object.');

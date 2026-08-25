@@ -83,7 +83,7 @@ function importRelations(text: string, file: string, selfName: string): Relation
       id: `relation.${selfName.toLowerCase()}-${target.toLowerCase()}-import`,
       source: selfName,
       target,
-      relationship: 'imports_component',
+      relationship: 'renders',
       cardinality: 'unknown',
       description: `${selfName} imports component ${target}.`,
       confidence: 'medium',

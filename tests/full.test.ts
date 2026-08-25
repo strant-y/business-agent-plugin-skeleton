@@ -29,7 +29,12 @@ describe('discover --deep with frontend + backend analyzers', () => {
     ).toBe(true);
 
     const callsApi = manifest.relations.find(
-      (r) => r.relationship === 'calls_api' && r.source === moduleNodeId('ui/OrderList.vue') && r.target === 'Order',
+      (r) =>
+        r.relationship === 'calls' &&
+        r.subtype === 'api_route_call' &&
+        r.provenance === 'frontend_linkage' &&
+        r.source === moduleNodeId('ui/OrderList.vue') &&
+        r.target === 'Order',
     );
     expect(callsApi).toBeDefined();
 

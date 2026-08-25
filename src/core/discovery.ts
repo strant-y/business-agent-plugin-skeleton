@@ -1,14 +1,14 @@
 import path from 'node:path';
 import { buildModuleDescriptor } from './module-id.js';
 import { buildAliasMap, loadGlossary, resolveCanonicalName } from './glossary.js';
-import type { DiscoverManifest, Entity, BusinessRule, Relation, FieldIndexEntry, FieldRef } from './types.js';
+import { normalizeRelationship, type DiscoverManifest, type Entity, type BusinessRule, type Relation, type FieldIndexEntry } from './types.js';
 import { scanProject, type SampleFile } from './scanner.js';
 import { loadConfig, type AgentConfig, type AnalyzerName } from './config.js';
 import { validateManifest } from './validate.js';
 import { heuristicScorer } from './evidence.js';
-import { runAnalyzers, resolveAnalyzers, uniqEntities, uniqStrings } from './analyzer.js';
+import { runAnalyzers, resolveAnalyzers, uniqStrings } from './analyzer.js';
 import { detectConflicts } from './conflicts.js';
-import { writeRule, writeRelation, buildIndex } from './knowledge.js';
+import { writeRule, writeRelation, buildIndex, loadRules } from './knowledge.js';
 import { writeJson, writeText, readText, exists } from '../utils/fs.js';
 import {
   applyReviewState,
@@ -74,7 +74,7 @@ function detectRelations(entities: Entity[], text: string, window = 150): Relati
         id: `relation.${source.toLowerCase()}-${target.toLowerCase()}`,
         source,
         target,
-        relationship: 'references_or_contains',
+        relationship: normalizeRelationship('references_or_contains'),
         cardinality: 'unknown',
         description: `Potential business relationship discovered between ${source} and ${target}.`,
         confidence: 'low',
@@ -142,6 +142,7 @@ function buildRuleCoveringTests(
       .map((token) => token.toLowerCase())
       .filter((token) => token && token !== 'unknown');
     const signals = ruleEvidenceSignals(rule);
+    if (signals.length === 0 || entityTokens.length === 0) return rule;
     const coveringTests = testFiles.filter((testFile) => {
       const lowerPath = testFile.toLowerCase();
       if (entityTokens.length && !entityTokens.some((token) => lowerPath.includes(token.toLowerCase()))) return false;
@@ -154,7 +155,31 @@ function buildRuleCoveringTests(
   });
 }
 
-function detectRules(samples: SampleFile[]): BusinessRule[] {
+function inferRuleEntity(evidence: string[], samples: SampleFile[], entities: Entity[]): string {
+  const scored = entities
+    .map((entity) => {
+      const name = entity.name.toLowerCase();
+      const score = evidence.reduce((total, file) => {
+        const sample = samples.find((item) => item.file === file);
+        const text = sample?.text.toLowerCase() ?? '';
+        return total + (file.toLowerCase().includes(name) ? 2 : 0) + (text.includes(name) ? 1 : 0);
+      }, 0);
+      return { entity, score };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.entity.name ?? 'Unknown';
+}
+
+function ruleDescription(id: string, entity: string): string {
+  const subject = entity === 'Unknown' ? '相关业务对象' : entity;
+  if (id === 'validation-state') return `${subject} 的状态变化会影响可执行的校验与业务操作。`;
+  if (id === 'disabled-control') return `${subject} 在特定业务条件下限制用户操作。`;
+  if (id === 'thrown-error') return `${subject} 不满足业务条件时会拒绝本次操作；Review thrown validation errors for the exact rejection message.`;
+  return 'Review the matched business signal as a candidate rule.';
+}
+
+function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {
   const rules: BusinessRule[] = [];
   for (const { id, name, pattern } of RULE_PATTERNS) {
     const evidence = uniq(
@@ -162,12 +187,17 @@ function detectRules(samples: SampleFile[]): BusinessRule[] {
       (f) => f,
     ).slice(0, 10);
     if (evidence.length === 0) continue;
+    const entity = inferRuleEntity(evidence, samples, entities);
     const rule: BusinessRule = {
       id: `rule.discovery.${id}`,
       name,
-      entity: 'Unknown',
+      entity,
       rule: [
-        'Review the matched conditions, disabled controls, and thrown validation errors as candidate business rules.',
+        id === 'thrown-error'
+          ? `${ruleDescription(id, entity)} ${samples
+              .find((sample) => evidence.includes(sample.file))
+              ?.text.match(/throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/i)?.[1] ?? ''}`.trim()
+          : ruleDescription(id, entity),
       ],
       impact: ['Review related UI, API, service, and database code.'],
       confidence: heuristicScorer.score(evidence),
@@ -240,7 +270,8 @@ function buildFieldIndex(
   };
   const actionStoreIndex = new Map<string, string[]>();
   for (const relation of relations ?? []) {
-    if (relation.relationship !== 'action_updates_store') continue;
+    if (normalizeRelationship(relation.relationship) !== 'calls') continue;
+    if (relation.subtype !== 'action_store_update') continue;
     const stores = actionStoreIndex.get(relation.source) ?? [];
     if (!stores.includes(relation.target)) stores.push(relation.target);
     actionStoreIndex.set(relation.source, stores);
@@ -347,7 +378,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   const aliases = buildAliasMap(entities, glossary);
   const canonicalEntities = mergeEntitiesByAlias(entities, aliases);
   const relations = detectRelations(canonicalEntities, scan.sampleText, config.relationWindow);
-  const rules = detectRules(scan.samples);
+  const rules = detectRules(scan.samples, canonicalEntities);
 
   const analyzers = resolveAnalyzers(config, options.analyzers ?? [], warn);
   let finalEntities = canonicalEntities;
@@ -372,13 +403,18 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   }
 
   const agentRoot = path.join(root, '.agent');
+  const confirmedKnowledgeRules = await loadRules(agentRoot);
   const reviewState = await loadReviewState(agentRoot);
   const candidateRules = mergeCandidateRules(applyReviewState(finalRules, reviewState));
   const autoPromoted = candidateRules.filter((rule) => shouldAutoPromote(rule, config.autoPromote));
   const persistedRules = candidateRules.filter((rule) => !shouldAutoPromote(rule, config.autoPromote));
   const confirmedRules = autoPromoted.map((rule) => ({ ...rule, status: 'confirmed' as const }));
   for (const rule of autoPromoted) markReviewed(reviewState, rule, 'accepted', rule.id);
-  finalRules = [...persistedRules, ...confirmedRules];
+  finalRules = mergeCandidateRules([
+    ...persistedRules,
+    ...confirmedRules,
+    ...confirmedKnowledgeRules.map((rule) => ({ ...rule, status: rule.status ?? 'confirmed' as const })),
+  ]);
 
   finalEntities = mergeEntitiesByAlias(finalEntities, aliases);
   const manifestAliases = buildAliasMap(finalEntities, glossary);

@@ -73,9 +73,9 @@ function save() { submit(); }
     );
     expect(result.relations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ source: 'OrderEdit', relationship: 'triggers_action' }),
-        expect.objectContaining({ relationship: 'action_updates_store', target: 'useOrderStore' }),
-        expect.objectContaining({ relationship: 'action_calls_api', target: '/api/order' }),
+        expect.objectContaining({ source: 'OrderEdit', target: 'action.orderedit-submit-0', relationship: 'calls', subtype: 'page_action_trigger' }),
+        expect.objectContaining({ source: 'submit', relationship: 'calls', target: 'useOrderStore', subtype: 'action_store_update' }),
+        expect.objectContaining({ source: 'submit', relationship: 'calls', target: '/api/order', subtype: 'action_api_call' }),
       ]),
     );
   });

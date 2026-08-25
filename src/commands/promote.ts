@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
 import { parseCandidate, buildRuleFromCandidate, buildRelationFromInput } from '../core/candidate.js';
+import { isRelationshipValue } from '../core/types.js';
 import { writeRule, writeRelation, buildIndex, loadRules, loadRelations } from '../core/knowledge.js';
 import { validateRule, validateRelation } from '../core/validate.js';
 import type { Relation } from '../core/types.js';
@@ -143,10 +144,14 @@ async function promoteRelation(
   if (!isCardinality(cardinality)) {
     throw new Error(`Invalid --cardinality "${cardinality}"; expected one of ${CARDINALITIES.join(', ')}`);
   }
+  const relationship = options.relationship ?? 'references';
+  if (!isRelationshipValue(relationship)) {
+    throw new Error(`Invalid --relationship "${relationship}"`);
+  }
   const relation = buildRelationFromInput({
     source,
     target: options.target,
-    relationship: options.relationship ?? 'references',
+    relationship,
     cardinality,
     evidence: resolved ? parseCandidate(resolved.content, resolved.name).evidence : [],
   });

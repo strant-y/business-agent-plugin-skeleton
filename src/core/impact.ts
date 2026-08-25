@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
+import { loadConfig } from './config.js';
 import { loadRules, loadRelations } from './knowledge.js';
 import { fileModuleName } from './module-id.js';
 import { buildGraph, renderMermaidSubgraph, resolveStartNodes, traceGraph } from './graph.js';
@@ -94,6 +95,7 @@ export interface ImpactReport {
   diffFindings: DiffFinding[];
   diffImpact: DiffImpactMapping[];
   violations: RuleViolation[];
+  contractDrift: string[];
   risks: string[];
   chain: ImpactChainStep[];
   impactGraph?: string;
@@ -127,6 +129,7 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
 
   const rules = await loadRules(agentRoot);
   const relations = await loadRelations(agentRoot);
+  const config = await loadConfig(root, (message) => warnings.push(message));
   const graph = buildGraph(manifest, relations);
   const manifestModules = manifest.modules ?? [];
 
@@ -145,7 +148,7 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     }
     for (const start of moduleIds) {
       if (!graph.nodes.has(start)) continue;
-      const steps = traceGraph(file, start, graph);
+      const steps = traceGraph(file, start, graph, config.impact?.maxDepth ?? 3);
       for (const step of steps) chainNodes.add(step.node);
       chain.push(...steps);
     }
@@ -216,7 +219,7 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
         manifest,
         relations: [...(manifest.relations ?? []), ...relations],
         starts: [...new Set(chain.filter((step) => step.depth === 0).map((step) => step.node))],
-        maxDepth: 3,
+        maxDepth: config.impact?.maxDepth ?? 3,
         highlightNodes: [...new Set(chain.filter((step) => step.depth === 0).map((step) => step.node))],
       })
     : undefined;
@@ -472,7 +475,7 @@ function detectSingleLineFinding(
   if (/Promise<[^>]+>/.test(content)) {
     findings.push(makeFinding('response_type_changed', file, line, 'API response type changed', evidence));
   }
-  if (isDatabaseFieldLine(content)) {
+  if (table && isDatabaseFieldLine(content)) {
     findings.push(makeFinding('database_field_changed', file, line, 'Database field changed', evidence, table));
   }
   if (/\bif\s*\(|\bdisabled\b|\bv-if\b|\bv-show\b/.test(content)) {
@@ -700,7 +703,7 @@ function inferFindingSubject(kind: DiffFinding['kind'], file: string, evidence: 
   }
   const stateMatch = evidence.match(/['"`]([A-Z][A-Z0-9_-]*)['"`]/);
   if (stateMatch) return stateMatch[1];
-  const fieldMatch = evidence.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s*[:=]/);
+  const fieldMatch = evidence.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s*:/);
   if (fieldMatch) return fieldMatch[1];
   const apiMatch = evidence.match(/(\/api\/[^'"`\s)]+)/i);
   if (apiMatch) return apiMatch[1];
@@ -937,26 +940,21 @@ function resolveFieldIndexEntry(
   if (databaseField?.table) {
     return fieldIndex[`${databaseField.table}.${databaseField.field}`.toLowerCase()];
   }
+  const entries = Object.values(fieldIndex);
   const tail = finding.subject.split('.').pop()?.toLowerCase();
-  if (tail) {
-    const byField = Object.values(fieldIndex).find((entry) => entry.field.toLowerCase() === tail);
-    if (byField) return byField;
-  }
   const changedPage = fileModuleName(finding.file).toLowerCase();
-  return Object.values(fieldIndex).find((entry) =>
-    entry.pages.some((page) => page.toLowerCase() === changedPage),
-  );
-}
-
-function splitSuggestedTests(tests: string[]): { files: string[]; hints: string[] } {
-  return tests.reduce(
-    (result, test) => {
-      if (test.startsWith('Review tests related to:')) result.hints.push(test);
-      else result.files.push(test);
-      return result;
-    },
-    { files: [] as string[], hints: [] as string[] },
-  );
+  if (tail) {
+    const sameField = entries.filter((entry) => entry.field.toLowerCase() === tail);
+    if (sameField.length === 1) return sameField[0];
+    const pageScoped = sameField.filter((entry) => entry.pages.some((page) => page.toLowerCase() === changedPage));
+    if (pageScoped.length === 1) return pageScoped[0];
+    const testScoped = sameField.filter((entry) => entry.tests.some((test) => test.toLowerCase().includes(changedPage)));
+    if (testScoped.length === 1) return testScoped[0];
+    return undefined;
+  }
+  const pageMatches = entries.filter((entry) => entry.pages.some((page) => page.toLowerCase() === changedPage));
+  if (pageMatches.length === 1) return pageMatches[0];
+  return pageMatches[0];
 }
 
 function summarizeSuggestedTests(

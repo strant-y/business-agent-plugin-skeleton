@@ -162,7 +162,6 @@ export const openapiAnalyzer: Analyzer = {
         );
       }
     }
-    const codeRoutes = new Set((ctx.apis ?? []).map((api) => `${api.method.toUpperCase()} ${api.path}`));
     for (const api of ctx.apis ?? []) {
       const key = `${api.method.toUpperCase()} ${api.path}`;
       if (!apis.some((contract) => `${contract.method.toUpperCase()} ${contract.path}` === key)) {

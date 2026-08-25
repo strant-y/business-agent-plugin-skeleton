@@ -24,13 +24,18 @@ describe('astAnalyzer', () => {
     expect(order?.attributes?.map((a) => a.name)).toEqual(expect.arrayContaining(['id', 'customer', 'total']));
   });
 
-  it('extracts typed references as relations', async () => {
+  it('extracts typed references as relations with inferred cardinality', async () => {
     const scan = await scanProject(DEEP, DEFAULT_CONFIG);
     const result = await astAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [], relations: [] });
 
-    const rel = (result.relations ?? []).find((r) => r.source === 'Customer' && r.target === 'Order');
-    expect(rel).toBeDefined();
-    expect(rel?.relationship).toBe('references');
+    const customerOrders = (result.relations ?? []).find((r) => r.source === 'Customer' && r.target === 'Order');
+    expect(customerOrders).toBeDefined();
+    expect(customerOrders?.relationship).toBe('references');
+    expect(customerOrders?.cardinality).toBe('1:N');
+
+    const orderCustomer = (result.relations ?? []).find((r) => r.source === 'Order' && r.target === 'Customer');
+    expect(orderCustomer).toBeDefined();
+    expect(orderCustomer?.cardinality).toBe('N:1');
   });
 
   it('does not treat string-literal enum values as type references', async () => {

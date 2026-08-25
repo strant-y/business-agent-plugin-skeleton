@@ -1,4 +1,10 @@
-import type { BusinessRule, Relation } from './types.js';
+import {
+  normalizeRelationship,
+  type BusinessRule,
+  type LegacyRelationshipKind,
+  type Relation,
+  type RelationshipKind,
+} from './types.js';
 
 export interface ParsedCandidate {
   name: string;
@@ -74,7 +80,7 @@ export function buildRuleFromCandidate(input: PromoteRuleInput): BusinessRule {
 export interface PromoteRelationInput {
   source: string;
   target: string;
-  relationship: string;
+  relationship: RelationshipKind | LegacyRelationshipKind;
   cardinality: Relation['cardinality'];
   confidence?: Relation['confidence'];
   evidence?: string[];
@@ -86,7 +92,7 @@ export function buildRelationFromInput(input: PromoteRelationInput): Relation {
     id: `relation.${input.source.toLowerCase()}-${input.target.toLowerCase()}`,
     source: input.source,
     target: input.target,
-    relationship: input.relationship,
+    relationship: normalizeRelationship(input.relationship),
     cardinality: input.cardinality,
     description: input.description ?? `Confirmed business relationship between ${input.source} and ${input.target}.`,
     confidence: input.confidence ?? 'medium',

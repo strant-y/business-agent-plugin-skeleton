@@ -1,6 +1,6 @@
 import type { ProjectScan } from './scanner.js';
 import type { AgentConfig, AnalyzerName } from './config.js';
-import type { ApiRoute, BusinessRule, Entity, FrontendPage, Relation, UserAction, WorkflowTemplate } from './types.js';
+import { normalizeRelationship, type ApiRoute, type BusinessRule, type Entity, type FrontendPage, type Relation, type UserAction, type WorkflowTemplate } from './types.js';
 import { AVAILABLE_ANALYZERS } from './config.js';
 import { sqlAnalyzer } from './analyzers/sql.js';
 import { apiAnalyzer } from './analyzers/api.js';
@@ -135,12 +135,14 @@ export interface RunAnalyzersResult {
  * parallel; phases run in order:
  *  1. ENTITY — sql/ast/vue/java/xml (produce entities independently).
  *  2. DEPENDENT — api/llm/llm-rules (consume the entities discovered in phase 1).
- *  3. LINKAGE — runs last because it needs every API route.
+ *  3. CONTRACT — openapi runs after api so contract checks see discovered code routes.
+ *  4. LINKAGE — runs last because it needs every API route.
  * Results are always merged in phase order, so the output is deterministic
  * regardless of which parallel analyzer finishes first.
  */
 const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend'];
-const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'openapi', 'llm', 'llm-rules'];
+const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'llm', 'llm-rules'];
+const CONTRACT_PHASE: AnalyzerName[] = ['openapi'];
 
 export async function runAnalyzers(
   scan: ProjectScan,
@@ -169,6 +171,17 @@ export async function runAnalyzers(
   const accActions: UserAction[] = [];
   const accWorkflows: WorkflowTemplate[] = [];
 
+  const mergeOutcome = (outcome: AnalyzeResult | undefined): void => {
+    accEntities.push(...(outcome?.entities ?? []));
+    accRules.push(...(outcome?.rules ?? []));
+    accRelations.push(...(outcome?.relations ?? []));
+    accApis.push(...(outcome?.apis ?? []));
+    accStates.push(...(outcome?.states ?? []));
+    accPages.push(...(outcome?.pages ?? []));
+    accActions.push(...(outcome?.actions ?? []));
+    accWorkflows.push(...(outcome?.workflows ?? []));
+  };
+
   const runPhase = async (names: AnalyzerName[], phaseCtx: AnalyzerContext): Promise<void> => {
     // All analyzers in a phase share the same context snapshot and run concurrently.
     const outcomes = await Promise.all(
@@ -186,14 +199,7 @@ export async function runAnalyzers(
         warn(`Analyzer "${outcome.name}" failed and was skipped: ${outcome.error}`);
         continue;
       }
-      accEntities.push(...(outcome.result?.entities ?? []));
-      accRules.push(...(outcome.result?.rules ?? []));
-      accRelations.push(...(outcome.result?.relations ?? []));
-      accApis.push(...(outcome.result?.apis ?? []));
-      accStates.push(...(outcome.result?.states ?? []));
-      accPages.push(...(outcome.result?.pages ?? []));
-      accActions.push(...(outcome.result?.actions ?? []));
-      accWorkflows.push(...(outcome.result?.workflows ?? []));
+      mergeOutcome(outcome.result);
     }
   };
 
@@ -221,6 +227,29 @@ export async function runAnalyzers(
     DEPENDENT_PHASE.filter((n) => byName.has(n)),
     enrichedCtx,
   );
+
+  const contractNames = CONTRACT_PHASE.filter((n) => byName.has(n));
+  if (contractNames.length > 0) {
+    const contractCtx: AnalyzerContext = {
+      config: ctx.config,
+      entities: uniqEntities([...baseEntities, ...accEntities]),
+      rules: dedupeRules([...baseRules, ...accRules]),
+      relations: dedupeRelations([...baseRelations, ...accRelations]),
+      apis: dedupeApis(
+        analyzers.some((analyzer) => analyzer.name === 'api') ? accApis : ctx.apis ?? [],
+      ),
+      warn,
+    };
+
+    for (const name of contractNames) {
+      try {
+        mergeOutcome(await byName.get(name)!.analyze(scan, contractCtx));
+      } catch (error) {
+        const detail = error instanceof Error ? error.message : String(error);
+        warn(`Analyzer "${name}" failed and was skipped: ${detail}`);
+      }
+    }
+  }
 
   if (byName.has('linkage')) {
     accRelations.push(
@@ -268,7 +297,14 @@ function dedupeRules(rules: BusinessRule[]): BusinessRule[] {
 function dedupeRelations(relations: Relation[]): Relation[] {
   const seen = new Set<string>();
   return relations.filter((r) => {
-    const key = [r.source, r.target, r.relationship, r.cardinality].join('|');
+    const key = [
+      r.source,
+      r.target,
+      normalizeRelationship(r.relationship),
+      r.subtype ?? '',
+      r.provenance ?? '',
+      r.cardinality,
+    ].join('|');
     if (seen.has(key)) return false;
     seen.add(key);
     return true;

@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { Ajv2020, type ValidateFunction } from 'ajv/dist/2020.js';
 import { exists, readText } from '../utils/fs.js';
-import type { DiscoverManifest } from './types.js';
+import { normalizeRelationship, type DiscoverManifest } from './types.js';
 
 const ajv = new Ajv2020({ allErrors: true });
 
@@ -57,6 +57,9 @@ export async function validateRule(value: unknown): Promise<ValidationResult> {
 }
 
 export async function validateRelation(value: unknown): Promise<ValidationResult> {
+  if (typeof value === 'object' && value !== null && 'relationship' in value) {
+    value = { ...value, relationship: normalizeRelationship(String(value.relationship)) };
+  }
   return validateWith('relation', value);
 }
 

@@ -34,6 +34,20 @@ describe('loadConfig', () => {
     expect(DEFAULT_CONFIG.analyzers).toEqual(['sql', 'api', 'ast']);
   });
 
+  it('loads and bounds impact traversal depth', async () => {
+    const dir = await tempProject({ impact: { maxDepth: 99 } });
+    const config = await loadConfig(dir);
+    expect(config.impact.maxDepth).toBe(10);
+  });
+
+  it('ignores invalid impact traversal depth', async () => {
+    const dir = await tempProject({ impact: { maxDepth: 0 } });
+    const warnings: string[] = [];
+    const config = await loadConfig(dir, (message) => warnings.push(message));
+    expect(config.impact.maxDepth).toBe(DEFAULT_CONFIG.impact.maxDepth);
+    expect(warnings).toHaveLength(1);
+  });
+
   it('allows explicitly disabling all analyzers', async () => {
     const dir = await tempProject({ analyzers: [] });
     const config = await loadConfig(dir);

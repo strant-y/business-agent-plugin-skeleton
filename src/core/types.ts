@@ -47,11 +47,81 @@ export interface RuleViolation {
   severity: 'confirmed-missing' | 'likely-modified';
 }
 
+export type RelationshipKind = 'owns' | 'aggregates' | 'references' | 'calls' | 'renders' | 'maps-to';
+export type LegacyRelationshipKind =
+  | 'references_or_contains'
+  | 'join'
+  | 'uses'
+  | 'uses_entity'
+  | 'uses_store'
+  | 'uses_composable'
+  | 'calls_api'
+  | 'calls_api_route'
+  | 'action_calls_api'
+  | 'imports_component'
+  | 'renders_component'
+  | 'contains'
+  | 'triggers_action'
+  | 'action_updates_store';
+
+const RELATIONSHIP_MIGRATIONS: Record<LegacyRelationshipKind, RelationshipKind> = {
+  references_or_contains: 'references',
+  join: 'references',
+  uses: 'references',
+  uses_entity: 'references',
+  uses_store: 'references',
+  uses_composable: 'calls',
+  calls_api: 'calls',
+  calls_api_route: 'calls',
+  action_calls_api: 'calls',
+  imports_component: 'renders',
+  renders_component: 'renders',
+  contains: 'aggregates',
+  triggers_action: 'calls',
+  action_updates_store: 'calls',
+};
+
+const RELATIONSHIP_KINDS = new Set<RelationshipKind>(['owns', 'aggregates', 'references', 'calls', 'renders', 'maps-to']);
+
+export function normalizeRelationship(value: string): RelationshipKind {
+  if (RELATIONSHIP_KINDS.has(value as RelationshipKind)) return value as RelationshipKind;
+  return RELATIONSHIP_MIGRATIONS[value as LegacyRelationshipKind] ?? 'references';
+}
+
+export function isRelationshipValue(value: string): value is RelationshipKind | LegacyRelationshipKind {
+  return RELATIONSHIP_KINDS.has(value as RelationshipKind) || value in RELATIONSHIP_MIGRATIONS;
+}
+
+export type RelationSubtype =
+  | 'store_usage'
+  | 'store_entity_usage'
+  | 'composable_usage'
+  | 'api_route_call'
+  | 'page_action_trigger'
+  | 'action_store_update'
+  | 'action_api_call';
+
+export type RelationProvenance =
+  | 'discovery_text'
+  | 'ast_type'
+  | 'sql_schema'
+  | 'frontend_page'
+  | 'frontend_action'
+  | 'store_module'
+  | 'composable_module'
+  | 'api_client_module'
+  | 'frontend_linkage'
+  | 'backend_code'
+  | 'xml_mapping'
+  | 'llm_inference';
+
 export interface Relation {
   id: string;
   source: string;
   target: string;
-  relationship: string;
+  relationship: RelationshipKind;
+  subtype?: RelationSubtype;
+  provenance?: RelationProvenance;
   cardinality: '1:1' | '1:N' | 'N:1' | 'N:M' | 'unknown';
   description?: string;
   confidence: Confidence;

@@ -78,6 +78,21 @@ function normalizeCheckValues(raw: string): string[] {
     .filter(Boolean);
 }
 
+function parseColumnAttributes(body: string): Array<{ name: string; type?: string; required?: boolean }> {
+  const attributes: Array<{ name: string; type?: string; required?: boolean }> = [];
+  for (const line of body.split(/,(?![^()]*\))/)) {
+    const match = line.trim().match(/^([a-z_][a-z0-9_$]*)\s+([^\s,()]+(?:\s+\w+)?)/i);
+    if (!match || /^(constraint|primary|foreign|unique|check|index)$/i.test(match[1])) continue;
+    const definition = line.trim();
+    attributes.push({
+      name: match[1],
+      type: match[2],
+      required: /\bnot\s+null\b/i.test(definition),
+    });
+  }
+  return attributes;
+}
+
 function addCheckConstraintRules(text: string, file: string, addEntity: (table: string) => string, rules: BusinessRule[]): void {
   const createTableRe = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(/gi;
   let index = 0;
@@ -140,6 +155,7 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
   const relations: Relation[] = [];
   const rules: BusinessRule[] = [];
   const knownTables = new Set<string>();
+  const entityAttributes = new Map<string, Array<{ name: string; type?: string; required?: boolean }>>();
   const relationKeys = new Set<string>();
 
   const addEntity = (table: string): string => {
@@ -152,6 +168,7 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
         name,
         type: 'business_entity',
         description: `Discovered from SQL table ${table}.`,
+        attributes: entityAttributes.get(table),
         confidence: 'medium',
         evidence: evidenceFiles.filter((f) => re.test(f)).slice(0, 8).length
           ? evidenceFiles.filter((f) => re.test(f)).slice(0, 8)
@@ -187,8 +204,10 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
   addTableNames(text, names);
   for (const table of names) addEntity(table);
 
-  const createBodies = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(([\s\S]*?)\)/gi;
+  const createBodies = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(((?:[^()]|\([^()]*\)|\([^()]*\([^()]*\)[^()]*\))*)\)/gi;
   for (const match of text.matchAll(createBodies)) {
+    const table = tableName(match[1]);
+    if (table) entityAttributes.set(table, parseColumnAttributes(match[2]));
     const source = tableName(match[1]);
     if (!source) continue;
     for (const reference of match[2].matchAll(/\breferences\s+([a-z_][a-z0-9_$]*)/gi)) {
@@ -203,6 +222,12 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
   }
 
   addJoinRelations(text, addRelation, addEntity);
+  for (const entity of entities) {
+    const table = entity.name.replace(/[A-Z]/g, (value) => `_${value.toLowerCase()}`).replace(/^_/, '');
+    const attributes = entityAttributes.get(table);
+    if (attributes?.length) entity.attributes = attributes;
+  }
+
   const subqueryRe = /\b(?:in|exists)\s*\(([\s\S]*?)\)/gi;
   for (const match of text.matchAll(subqueryRe)) addTableNames(match[1], names);
   for (const table of names) addEntity(table);

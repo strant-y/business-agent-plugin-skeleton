@@ -38,10 +38,10 @@ describe('linkageAnalyzer', () => {
 
     expect(apis.some((a) => a.path === '/api/orders')).toBe(true);
 
-    const rel = relations.find((r) => r.relationship === 'calls_api');
+    const rel = relations.find(
+      (r) => r.relationship === 'calls' && r.source === moduleNodeId('ui/OrderList.vue') && r.target === 'Order',
+    );
     expect(rel).toBeDefined();
-    expect(rel?.source).toBe(moduleNodeId('ui/OrderList.vue'));
-    expect(rel?.target).toBe('Order');
     expect(rel?.description).toContain('GET /api/orders');
     expect(rel?.evidence.some((f) => f.endsWith('OrderList.vue'))).toBe(true);
   });
@@ -73,22 +73,24 @@ describe('linkageAnalyzer', () => {
         expect.objectContaining({
           source: moduleNodeId('ui/OrderList.vue'),
           target: moduleNodeId('stores/orderStore.ts'),
-          relationship: 'uses_store',
+          relationship: 'references',
         }),
         expect.objectContaining({
           source: moduleNodeId('ui/OrderList.vue'),
           target: moduleNodeId('composables/useOrderData.ts'),
-          relationship: 'uses_composable',
+          relationship: 'calls',
+          subtype: 'composable_usage',
         }),
         expect.objectContaining({
           source: moduleNodeId('ui/OrderList.vue'),
           target: 'Order',
-          relationship: 'uses_entity',
+          relationship: 'references',
         }),
         expect.objectContaining({
           source: moduleNodeId('stores/orderStore.ts'),
           target: moduleNodeId('composables/useOrderData.ts'),
-          relationship: 'uses_composable',
+          relationship: 'calls',
+          subtype: 'composable_usage',
         }),
       ]),
     );
@@ -112,7 +114,7 @@ describe('linkageAnalyzer', () => {
     const frontend = apis.find((a) => a.path === '/orders');
     expect(frontend?.kind).toBe('frontend');
 
-    // A frontend-only route must not produce a calls_api relation.
+    // A frontend-only route must not produce a calls relation.
     const relations = linkViewsToApis(
       scan,
       apis.filter((a) => a.kind === 'frontend'),
@@ -158,6 +160,7 @@ describe('linkageAnalyzer', () => {
     const relations = linkViewsToApis(scan, backend);
     expect(relations.length).toBe(1);
     expect(relations[0].target).toBe('Order');
+    expect(relations[0].subtype).toBe('api_route_call');
   });
 });
 

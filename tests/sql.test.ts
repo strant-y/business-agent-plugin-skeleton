@@ -8,13 +8,19 @@ import { sqlAnalyzer } from '../src/core/analyzers/sql.js';
 const DEEP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/deep');
 
 describe('sqlAnalyzer', () => {
-  it('extracts tables as entities and foreign keys as relations', async () => {
+  it('extracts tables as entities, columns, and foreign keys as relations', async () => {
     const scan = await scanProject(DEEP, DEFAULT_CONFIG);
     const result = await sqlAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
 
     const entityNames = (result.entities ?? []).map((e) => e.name);
     expect(entityNames).toContain('Customer');
     expect(entityNames).toContain('Orders');
+
+    const orders = (result.entities ?? []).find((e) => e.name === 'Orders');
+    expect(orders?.attributes?.map((a) => a.name)).toEqual(expect.arrayContaining(['id', 'customer_id', 'status']));
+
+    const auditLog = (result.entities ?? []).find((e) => e.name === 'AuditLog');
+    expect(auditLog?.attributes?.map((a) => a.name)).toEqual(expect.arrayContaining(['id', 'event_type']));
 
     const relation = (result.relations ?? []).find((r) => r.source === 'Orders' && r.target === 'Customer');
     expect(relation).toBeDefined();

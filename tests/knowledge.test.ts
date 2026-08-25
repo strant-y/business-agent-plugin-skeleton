@@ -63,7 +63,9 @@ describe('writeRelation', () => {
       id: 'relation.product-order',
       source: 'Product',
       target: 'Order',
-      relationship: 'references',
+      relationship: 'calls',
+      subtype: 'api_route_call',
+      provenance: 'api_client_module',
       cardinality: '1:N',
       confidence: 'medium',
       evidence: [],
@@ -75,5 +77,8 @@ describe('writeRelation', () => {
       await fs.readFile(path.join(agent, 'business/relationships/relation-product-order.json'), 'utf8'),
     );
     expect(json.source).toBe('Product');
+    expect(json.relationship).toBe('calls');
+    expect(json.subtype).toBe('api_route_call');
+    expect(json.provenance).toBe('api_client_module');
   });
 });

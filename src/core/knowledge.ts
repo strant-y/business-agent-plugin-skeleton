@@ -1,5 +1,5 @@
 import path from 'node:path';
-import type { BusinessRule, Relation } from './types.js';
+import { normalizeRelationship, type BusinessRule, type Relation } from './types.js';
 import { readText, writeJson, writeText, exists } from '../utils/fs.js';
 
 export function safeFileId(id: string): string {
@@ -87,7 +87,15 @@ export async function writeRelation(agentRoot: string, relation: Relation): Prom
   await writeText(path.join(agentRoot, 'business', 'relationships', `${base}.md`), relationMarkdown(relation));
   await writeText(
     path.join(agentRoot, 'business', 'impact', `${base}.md`),
-    impactMarkdown(`${relation.source} → ${relation.target}`, [relation.relationship], relation.evidence),
+    impactMarkdown(
+      `${relation.source} → ${relation.target}`,
+      [
+        relation.relationship,
+        ...(relation.subtype ? [`subtype: ${relation.subtype}`] : []),
+        ...(relation.provenance ? [`provenance: ${relation.provenance}`] : []),
+      ],
+      relation.evidence,
+    ),
   );
   return base;
 }
@@ -97,7 +105,8 @@ export async function loadRules(agentRoot: string): Promise<BusinessRule[]> {
 }
 
 export async function loadRelations(agentRoot: string): Promise<Relation[]> {
-  return loadJsonDir<Relation>(path.join(agentRoot, 'business', 'relationships'));
+  const relations = await loadJsonDir<Relation>(path.join(agentRoot, 'business', 'relationships'));
+  return relations.map((relation) => ({ ...relation, relationship: normalizeRelationship(relation.relationship) }));
 }
 
 export async function listImpacts(agentRoot: string): Promise<string[]> {

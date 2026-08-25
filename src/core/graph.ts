@@ -1,4 +1,4 @@
-import { fileModuleName, moduleNodeId, moduleIdVariants } from './module-id.js';
+import { fileModuleName, moduleIdVariants } from './module-id.js';
 import type { DiscoverManifest, Relation } from './types.js';
 
 export interface Graph {
@@ -15,7 +15,7 @@ export interface GraphWalkStep {
   direction: 'out' | 'in';
 }
 
-const MAX_DEPTH = 3;
+const DEFAULT_MAX_DEPTH = 3;
 const MAX_CHAIN_STEPS = 300;
 const MERMAID_NODE_LIMIT = 40;
 
@@ -58,7 +58,7 @@ export function buildGraph(manifest: Partial<DiscoverManifest>, relations: Relat
   return graph;
 }
 
-export function traceGraph(file: string, start: string, graph: Graph): GraphWalkStep[] {
+export function traceGraph(file: string, start: string, graph: Graph, maxDepth = DEFAULT_MAX_DEPTH): GraphWalkStep[] {
   const steps: GraphWalkStep[] = [];
   const seen = new Set<string>([start]);
   const queue: Array<{ node: string; depth: number; relationship?: string; direction: 'out' | 'in' }> = [
@@ -73,7 +73,7 @@ export function traceGraph(file: string, start: string, graph: Graph): GraphWalk
       relationship: current.relationship,
       direction: current.direction,
     });
-    if (current.depth >= MAX_DEPTH) continue;
+    if (current.depth >= maxDepth) continue;
     const neighbors = new Map<string, { relationship: string; direction: 'out' | 'in' }>();
     for (const [node, rel] of graph.out.get(current.node) ?? []) {
       neighbors.set(node, { relationship: rel, direction: 'out' });

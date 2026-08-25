@@ -1,5 +1,5 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
-import type { BusinessRule, Relation } from '../types.js';
+import { normalizeRelationship, type BusinessRule, type Relation } from '../types.js';
 import { completeLlm } from './llm.js';
 import { redactSecrets } from './privacy.js';
 
@@ -101,7 +101,7 @@ export const llmRulesAnalyzer: Analyzer = {
       id: `relation.llm-rules.${i}`,
       source: r.source || 'Unknown',
       target: r.target || 'Unknown',
-      relationship: r.relationship || 'references',
+      relationship: normalizeRelationship(r.relationship || 'references'),
       cardinality: CARDINALITY.has(r.cardinality ?? '') ? (r.cardinality as Relation['cardinality']) : 'unknown',
       description: r.description,
       confidence: 'low',

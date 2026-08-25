@@ -1,6 +1,7 @@
 import type { Analyzer, AnalyzerContext } from '../analyzer.js';
 import { fileModuleName, moduleNodeId } from '../module-id.js';
-import type { ApiRoute, ModuleDescriptor, Relation } from '../types.js';
+import { normalizeRelationship, type ApiRoute, type Relation } from '../types.js';
+import type { ModuleDescriptor } from '../types.js';
 import { pascal } from './parse.js';
 
 const CALL_RE = /(?:axios|fetch|\$http|request|api)\s*(?:\.\w+)?\s*\(\s*["'`](\/[^"'`]+)["'`]/gi;
@@ -72,21 +73,29 @@ export function linkFrontendModules(
     if (!/\.(vue|tsx|jsx|ts|js)$/i.test(sample.file)) continue;
     const source = moduleName(sample.file);
     const sourceId = moduleNodeId(sample.file);
-    const add = (target: string, relationship: string, description: string, evidence: string[] = [sample.file]) => {
+    const add = (
+      target: string,
+      relationship: string,
+      description: string,
+      evidence: string[] = [sample.file],
+      subtype?: Relation['subtype'],
+    ) => {
+      const normalized = normalizeRelationship(relationship);
       if (
         !target ||
         target === source ||
         relations.some(
           (relation) =>
-            relation.source === source && relation.target === target && relation.relationship === relationship,
+            relation.source === source && relation.target === target && relation.relationship === normalized,
         )
       )
         return;
       relations.push({
-        id: `relation.${source.toLowerCase()}-${target.toLowerCase()}-${relationship}`,
+        id: `relation.${source.toLowerCase()}-${target.toLowerCase()}-${normalized}`,
         source: sourceId,
         target,
-        relationship,
+        relationship: normalized,
+        subtype,
         cardinality: 'unknown',
         description: `${description} [module:${source}]`,
         confidence: 'medium',
@@ -98,7 +107,7 @@ export function linkFrontendModules(
       if (!imported) continue;
       const importedId = moduleIdByName(imported, modules);
       if (/use[A-Z]|composable/i.test(imported))
-        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`);
+        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`, [sample.file], 'composable_usage');
       if (/store|state/i.test(imported)) add(importedId ?? imported, 'uses_store', `${source} uses store ${imported}.`);
       if (/\.vue$/i.test(match[2])) add(importedId ?? imported, 'imports_component', `${source} imports component ${imported}.`);
     }
@@ -106,7 +115,7 @@ export function linkFrontendModules(
       const imported = relativeModuleName(match[1]);
       const importedId = imported ? moduleIdByName(imported, modules) : undefined;
       if (imported && /use[A-Z]|composable/i.test(imported))
-        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`);
+        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`, [sample.file], 'composable_usage');
     }
     for (const entity of entityNames) {
       if (new RegExp(`\\b${entity}\\b`, 'i').test(sample.text)) {
@@ -138,7 +147,9 @@ export function linkViewsToApis(
         id: `relation.${source.toLowerCase()}-${matched.entity.toLowerCase()}-api`,
         source: moduleNodeId(sample.file),
         target: matched.entity,
-        relationship: 'calls_api',
+        relationship: 'calls',
+        subtype: 'api_route_call',
+        provenance: 'frontend_linkage',
         cardinality: 'unknown',
         description: `${source} calls ${matched.method} ${matched.path} which serves ${matched.entity}. (${already})`,
         confidence: 'medium',

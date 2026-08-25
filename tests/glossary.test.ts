@@ -24,7 +24,7 @@ describe('glossary', () => {
     ]);
   });
 
-  it('builds alias variants for glossary rows and entity suffixes', () => {
+  it('builds alias variants and resolves canonical names for glossary rows and entity suffixes', () => {
     const entities: Entity[] = [
       {
         id: 'entity.order',

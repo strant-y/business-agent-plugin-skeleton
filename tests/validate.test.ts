@@ -107,6 +107,20 @@ describe('schema validators', () => {
     };
     expect((await validateRelation(relation)).valid).toBe(true);
   });
+
+  it('migrates legacy relation names before schema validation', async () => {
+    const relation: Relation = {
+      id: 'relation.legacy',
+      source: 'Product',
+      target: 'Order',
+      relationship: 'uses_store',
+      provenance: 'frontend_linkage',
+      cardinality: 'unknown',
+      confidence: 'low',
+      evidence: [],
+    };
+    expect((await validateRelation(relation)).valid).toBe(true);
+  });
 });
 
 describe('validateKnowledgeDir', () => {

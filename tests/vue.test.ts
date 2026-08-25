@@ -38,7 +38,7 @@ describe('vueAnalyzer', () => {
 
     const rel = (result.relations ?? []).find((r) => r.source === 'OrderList' && r.target === 'OrderCard');
     expect(rel).toBeDefined();
-    expect(rel?.relationship).toBe('imports_component');
+    expect(rel?.relationship).toBe('renders');
     expect(rel?.evidence.some((f) => f.endsWith('OrderList.vue'))).toBe(true);
   });
 

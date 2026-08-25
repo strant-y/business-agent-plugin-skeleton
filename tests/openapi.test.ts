@@ -19,6 +19,9 @@ async function setupProject(): Promise<string> {
       '  total: number;',
       '}',
       '',
+      "router.get('/api/orders', () => undefined);",
+      "router.post('/api/orders', () => undefined);",
+      '',
       'export async function getOrder(): Promise<Order> {',
       "  return request('GET', '/api/orders');",
       '}',
@@ -103,7 +106,34 @@ index 3333333..4444444 100644
 `;
 
 describe('openapi analyzer', () => {
-  it('surfaces contract drift warnings during discovery', async () => {
+  it('does not warn for matched GET code routes', async () => {
+    const dir = await setupProject();
+    const warnings: string[] = [];
+    const manifest = await discover(dir, {
+      dryRun: true,
+      config: { ...DEFAULT_CONFIG, analyzers: ['ast', 'api', 'openapi'] },
+      onWarning: (message) => warnings.push(message),
+    });
+
+    expect(manifest.apis?.map((api) => `${api.method} ${api.path}`)).toEqual(
+      expect.arrayContaining(['GET /api/orders', 'GET /api/order-history']),
+    );
+    const getOrdersWarnings = warnings.filter((message) => message.includes('GET /api/orders'));
+    expect(getOrdersWarnings).toEqual([]);
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Code route missing from OpenAPI contract: POST /api/orders'),
+        expect.stringContaining('OpenAPI schema mismatch for entity Order'),
+      ]),
+    );
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('OpenAPI contract route missing from code: GET /api/order-history'),
+      ]),
+    );
+  });
+
+  it('reports only actual contract drift during discovery', async () => {
     const dir = await setupProject();
     const warnings: string[] = [];
     const manifest = await discover(dir, {
@@ -118,9 +148,14 @@ describe('openapi analyzer', () => {
     expect(manifest.entities.map((entity) => entity.name)).toContain('Order');
     expect(warnings).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('OpenAPI contract route missing from code: GET /api/orders'),
         expect.stringContaining('OpenAPI contract route missing from code: GET /api/order-history'),
+        expect.stringContaining('Code route missing from OpenAPI contract: POST /api/orders'),
         expect.stringContaining('OpenAPI schema mismatch for entity Order'),
+      ]),
+    );
+    expect(warnings).not.toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('OpenAPI contract route missing from code: GET /api/orders'),
       ]),
     );
   });

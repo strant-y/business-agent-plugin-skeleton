@@ -9,9 +9,11 @@ export const sqlAnalyzer: Analyzer = {
     const relations: Relation[] = [];
     const rules: BusinessRule[] = [];
 
-    for (const sample of scan.samples) {
-      if (!/\.sql$/i.test(sample.file)) continue;
-      const parsed = parseSqlRelations(sample.text, sample.file, scan.files);
+    for (const file of scan.files) {
+      if (!/\.sql$/i.test(file)) continue;
+      const text = scan.fileText[file];
+      if (!text) continue;
+      const parsed = parseSqlRelations(text, file, scan.files);
       entities.push(...parsed.entities);
       relations.push(...parsed.relations);
       rules.push(...parsed.rules);

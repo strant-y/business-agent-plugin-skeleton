@@ -60,5 +60,62 @@ export const canSubmit = computed(() => store.state.status === 'DRAFT' && store.
     const computedRule = (result.rules ?? []).find((rule) => rule.name === 'Computed permission guard');
     expect(computedRule?.preconditions).toContain('reads state.status');
     expect(computedRule?.rule[0]).toContain("store.state.status === 'DRAFT'");
+    expect(result.relations).toBeUndefined();
+  });
+
+  it('marks composable and api client calls with subtypes', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-stores-subtype-'));
+    await fs.mkdir(path.join(dir, 'stores'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'composables'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'api'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'composables/useOrderData.ts'),
+      `export function useOrderData() { return { status: 'DRAFT' }; }`,
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'stores/orderStore.ts'),
+      `import { defineStore } from 'pinia';
+import { useOrderData } from '../composables/useOrderData';
+export const useOrderStore = defineStore('order', {
+  actions: {
+    hydrate() {
+      useOrderData();
+    },
+  },
+});`,
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'api/orderApi.ts'),
+      `export async function getOrders(): Promise<Order[]> {
+  return request('/api/orders');
+}`,
+      'utf8',
+    );
+
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    const result = await storesAnalyzer.analyze(scan, {
+      config: DEFAULT_CONFIG,
+      entities: [
+        {
+          id: 'entity.order',
+          name: 'Order',
+          type: 'business_entity',
+          description: 'Order entity',
+          confidence: 'high',
+          evidence: ['Order.ts'],
+        },
+      ],
+      rules: [],
+      relations: [],
+    });
+
+    expect(result.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ source: 'OrderStore', target: 'UseOrderData', relationship: 'calls', subtype: 'composable_usage' }),
+        expect.objectContaining({ source: 'OrderApi', target: 'Order', relationship: 'calls', subtype: 'api_route_call' }),
+      ]),
+    );
   });
 });

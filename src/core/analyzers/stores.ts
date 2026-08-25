@@ -1,5 +1,5 @@
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
-import type { BusinessRule, Entity, FieldRef, Relation } from '../types.js';
+import type { BusinessRule, Entity, Relation, RelationProvenance } from '../types.js';
 import { pascal, entityId } from './parse.js';
 
 /**
@@ -32,9 +32,6 @@ const STATUS_GUARD_RE = /\b(?:status|state)\b[\s\S]{0,60}?===?\s*["'`]([A-Z][A-Z
 const THROW_RE = /\bthrow\s+new\s+\w+\s*\(\s*["'`]([^"'`]+)["'`]/g;
 const API_CALL_RE = /\b(?:axios|fetch|\$http|request)\b[^;]{0,80}/g;
 const STORE_STATE_ACCESS_RE = /\b(?:store|\w+Store)\.(?:state\.)?([A-Za-z_$][\w$]*)\b/g;
-const DTO_TYPE_RE = /\b([A-Z][A-Za-z0-9_$]*DTO)\b/g;
-const GENERIC_REF_RE = /\b(?:ref|reactive)\s*<\s*([A-Z][A-Za-z0-9_$]*(?:DTO)?)(?:\[\])?\s*>/g;
-const ASSIGN_FROM_DATA_RE = /\b([A-Za-z_$][\w$]*)\s*=\s*(?:await\s+)?(?:res|response)\.data\b/g;
 const COMPUTED_BOOL_RE =
   /(?:const|export\s+const)\s+(can[A-Z][A-Za-z0-9_$]*)\s*=\s*computed\s*\(\s*\(\s*\)\s*=>\s*([^;]+)\s*\);?/g;
 
@@ -213,6 +210,7 @@ function usesEntityRelations(
   sourceName: string,
   knownNames: Set<string>,
   relations: Relation[],
+  provenance: RelationProvenance,
 ): void {
   for (const name of knownNames) {
     if (name === sourceName || name.length < 2) continue;
@@ -221,7 +219,9 @@ function usesEntityRelations(
         id: `relation.${sourceName.toLowerCase()}-${name.toLowerCase()}-uses-entity`,
         source: sourceName,
         target: name,
-        relationship: 'uses_entity',
+        relationship: 'references',
+        subtype: 'store_entity_usage',
+        provenance,
         cardinality: 'unknown',
         description: `${sourceName} reads or writes business entity ${name}.`,
         confidence: 'medium',
@@ -231,7 +231,13 @@ function usesEntityRelations(
   }
 }
 
-function composableRelations(body: string, file: string, sourceName: string, relations: Relation[]): void {
+function composableRelations(
+  body: string,
+  file: string,
+  sourceName: string,
+  relations: Relation[],
+  provenance: RelationProvenance,
+): void {
   for (const m of body.matchAll(IMPORT_USE_RE)) {
     for (const name of m[1].matchAll(IMPORT_USE_NAME_RE)) {
       const target = pascal(name[1]);
@@ -240,7 +246,9 @@ function composableRelations(body: string, file: string, sourceName: string, rel
         id: `relation.${sourceName.toLowerCase()}-${target.toLowerCase()}-uses-composable`,
         source: sourceName,
         target,
-        relationship: 'uses_composable',
+        relationship: 'calls',
+        subtype: 'composable_usage',
+        provenance,
         cardinality: 'unknown',
         description: `${sourceName} uses composable ${target}.`,
         confidence: 'medium',
@@ -250,39 +258,13 @@ function composableRelations(body: string, file: string, sourceName: string, rel
   }
 }
 
-function normalizeDtoEntity(typeName: string): string {
-  return pascal(typeName.replace(/DTO$/i, '').replace(/\[\]$/g, ''));
-}
-
-function entityFieldRefs(name: string, entities: Entity[]): FieldRef[] {
-  const target = normalizeDtoEntity(name);
-  const entity = entities.find((item) => item.name.toLowerCase() === target.toLowerCase());
-  return (entity?.attributes ?? []).map((attribute) => ({ entity: entity.name, field: attribute.name, via: name }));
-}
-
-function storeStateFieldRefs(body: string, entities: Entity[]): FieldRef[] {
-  const refs: FieldRef[] = [];
-  const add = (items: FieldRef[]): void => {
-    for (const item of items) {
-      if (!refs.some((ref) => ref.entity === item.entity && ref.field === item.field)) refs.push(item);
-    }
-  };
-  for (const match of body.matchAll(STORE_STATE_ACCESS_RE)) {
-    const field = match[1];
-    const owner = entities.find((entity) => (entity.attributes ?? []).some((attribute) => attribute.name === field));
-    if (owner) add([{ entity: owner.name, field, via: match[0] }]);
-  }
-  for (const match of body.matchAll(DTO_TYPE_RE)) add(entityFieldRefs(match[1], entities));
-  for (const match of body.matchAll(GENERIC_REF_RE)) add(entityFieldRefs(match[1], entities));
-  return refs;
-}
-
 function apiRelations(
   text: string,
   file: string,
   sourceName: string,
   knownNames: Set<string>,
   relations: Relation[],
+  provenance: RelationProvenance,
 ): void {
   for (const m of text.matchAll(PROMISE_TYPE_RE)) {
     const target = pascal(m[1].replace(/\[\]/g, ''));
@@ -292,7 +274,9 @@ function apiRelations(
       id: `relation.${sourceName.toLowerCase()}-${target.toLowerCase()}-calls-api`,
       source: sourceName,
       target,
-      relationship: 'calls_api',
+      relationship: 'calls',
+      subtype: 'api_route_call',
+      provenance,
       cardinality: 'unknown',
       description: `${sourceName} returns ${m[1]} data for entity ${target}.`,
       confidence: 'medium',
@@ -322,7 +306,7 @@ export const storesAnalyzer: Analyzer = {
 
       // Pinia stores (option or setup style).
       for (const store of detectPiniaStore(sample.text)) {
-        const name = pascal(store.id) === baseName ? baseName : pascal(store.id);
+        const name = baseName;
         addEntity({
           id: entityId(name),
           name,
@@ -333,8 +317,8 @@ export const storesAnalyzer: Analyzer = {
           evidence: [sample.file],
         });
         bodyRules(sample.text, sample.text, sample.file, name, 'store', rules);
-        usesEntityRelations(store.body, sample.file, name, knownNames, relations);
-        composableRelations(store.body, sample.file, name, relations);
+        composableRelations(sample.text, sample.file, name, relations, 'store_module');
+        usesEntityRelations(store.body, sample.file, name, knownNames, relations, 'store_module');
       }
 
       // Vuex stores.
@@ -350,7 +334,7 @@ export const storesAnalyzer: Analyzer = {
           evidence: [sample.file],
         });
         bodyRules(vuexBody, sample.text, sample.file, baseName, 'store', rules);
-        usesEntityRelations(vuexBody, sample.file, baseName, knownNames, relations);
+        usesEntityRelations(vuexBody, sample.file, baseName, knownNames, relations, 'store_module');
       }
 
       // Composable functions.
@@ -366,8 +350,8 @@ export const storesAnalyzer: Analyzer = {
           evidence: [sample.file],
         });
         bodyRules(composable.body, sample.text, sample.file, name, 'composable', rules);
-        usesEntityRelations(composable.body, sample.file, name, knownNames, relations);
-        composableRelations(composable.body, sample.file, name, relations);
+        usesEntityRelations(composable.body, sample.file, name, knownNames, relations, 'composable_module');
+        composableRelations(composable.body, sample.file, name, relations, 'composable_module');
       }
 
       // API wrapper modules: response types link the module to its entity.
@@ -380,7 +364,7 @@ export const storesAnalyzer: Analyzer = {
           confidence: 'medium',
           evidence: [sample.file],
         });
-        apiRelations(sample.text, sample.file, baseName, knownNames, relations);
+        apiRelations(sample.text, sample.file, baseName, knownNames, relations, 'api_client_module');
       }
     }
 

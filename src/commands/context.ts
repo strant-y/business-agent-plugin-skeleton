@@ -4,30 +4,13 @@ import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowl
 import { resolveCanonicalName } from '../core/glossary.js';
 import { buildGraph, renderMermaidSubgraph } from '../core/graph.js';
 import { retrieveTaskContext } from '../core/retrieval.js';
-import type {
-  ApiRoute,
-  FrontendPage,
-  RuleConflict,
-  StateMachine,
-  UserAction,
-  WorkflowTemplate,
-} from '../core/types.js';
+import type { DiscoverManifest } from '../core/types.js';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-interface ContextManifest {
-  entities?: Array<{ name: string; description: string; confidence: string }>;
-  rules?: Array<{ id: string; name: string; entity: string; evidence?: Array<unknown> }>;
-  apis?: ApiRoute[];
-  conflicts?: RuleConflict[];
-  states?: StateMachine[];
-  workflows?: WorkflowTemplate[];
-  pages?: FrontendPage[];
-  actions?: UserAction[];
-  aliases?: Record<string, string[]>;
-}
+type ContextManifest = Partial<DiscoverManifest>;
 
 export interface ContextOptions {
   json?: boolean;
@@ -132,8 +115,8 @@ export async function contextCommand(root: string, subject: string, options: Con
   for (const rule of relevantRules) relevantImpactFiles.add(`${safeFileId(rule.id)}.md`);
   for (const relation of relevantRelations) relevantImpactFiles.add(`${safeFileId(relation.id)}.md`);
   const relevantImpacts = impacts.filter((i) => relevantImpactFiles.has(path.basename(i)));
-  const graphRelations = [...(manifest?.relations ?? []), ...relations];
-  const graph = buildGraph(manifest ?? {}, relations);
+  const graphRelations = [...(manifest?.relations ?? []), ...relations] as DiscoverManifest['relations'];
+  const graph = buildGraph(manifest ? (manifest as Partial<DiscoverManifest>) : {}, relations);
   const relationshipGraph = matchedNames.size
     ? renderMermaidSubgraph({
         graph,

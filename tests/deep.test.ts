@@ -29,6 +29,9 @@ describe('discover analyzers', () => {
     expect(manifest.apis.find((api) => api.path === '/api/orders')?.fields).toEqual(
       expect.arrayContaining([expect.objectContaining({ entity: 'Order', field: 'id' })]),
     );
+    const validationRule = manifest.rules.find((rule) => rule.id === 'rule.discovery.validation-state');
+    expect(validationRule?.entity).toBe('Customer');
+    expect(validationRule?.rule[0]).toContain('状态变化');
   });
 
   it('writes relationships to confirmed store and candidate rules to memory/candidates', async () => {

@@ -7,6 +7,7 @@ import { discover } from '../src/core/discovery.js';
 import { DEFAULT_CONFIG } from '../src/core/config.js';
 
 const FIXTURE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/sample');
+const DEEP = path.resolve(path.dirname(fileURLToPath(import.meta.url)), 'fixtures/deep');
 
 async function tempRoot(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ba-disc-'));
@@ -148,5 +149,70 @@ describe('discover', () => {
     const config = { ...DEFAULT_CONFIG, maxEntities: 2 };
     const manifest = await discover(dir, { dryRun: true, config });
     expect(manifest.entities.length).toBeLessThanOrEqual(2);
+  });
+
+  it('builds fieldIndex entries from SQL attributes', async () => {
+    const manifest = await discover(DEEP, { dryRun: true });
+    expect(manifest.fieldIndex?.['order.status']).toMatchObject({ entity: 'Order', field: 'status' });
+    expect(manifest.fieldIndex?.['order.customer_id']).toMatchObject({ entity: 'Order', field: 'customer_id' });
+    expect(manifest.fieldIndex?.['auditlog.event_type']).toMatchObject({ entity: 'AuditLog', field: 'event_type' });
+  });
+
+  it('rebuilds coveringTests for persisted confirmed rules without broad unknown matches', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent', 'business', 'rules'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'Order.ts'), 'export interface Order { status: string }\n', 'utf8');
+    await fs.mkdir(path.join(dir, 'tests'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'tests', 'order-rule.test.ts'),
+      "it('mentions APPROVED for Order', () => expect('APPROVED').toBe('APPROVED'));\n",
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'tests', 'product-rule.test.ts'),
+      "it('mentions APPROVED for Product', () => expect('APPROVED').toBe('APPROVED'));\n",
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, '.agent', 'business', 'rules', 'rule-order-approved.json'),
+      JSON.stringify(
+        {
+          id: 'rule.order-approved',
+          name: 'Order approval rule',
+          entity: 'Order',
+          rule: ['Order must be APPROVED before shipment'],
+          confidence: 'high',
+          evidence: ['Order.ts'],
+          status: 'confirmed',
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, '.agent', 'business', 'rules', 'rule-unknown-approved.json'),
+      JSON.stringify(
+        {
+          id: 'rule.unknown-approved',
+          name: 'Unknown approval rule',
+          entity: 'Unknown',
+          rule: ['Request must be APPROVED before submission'],
+          confidence: 'medium',
+          evidence: ['Service.ts'],
+          status: 'confirmed',
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const confirmed = manifest.rules.find((rule) => rule.id === 'rule.order-approved');
+    expect(confirmed?.coveringTests).toEqual(['tests\\order-rule.test.ts']);
+
+    const unknown = manifest.rules.find((rule) => rule.id === 'rule.unknown-approved');
+    expect(unknown?.coveringTests).toBeUndefined();
   });
 });

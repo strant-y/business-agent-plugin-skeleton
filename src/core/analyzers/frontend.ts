@@ -77,7 +77,7 @@ function normalizeDtoEntity(typeName: string): string {
 function fieldRefsForEntityName(name: string, entities: Entity[]): FieldRef[] {
   const normalized = normalizeDtoEntity(name);
   const entity = entities.find((item) => item.name.toLowerCase() === normalized.toLowerCase());
-  return (entity?.attributes ?? []).map((attribute) => ({ entity: entity.name, field: attribute.name, via: name }));
+  return entity ? entity.attributes?.map((attribute) => ({ entity: entity.name, field: attribute.name, via: name })) ?? [] : [];
 }
 
 function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: string[], fields: FieldRef[]): string[] {
@@ -238,7 +238,8 @@ function analyzeSample(
         id: `relation.${source.toLowerCase()}-${action.id.toLowerCase()}-page-action`,
         source,
         target: action.id,
-        relationship: 'triggers_action',
+        relationship: 'calls',
+        subtype: 'page_action_trigger',
         cardinality: 'unknown',
         confidence: 'high',
         description: `${source} triggers user action ${action.name}.`,
@@ -251,7 +252,7 @@ function analyzeSample(
       id: `relation.${source.toLowerCase()}-${store.toLowerCase()}-frontend-store`,
       source,
       target: store,
-      relationship: 'uses_store',
+      relationship: 'references',
       cardinality: 'unknown',
       confidence: 'medium',
       description: `${source} uses frontend store ${store}.`,
@@ -263,7 +264,7 @@ function analyzeSample(
       id: `relation.${source.toLowerCase()}-${api.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-frontend-api`,
       source,
       target: api,
-      relationship: 'calls_api_route',
+      relationship: 'calls',
       cardinality: 'unknown',
       confidence: 'low',
       description: `${source} calls API path ${api}.`,
@@ -277,7 +278,9 @@ function analyzeSample(
         id: `relation.${action.id}-${store.toLowerCase()}-action-store`,
         source: action.name,
         target: store,
-        relationship: 'action_updates_store',
+        relationship: 'calls',
+        subtype: 'action_store_update',
+        provenance: 'frontend_action',
         cardinality: 'unknown',
         confidence: 'high',
         description: `${action.name} invokes ${store}.`,
@@ -290,7 +293,9 @@ function analyzeSample(
         id: `relation.${action.id}-${api.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}-action-api`,
         source: action.name,
         target: api,
-        relationship: 'action_calls_api',
+        relationship: 'calls',
+        subtype: 'action_api_call',
+        provenance: 'frontend_action',
         cardinality: 'unknown',
         confidence: 'high',
         description: `${action.name} calls API path ${api}.`,

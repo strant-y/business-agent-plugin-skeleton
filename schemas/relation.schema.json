@@ -8,7 +8,34 @@
     "id": { "type": "string", "pattern": "^relation\\.[a-z0-9._-]+$" },
     "source": { "type": "string" },
     "target": { "type": "string" },
-    "relationship": { "type": "string" },
+    "relationship": { "enum": ["owns", "aggregates", "references", "calls", "renders", "maps-to"] },
+    "subtype": {
+      "enum": [
+        "store_usage",
+        "store_entity_usage",
+        "composable_usage",
+        "api_route_call",
+        "page_action_trigger",
+        "action_store_update",
+        "action_api_call"
+      ]
+    },
+    "provenance": {
+      "enum": [
+        "discovery_text",
+        "ast_type",
+        "sql_schema",
+        "frontend_page",
+        "frontend_action",
+        "store_module",
+        "composable_module",
+        "api_client_module",
+        "frontend_linkage",
+        "backend_code",
+        "xml_mapping",
+        "llm_inference"
+      ]
+    },
     "cardinality": { "enum": ["1:1", "1:N", "N:1", "N:M", "unknown"] },
     "description": { "type": "string" },
     "confidence": { "enum": ["high", "medium", "low"] },

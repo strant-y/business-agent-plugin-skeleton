@@ -15,7 +15,8 @@ const METHOD_MAPPING_RE =
   /@(?:GetMapping|PostMapping|PutMapping|DeleteMapping|PatchMapping|RequestMapping)\s*(?:\(\s*"([^"]+)"\s*\))?/g;
 const CLASS_MAPPING_RE = /@RequestMapping\s*\(\s*(?:value\s*=\s*)?["']?([^"')]+)["']?/i;
 const THROW_RE =
-  /throw\s+new\s+(?:RuntimeException|IllegalArgumentException|IllegalStateException|BusinessException|ValidationException|\w*(?:Business|Service|Biz)\w*Exception)\s*\(\s*"([^"]+)"\s*\)/g;
+  /throw\s+new\s+(?:RuntimeException|IllegalArgumentException|IllegalStateException|BusinessException|ValidationException|\w*(?:Business|Service|Biz)\w*Exception)\s*\(\s*["']([^"']+)["']\s*\)/g;
+const STATUS_THROW_RE = /if\s*\(([^)]*status[^)]*)\)\s*\{?\s*throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']\s*\)/gi;
 const IF_COND_RE = /if\s*\(((?:[^()]|\([^)]*\))*)\)/g;
 const STATUS_STATES = /(AUDIT|AUDITING|APPROVED|DRAFT|REJECT|SUBMIT|PENDING)/i;
 const VALIDATION_FIELD_RE =
@@ -86,6 +87,13 @@ function classBody(text: string, matchStart: number): string {
   const open = text.indexOf('{', matchStart);
   if (open === -1) return '';
   return matchingBlock(text, open);
+}
+
+function classEntityName(className: string, body: string, entities: Entity[]): string {
+  const referenced = entities.find((entity) => new RegExp(`\\b${entity.name}\\b`).test(body));
+  if (referenced) return referenced.name;
+  const reduced = ruleEntityName(className);
+  return entities.find((entity) => entity.name.toLowerCase() === reduced.toLowerCase())?.name ?? reduced;
 }
 
 function beforeAnnotation(text: string, index: number, annotation: string): boolean {
@@ -234,9 +242,10 @@ export const javaAnalyzer: Analyzer = {
         }
 
         if (isEndpoint || isService) {
-          const ruleEntity = isEntity ? className : ruleEntityName(className);
+          const ruleEntity = isEntity ? className : classEntityName(className, body, ctx.entities);
           let n = 0;
           for (const tm of body.matchAll(THROW_RE)) {
+            if (!tm[1]?.trim()) continue;
             rules.push({
               id: `rule.java.throw-${sample.file
                 .replace(/[^a-z0-9]/gi, '')
@@ -246,6 +255,18 @@ export const javaAnalyzer: Analyzer = {
               entity: ruleEntity,
               rule: [tm[1] || 'A validation error is thrown.'],
               confidence: 'low',
+              evidence: [sample.file],
+              status: 'candidate',
+            });
+          }
+          for (const sm of body.matchAll(STATUS_THROW_RE)) {
+            rules.push({
+              id: `rule.java.status-throw-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${n++}`,
+              name: 'State-dependent validation error',
+              entity: ruleEntity,
+              preconditions: [sm[1].trim()],
+              rule: [`When ${sm[1].trim()}, reject the operation: ${sm[2].trim()}.`],
+              confidence: 'medium',
               evidence: [sample.file],
               status: 'candidate',
             });

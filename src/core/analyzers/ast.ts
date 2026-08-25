@@ -43,6 +43,13 @@ const PRIMITIVE_TYPES = new Set([
   'undefined',
 ]);
 
+function typeCardinality(typeText: string): Relation['cardinality'] {
+  const normalized = typeText.replace(/\s+/g, '');
+  if (/^(?:ReadonlyArray|Array|Promise<.*\[\])/.test(normalized) || /\[\]$/.test(normalized)) return '1:N';
+  if (/^Promise<.*>$/.test(normalized)) return '1:1';
+  return 'N:1';
+}
+
 function captureTypeReference(typeText: string, source: string, relations: Relation[], file: string): void {
   const cleaned = typeText.replace(/['"][^'"]*['"]/g, ' ');
   const re = /\b[A-Z][A-Za-z0-9_]*\b/g;
@@ -56,7 +63,7 @@ function captureTypeReference(typeText: string, source: string, relations: Relat
       source,
       target,
       relationship: 'references',
-      cardinality: 'unknown',
+      cardinality: typeCardinality(typeText),
       description: `Type reference in ${source} → ${target}.`,
       confidence: 'medium',
       evidence: [file],
@@ -70,7 +77,7 @@ export async function analyzeTypeScript(
   knownNames: ReadonlySet<string> = new Set(),
 ): Promise<TypeScriptAnalysis> {
   const ts = await loadTs();
-  if (!ts) return { entities: [], relations: [] };
+  if (ts === undefined) return { entities: [], relations: [] };
 
   const entities: Entity[] = [];
   const relations: Relation[] = [];
@@ -110,7 +117,8 @@ export async function analyzeTypeScript(
       }
     }
 
-    if (attributes.length || knownNames.has(entityName)) {
+    const isEntity = attributes.length > 0 || knownNames.has(entityName);
+    if (isEntity) {
       entities.push({
         id: entityId(entityName),
         name: entityName,
