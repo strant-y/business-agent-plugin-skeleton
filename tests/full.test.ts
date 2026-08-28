@@ -39,7 +39,9 @@ describe('discover --deep with frontend + backend analyzers', () => {
     expect(callsApi).toBeDefined();
 
     expect(manifest.modules).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: moduleNodeId('ui/OrderList.vue'), name: 'OrderList', file: 'ui/OrderList.vue' })]),
+      expect.arrayContaining([
+        expect.objectContaining({ id: moduleNodeId('ui/OrderList.vue'), name: 'OrderList', file: 'ui/OrderList.vue' }),
+      ]),
     );
 
     const apis = manifest.apis.map((a) => `${a.method} ${a.path}`);

@@ -34,7 +34,13 @@ function resolveAliasTarget(node: string, aliases: Record<string, string[]> = {}
   return node;
 }
 
-function addEdge(graph: Graph, source: string, target: string, relationship: string, aliases: Record<string, string[]>): void {
+function addEdge(
+  graph: Graph,
+  source: string,
+  target: string,
+  relationship: string,
+  aliases: Record<string, string[]>,
+): void {
   if (source === target) return;
   const normalizedSource = resolveAliasTarget(source, aliases);
   const normalizedTarget = resolveAliasTarget(target, aliases);

@@ -7,12 +7,12 @@
 
 ## 1. 总体评估矩阵
 
-| 需求 | 当前完成度 | 一句话结论 |
-| --- | --- | --- |
-| 1. 懂业务对象 | ★★★☆☆（60%） | 类型体系和分析器齐全，但"识别靠命名、描述靠模板"，缺业务语义和实体消歧 |
-| 2. 懂业务关系 | ★★★★☆（70%） | 跨端链路（view→API→entity→table→rule）已通，但图节点靠文件名约定链接，且无统一关系本体 |
-| 3. 懂业务规则 | ★★★☆☆（55%） | 候选→评审→确认→冲突→废弃的生命周期完整，但提取覆盖面窄、规则不会说"业务话" |
-| 4. 影响分析 | ★★★★☆（75%） | 已是全插件最强项：图遍历 + diff 级 15 类 finding + 预测/实际对比，但字段级映射靠字符串 token 匹配 |
+| 需求          | 当前完成度   | 一句话结论                                                                                        |
+| ------------- | ------------ | ------------------------------------------------------------------------------------------------- |
+| 1. 懂业务对象 | ★★★☆☆（60%） | 类型体系和分析器齐全，但"识别靠命名、描述靠模板"，缺业务语义和实体消歧                            |
+| 2. 懂业务关系 | ★★★★☆（70%） | 跨端链路（view→API→entity→table→rule）已通，但图节点靠文件名约定链接，且无统一关系本体            |
+| 3. 懂业务规则 | ★★★☆☆（55%） | 候选→评审→确认→冲突→废弃的生命周期完整，但提取覆盖面窄、规则不会说"业务话"                        |
+| 4. 影响分析   | ★★★★☆（75%） | 已是全插件最强项：图遍历 + diff 级 15 类 finding + 预测/实际对比，但字段级映射靠字符串 token 匹配 |
 
 **整体判断：** 这不是"缺功能"的问题，而是"已有能力的精度和默认开启程度"问题。P0-P2 优化方案（见第 6 节）大部分是对现有模块的增强，而非新造轮子。
 
@@ -29,13 +29,13 @@
 
 ### 2.2 差距
 
-| # | 差距 | 现状证据 |
-| --- | --- | --- |
-| G1.1 | **默认 discover 近乎裸奔** | 不加 `--deep` 时 `detectEntities` 只匹配 `interface/class/type X` 正则 + preferred 列表，置信度全部 low；新用户第一次跑 `discover`（README 快速开始里没带 `--deep`）得到的几乎是空知识库 |
-| G1.2 | **实体描述是模板句** | 默认描述为 `"Discovered business candidate: X"`；没有中文名、没有业务含义。`llm` 分析器可选改写，但默认关闭且需要 API key |
-| G1.3 | **无实体消歧/归并** | `orders` 表、`Order` 实体、`OrderDTO`、`OrderVo`、`orderStore` 是否同一业务对象？目前只靠 impact.ts 里的 `buildEntityTableAliases`（单复数规则）做局部别名，没有全局的同义实体合并，直接导致关系图出现重复节点 |
-| G1.4 | **glossary.md 是死模板** | `templates/agent/business/glossary.md` 存在，但 `src/` 中零处引用（已验证 grep 无匹配）。业务术语表（"缴费=PremiumPayment"）没有接入 context/retrieve/impact 的任何链路 |
-| G1.5 | **实体与状态机/工作流是松耦合** | states 分析器产出 `StateMachine`，但 entity 上没有"该对象有哪些状态、处于什么生命周期"的回链；context 输出靠 entity 名匹配拼在一起 |
+| #    | 差距                            | 现状证据                                                                                                                                                                                                       |
+| ---- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1.1 | **默认 discover 近乎裸奔**      | 不加 `--deep` 时 `detectEntities` 只匹配 `interface/class/type X` 正则 + preferred 列表，置信度全部 low；新用户第一次跑 `discover`（README 快速开始里没带 `--deep`）得到的几乎是空知识库                       |
+| G1.2 | **实体描述是模板句**            | 默认描述为 `"Discovered business candidate: X"`；没有中文名、没有业务含义。`llm` 分析器可选改写，但默认关闭且需要 API key                                                                                      |
+| G1.3 | **无实体消歧/归并**             | `orders` 表、`Order` 实体、`OrderDTO`、`OrderVo`、`orderStore` 是否同一业务对象？目前只靠 impact.ts 里的 `buildEntityTableAliases`（单复数规则）做局部别名，没有全局的同义实体合并，直接导致关系图出现重复节点 |
+| G1.4 | **glossary.md 是死模板**        | `templates/agent/business/glossary.md` 存在，但 `src/` 中零处引用（已验证 grep 无匹配）。业务术语表（"缴费=PremiumPayment"）没有接入 context/retrieve/impact 的任何链路                                        |
+| G1.5 | **实体与状态机/工作流是松耦合** | states 分析器产出 `StateMachine`，但 entity 上没有"该对象有哪些状态、处于什么生命周期"的回链；context 输出靠 entity 名匹配拼在一起                                                                             |
 
 ---
 
@@ -49,14 +49,14 @@
 
 ### 3.2 差距
 
-| # | 差距 | 现状证据 |
-| --- | --- | --- |
-| G2.1 | **图节点身份 = PascalCase 文件名** | `fileModuleName()` 用文件名转 Pascal 作为节点身份。重命名文件、kebab-case 与 PascalCase 风格混用、同名不同目录（`utils/Order.ts` vs `views/Order.vue`）都会断链或误连——这是整个关系图最脆弱的地基 |
-| G2.2 | **无统一关系本体** | relationship 值混用 `references_or_contains / join / calls / uses / renders` 等自由字符串；无受控词表（如 `owns / aggregates / references / calls / renders / maps-to`）。影响推导和检索无法按语义区分"强耦合（同表）"与"弱耦合（仅 import）" |
-| G2.3 | **默认引擎的关系是噪声** | `detectRelations` 用"150 字符窗口内两实体名共现"生成 `references_or_contains, cardinality: unknown` 的 low 关系；中大型仓库会产生大量假关系污染图 |
-| G2.4 | **无关系图可视化** | states 有 mermaid 输出，但关系图没有。`context`/`impact` 只有文本列表，人审成本高 |
-| G2.5 | **cardinality 大多 unknown** | 只有 SQL FK 和 JPA 注解给出基数；AST/前端关系的基数全部 unknown，影响分析无法区分"改 1 条影响 N 条" |
-| G2.6 | **无跨服务/跨仓库边界** | 微服务间 HTTP 调用、monorepo 多包边界不感知；前端和后端如果不在同一仓库，linkage 直接失效 |
+| #    | 差距                               | 现状证据                                                                                                                                                                                                                                      |
+| ---- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G2.1 | **图节点身份 = PascalCase 文件名** | `fileModuleName()` 用文件名转 Pascal 作为节点身份。重命名文件、kebab-case 与 PascalCase 风格混用、同名不同目录（`utils/Order.ts` vs `views/Order.vue`）都会断链或误连——这是整个关系图最脆弱的地基                                             |
+| G2.2 | **无统一关系本体**                 | relationship 值混用 `references_or_contains / join / calls / uses / renders` 等自由字符串；无受控词表（如 `owns / aggregates / references / calls / renders / maps-to`）。影响推导和检索无法按语义区分"强耦合（同表）"与"弱耦合（仅 import）" |
+| G2.3 | **默认引擎的关系是噪声**           | `detectRelations` 用"150 字符窗口内两实体名共现"生成 `references_or_contains, cardinality: unknown` 的 low 关系；中大型仓库会产生大量假关系污染图                                                                                             |
+| G2.4 | **无关系图可视化**                 | states 有 mermaid 输出，但关系图没有。`context`/`impact` 只有文本列表，人审成本高                                                                                                                                                             |
+| G2.5 | **cardinality 大多 unknown**       | 只有 SQL FK 和 JPA 注解给出基数；AST/前端关系的基数全部 unknown，影响分析无法区分"改 1 条影响 N 条"                                                                                                                                           |
+| G2.6 | **无跨服务/跨仓库边界**            | 微服务间 HTTP 调用、monorepo 多包边界不感知；前端和后端如果不在同一仓库，linkage 直接失效                                                                                                                                                     |
 
 ---
 
@@ -70,13 +70,13 @@
 
 ### 4.2 差距
 
-| # | 差距 | 现状证据 |
-| --- | --- | --- |
-| G3.1 | **提取模式覆盖面窄** | 默认引擎只有 3 个正则模式（AUDIT 状态、disabled、throw Error）。大量真实规则落在：后端校验注解（`@NotNull/@Valid/@PreAuthorize`，已验证零支持）、SQL CHECK 约束、错误码/i18n 文案、业务异常类（非 `Error/RuntimeException` 的自定义异常）、computed 计算属性中的业务判断。这些目前全部漏掉 |
-| G3.2 | **规则不会说业务话** | 候选规则是代码语句的直译（"State-dependent validation discovered"），entity 常为 `Unknown`。把 "if (order.status === 'AUDIT') throw" 归纳成"审核中的订单不能修改核心信息"必须依赖 LLM 且默认关闭——结果是确认库里堆满代码味描述，Agent 复用价值低 |
-| G3.3 | **规则与测试无关联** | "哪些规则被哪些测试保护着"没有建立。impact 的 tests 建议靠文件名关键词匹配；没有 `rule → covering tests` 的证据链，改动破坏规则时无法点名"这个规则失去测试保护了" |
-| G3.4 | **规则新鲜度不自动刷新** | 代码改了、证据行变了，知识不会自动标 stale（`audit` 能查 evidence drift，但要人跑；post-commit hook 只 capture 不 re-discover）。知识库会随时间静默腐烂 |
-| G3.5 | **规则冲突只有文本级** | conflicts 启发式基于同一实体上 cannot/allow 对立；语义级冲突（"审核中不能改" vs "管理员任何时候都能改"——前置条件维度）检测不到 |
+| #    | 差距                     | 现状证据                                                                                                                                                                                                                                                                                   |
+| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| G3.1 | **提取模式覆盖面窄**     | 默认引擎只有 3 个正则模式（AUDIT 状态、disabled、throw Error）。大量真实规则落在：后端校验注解（`@NotNull/@Valid/@PreAuthorize`，已验证零支持）、SQL CHECK 约束、错误码/i18n 文案、业务异常类（非 `Error/RuntimeException` 的自定义异常）、computed 计算属性中的业务判断。这些目前全部漏掉 |
+| G3.2 | **规则不会说业务话**     | 候选规则是代码语句的直译（"State-dependent validation discovered"），entity 常为 `Unknown`。把 "if (order.status === 'AUDIT') throw" 归纳成"审核中的订单不能修改核心信息"必须依赖 LLM 且默认关闭——结果是确认库里堆满代码味描述，Agent 复用价值低                                           |
+| G3.3 | **规则与测试无关联**     | "哪些规则被哪些测试保护着"没有建立。impact 的 tests 建议靠文件名关键词匹配；没有 `rule → covering tests` 的证据链，改动破坏规则时无法点名"这个规则失去测试保护了"                                                                                                                          |
+| G3.4 | **规则新鲜度不自动刷新** | 代码改了、证据行变了，知识不会自动标 stale（`audit` 能查 evidence drift，但要人跑；post-commit hook 只 capture 不 re-discover）。知识库会随时间静默腐烂                                                                                                                                    |
+| G3.5 | **规则冲突只有文本级**   | conflicts 启发式基于同一实体上 cannot/allow 对立；语义级冲突（"审核中不能改" vs "管理员任何时候都能改"——前置条件维度）检测不到                                                                                                                                                             |
 
 ---
 
@@ -91,14 +91,14 @@
 
 ### 5.2 差距
 
-| # | 差距 | 现状证据 |
-| --- | --- | --- |
-| G4.1 | **diff→影响的映射靠字符串 token 匹配** | `mapDiffImpact`/`matchesFinding` 用 subject/detail/evidence 分词后和候选字符串互相 includes。字段名 `status` 会命中一大片；改名后的字段（`auditFlag`→`reviewFlag`）直接断链。这是"报告很长但一半不准"的根源 |
-| G4.2 | **无字段级影响传播** | finding 已有 subject（如 `Order.status`），但没有沿"实体字段 → API 请求/响应类型 → Store state → 组件绑定 → 测试"的传播规则；影响链仍以实体/文件为粒度 |
-| G4.3 | **遍历深度硬编码 3** | MAX_DEPTH=3。真实项目"改表字段 → 实体 → DTO → API → wrapper → Store → 页面"轻轻松松 5-6 跳；超 3 跳的下游全部漏报 |
-| G4.4 | **无契约级对账** | 无 OpenAPI/Swagger 导入与 diff 对账（已验证零支持）。改了后端响应结构，前端类型是否同步只能靠启发式猜 |
-| G4.5 | **不检查"是否违反已确认规则"** | 风险提示是模板句（"本次变更涉及 N 条相关规则"）。diff 明明删除了 `if (status === 'AUDIT') throw` 这行证据，却不直接判定"confirmed rule X 的证据消失，可能被违反"——证据模型（contentHash/line）已有，缺的是把它接进 impact |
-| G4.6 | **准确率不反哺** | impact-accuracy.json 已统计预测命中率，但排序/置信度/深度上限都没用它（连续学习方案自己也承认这点） |
+| #    | 差距                                   | 现状证据                                                                                                                                                                                                                  |
+| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G4.1 | **diff→影响的映射靠字符串 token 匹配** | `mapDiffImpact`/`matchesFinding` 用 subject/detail/evidence 分词后和候选字符串互相 includes。字段名 `status` 会命中一大片；改名后的字段（`auditFlag`→`reviewFlag`）直接断链。这是"报告很长但一半不准"的根源               |
+| G4.2 | **无字段级影响传播**                   | finding 已有 subject（如 `Order.status`），但没有沿"实体字段 → API 请求/响应类型 → Store state → 组件绑定 → 测试"的传播规则；影响链仍以实体/文件为粒度                                                                    |
+| G4.3 | **遍历深度硬编码 3**                   | MAX_DEPTH=3。真实项目"改表字段 → 实体 → DTO → API → wrapper → Store → 页面"轻轻松松 5-6 跳；超 3 跳的下游全部漏报                                                                                                         |
+| G4.4 | **无契约级对账**                       | 无 OpenAPI/Swagger 导入与 diff 对账（已验证零支持）。改了后端响应结构，前端类型是否同步只能靠启发式猜                                                                                                                     |
+| G4.5 | **不检查"是否违反已确认规则"**         | 风险提示是模板句（"本次变更涉及 N 条相关规则"）。diff 明明删除了 `if (status === 'AUDIT') throw` 这行证据，却不直接判定"confirmed rule X 的证据消失，可能被违反"——证据模型（contentHash/line）已有，缺的是把它接进 impact |
+| G4.6 | **准确率不反哺**                       | impact-accuracy.json 已统计预测命中率，但排序/置信度/深度上限都没用它（连续学习方案自己也承认这点）                                                                                                                       |
 
 ---
 
@@ -107,23 +107,27 @@
 ### P0 —— 修地基（不做这些，上层能力精度上不去）
 
 **P0-1 稳定图节点身份（解决 G2.1）**
+
 - 用 `file relative path + module name` 做节点 ID（如 `src/stores/orderStore`），显示名才用 Pascal；
 - discover 时为每个文件记录 `moduleName → path` 映射进 manifest，impact/linkage/stores 全部改读映射而不是现场推导文件名；
 - 保留旧 Pascal 节点做一版兼容别名，防止既有 `.agent/` 知识断裂。
 - 落点：`src/core/analyzers/linkage.ts`（`fileModuleName`）、`src/core/impact.ts`（`buildGraph`）。
 
 **P0-2 实体归并与 glossary 接线（解决 G1.3、G1.4、G3.2 一半）**
+
 - glossary.md 结构化（词条：中文术语 / 英文别名 / 指向实体 id），discover 读取后建立 `alias → entityId` 全局别名表；
 - 表名（orders）、DTO/Vo 后缀、单复数、中文名统一归并到同一实体节点；`buildEntityTableAliases` 从 impact 局部函数升级为 discovery 全局产物；
 - context/retrieve/impact 查询时先过别名表——"缴费"从此直接命中 PremiumPayment 及其全部关系。
 - 落点：新增 `src/core/glossary.ts`，接入 `discovery.ts`、`retrieval.ts`、`impact.ts`。
 
 **P0-3 默认 discover 不再裸奔（解决 G1.1）**
+
 - 把 `sql / api / ast` 三个零依赖或弱依赖分析器设为默认开启（`analyzers` 默认值由 `[]` 改为 `['sql','api','ast']`），需要 typescript 运行时的 ast 保持降级警告；
 - 快速开始文档与 `init` 输出提示同步修改。
 - 落点：`src/core/config.ts` 默认值、README。
 
 **P0-4 impact 接入证据校验，判定"规则被违反"（解决 G4.5）**
+
 - diff finding 生成后，对每条受影响 confirmed rule 跑 `validateEvidence`：证据行被删除/内容 hash 变化 → 输出 `VIOLATION: rule X 的证据 src/x.ts:42 已被修改/删除`，并列入 risks 顶部；
 - 这直接回答用户最关心的问题："我这次改动破坏了哪条已确认的业务规则"。
 - 落点：`src/core/impact.ts` 复用 `src/core/evidence.ts`。
@@ -131,39 +135,44 @@
 ### P1 —— 提精度
 
 **P1-1 字段级影响传播（解决 G4.1、G4.2）**
+
 - 给 manifest 增加字段级索引：`fieldIndex: Map<entity.field, { apis, stores, pages, tests }>`（sql/ast/stores/api 分析器产出时顺手登记）；
 - `mapDiffImpact` 优先走 fieldIndex 精确匹配，token 字符串匹配降级为兜底；
 - 输出格式升级为 "Order.status 变化 → GET /api/orders 响应 → orderStore.order → OrderEdit.vue disabled 条件 → tests/order-edit.spec.ts"。
 - 落点：`src/core/impact.ts`、各 analyzer 的 relation 产出处。
 
 **P1-2 关系本体受控词表 + cardinality 补全（解决 G2.2、G2.5）**
+
 - schema/`Relation.relationship` 收敛为枚举：`owns / aggregates / references / calls / renders / maps-to`，旧值一次性迁移映射；
 - AST 类型引用（`Order[]` → N，单引用 → 1）和 stores 引用推断 cardinality，消灭 unknown 大军。
 - 落点：`schemas/relation.schema.json`、`src/core/analyzers/ast.ts`。
 
 **P1-3 规则提取扩容（解决 G3.1）**
+
 - 新增模式：Java 校验/权限注解（`@NotNull/@Valid/@PreAuthorize/@PreFilter`）、SQL `CHECK` 约束、Vue/React computed 中的布尔业务判断、自定义业务异常（`throw new BusinessException(...)`）；
 - 全部 low confidence 进候选，维持保守策略。
 - 落点：`src/core/analyzers/java.ts`、`parse.ts`、`discovery.ts` 的 RULE_PATTERNS。
 
 **P1-4 规则↔测试关联（解决 G3.3）**
+
 - discover 扫描测试文件时，按"测试文件名/ describe 文本命中实体名 + 测试体内出现规则证据片段"登记 `rule.coveringTests`；
 - impact 报告新增一节："受影响规则中，X 有测试保护，Y 无任何测试覆盖"——Y 就是本次改动最该补测试的地方。
 - 落点：`src/core/scanner.ts`、`impact.ts`。
 
 **P1-5 关系图 mermaid 输出（解决 G2.4）**
+
 - `context <subject>` 附加该实体 1-2 跳邻域的 mermaid `graph LR`；impact 报告附加受影响子图（高亮 changed module）。人审效率数量级提升，成本极低。
 
 ### P2 —— 补场景
 
-| 项 | 解决 | 说明 |
-| --- | --- | --- |
-| **OpenAPI 契约对账** | G4.4 | 支持导入 openapi.json：路由/请求/响应与代码侧提取结果互相校验，diff 时报告前后端契约漂移 |
-| **影响深度自适应** | G4.3、G4.6 | MAX_DEPTH 改为按"到达测试/页面等终止节点"停止，上限放宽到 6；用 impact-accuracy 历史命中率动态调高/调低高噪声边的权重 |
-| **知识自动保鲜** | G3.4 | post-commit hook 在 capture 之外追加增量 re-discover（只扫变更文件），证据失效的规则自动打 stale 并出现在下次 audit 首页 |
-| **语义级规则冲突** | G3.5 | 冲突检测扩展到前置条件维度（preconditions 不同但主语相同的对立约束），llm-rules 关闭时用纯启发式 |
-| **多仓库 linkage** | G2.6 | 支持配置 `linkage.externalApis`（指向另一个仓库的 manifest 导出），前端库与后端服务分仓时链路不断 |
-| **更多语言** | — | Go struct/Python dataclass 分析器（ Analyzer 接口已插件化，照 java.ts 模式做即可） |
+| 项                   | 解决       | 说明                                                                                                                     |
+| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **OpenAPI 契约对账** | G4.4       | 支持导入 openapi.json：路由/请求/响应与代码侧提取结果互相校验，diff 时报告前后端契约漂移                                 |
+| **影响深度自适应**   | G4.3、G4.6 | MAX_DEPTH 改为按"到达测试/页面等终止节点"停止，上限放宽到 6；用 impact-accuracy 历史命中率动态调高/调低高噪声边的权重    |
+| **知识自动保鲜**     | G3.4       | post-commit hook 在 capture 之外追加增量 re-discover（只扫变更文件），证据失效的规则自动打 stale 并出现在下次 audit 首页 |
+| **语义级规则冲突**   | G3.5       | 冲突检测扩展到前置条件维度（preconditions 不同但主语相同的对立约束），llm-rules 关闭时用纯启发式                         |
+| **多仓库 linkage**   | G2.6       | 支持配置 `linkage.externalApis`（指向另一个仓库的 manifest 导出），前端库与后端服务分仓时链路不断                        |
+| **更多语言**         | —          | Go struct/Python dataclass 分析器（ Analyzer 接口已插件化，照 java.ts 模式做即可）                                       |
 
 ### 不建议现在做
 
@@ -247,8 +256,8 @@
 1. 更新模板 `templates/agent/business/glossary.md` 为结构化表格（三列表头固定）：
 
    ```markdown
-   | 术语 | 别名 | 实体 |
-   | --- | --- | --- |
+   | 术语 | 别名                            | 实体  |
+   | ---- | ------------------------------- | ----- |
    | 缴费 | PremiumPayment, premium_payment | Order |
    ```
 

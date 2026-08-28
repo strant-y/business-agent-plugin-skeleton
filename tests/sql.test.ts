@@ -38,6 +38,8 @@ describe('sqlAnalyzer', () => {
     expect(rules.some((rule) => rule.name.includes('CHECK'))).toBe(true);
     expect(rules.some((rule) => rule.rule[0]?.includes('只能取以下业务状态'))).toBe(true);
     expect(rules.some((rule) => rule.rule[0]?.includes('Orders.status') && rule.rule[0]?.includes('DRAFT'))).toBe(true);
-    expect(rules.some((rule) => rule.rule[0]?.includes('AuditLog.event_type') && rule.rule[0]?.includes('ORDER_UPDATED'))).toBe(true);
+    expect(
+      rules.some((rule) => rule.rule[0]?.includes('AuditLog.event_type') && rule.rule[0]?.includes('ORDER_UPDATED')),
+    ).toBe(true);
   });
 });

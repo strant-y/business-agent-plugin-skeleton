@@ -16,7 +16,11 @@ export const pythonAnalyzer: Analyzer = {
         const bodyStart = (match.index ?? 0) + match[0].length;
         const bodyEnd = classMatches[index + 1]?.index ?? sample.text.length;
         const body = sample.text.slice(bodyStart, bodyEnd);
-        if (!/@dataclass/.test(sample.text.slice(Math.max(0, match.index! - 120), match.index!)) && !/BaseModel/.test(bases)) continue;
+        if (
+          !/@dataclass/.test(sample.text.slice(Math.max(0, match.index! - 120), match.index!)) &&
+          !/BaseModel/.test(bases)
+        )
+          continue;
         const name = pascal(match[1]);
         const attributes = [...body.matchAll(FIELD_RE)].map((field) => ({
           name: field[1],

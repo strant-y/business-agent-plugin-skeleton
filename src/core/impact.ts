@@ -157,7 +157,10 @@ function inferModuleBacklinks(
   );
 }
 
-async function evidenceExists(root: string, evidence: string | { file?: string; lineStart?: number }): Promise<boolean> {
+async function evidenceExists(
+  root: string,
+  evidence: string | { file?: string; lineStart?: number },
+): Promise<boolean> {
   const rel = typeof evidence === 'string' ? evidence.split(':')[0]?.trim() : evidence.file?.trim();
   if (!rel) return false;
   const absolute = path.join(root, rel);
@@ -177,7 +180,9 @@ async function loadLowAccuracyRelationships(root: string): Promise<Set<string>> 
     };
     return new Set(
       Object.entries(summary.relationshipAccuracy ?? {})
-        .filter(([, value]) => (value.predicted ?? 0) > 0 && (value.precision ?? (value.hits ?? 0) / value.predicted!) === 0)
+        .filter(
+          ([, value]) => (value.predicted ?? 0) > 0 && (value.precision ?? (value.hits ?? 0) / value.predicted!) === 0,
+        )
         .map(([relationship]) => relationship),
     );
   } catch {
@@ -229,7 +234,8 @@ function detectFieldContext(changedFiles: string[], diff: string, manifest: Part
   for (const [key, entry] of Object.entries(manifest.fieldIndex ?? {})) {
     const field = entry.field.toLowerCase();
     const entity = entry.entity.toLowerCase();
-    if (lowerDiff.includes(field) || lowerDiff.includes(`${entity}.${field}`) || fileHints.includes(entity)) findings.push(key);
+    if (lowerDiff.includes(field) || lowerDiff.includes(`${entity}.${field}`) || fileHints.includes(entity))
+      findings.push(key);
   }
   return uniqueStrings(findings);
 }
@@ -240,7 +246,11 @@ function parseDiffFindings(diff: string): DiffFinding[] {
 
   if (/order\.status\s*===\s*'AUDIT'/i.test(diff) && /order\.status\s*===\s*'AUDITING'/i.test(diff)) {
     findings.push({ kind: 'state_removed', subject: 'Order.status', detail: 'AUDIT removed from Order.status checks' });
-    findings.push({ kind: 'state_transition_changed', subject: 'Order.status', detail: 'Order.status transition changed from AUDIT to AUDITING' });
+    findings.push({
+      kind: 'state_transition_changed',
+      subject: 'Order.status',
+      detail: 'Order.status transition changed from AUDIT to AUDITING',
+    });
   }
   if (/hasPermission\(/i.test(diff)) {
     findings.push({ kind: 'permission_changed', subject: 'OrderList', detail: 'Permission guard changed in UI flow' });
@@ -259,7 +269,9 @@ function parseDiffFindings(diff: string): DiffFinding[] {
     });
   }
 
-  const fieldTypeMatch = diff.match(/-.*params:\s*\{\s*([a-zA-Z0-9_]+):\s*([a-zA-Z0-9_]+)\s*\}.*\n\+.*params:\s*\{\s*\1:\s*([a-zA-Z0-9_]+)\s*\}/i);
+  const fieldTypeMatch = diff.match(
+    /-.*params:\s*\{\s*([a-zA-Z0-9_]+):\s*([a-zA-Z0-9_]+)\s*\}.*\n\+.*params:\s*\{\s*\1:\s*([a-zA-Z0-9_]+)\s*\}/i,
+  );
   if (fieldTypeMatch) {
     findings.push({
       kind: 'field_type_changed',
@@ -304,7 +316,11 @@ function collectEntitiesFromChain(chain: ImpactChainStep[]): string[] {
   return uniqueStrings(chain.map((step) => step.node).filter((node) => !node.startsWith('module:')));
 }
 
-function findRulesForEntities(rules: BusinessRule[], entities: string[], aliasIndex: Record<string, string>): BusinessRule[] {
+function findRulesForEntities(
+  rules: BusinessRule[],
+  entities: string[],
+  aliasIndex: Record<string, string>,
+): BusinessRule[] {
   const entitySet = new Set(entities.map((entity) => resolveCanonicalNameFromIndex(entity, aliasIndex)));
   return unique(
     rules.filter((rule) => {
@@ -328,7 +344,11 @@ function findRulesByEvidence(rules: BusinessRule[], changedFiles: string[]): Bus
   );
 }
 
-function findRelationsForEntities(relations: Relation[], entities: string[], aliasIndex: Record<string, string>): Relation[] {
+function findRelationsForEntities(
+  relations: Relation[],
+  entities: string[],
+  aliasIndex: Record<string, string>,
+): Relation[] {
   const entitySet = new Set(entities.map((entity) => resolveCanonicalNameFromIndex(entity, aliasIndex)));
   return unique(
     relations.filter((relation) => {
@@ -433,7 +453,9 @@ function buildCoverage(rules: BusinessRule[]): ImpactReport['coverage'] {
     protectedRules: rules
       .filter((rule) => (rule.coveringTests ?? []).length)
       .map((rule) => ({ ruleId: rule.id, ruleName: rule.name, tests: uniqueStrings(rule.coveringTests ?? []) })),
-    missingRules: rules.filter((rule) => !(rule.coveringTests ?? []).length).map((rule) => ({ ruleId: rule.id, ruleName: rule.name })),
+    missingRules: rules
+      .filter((rule) => !(rule.coveringTests ?? []).length)
+      .map((rule) => ({ ruleId: rule.id, ruleName: rule.name })),
   };
 }
 
@@ -465,17 +487,19 @@ async function detectRuleViolations(
 ): Promise<{ violations: RuleViolation[]; warnings: string[] }> {
   const violations: RuleViolation[] = [];
   const warnings: string[] = [];
-  const shouldCheckSnippet = diffFindings.some((finding) =>
-    finding.kind === 'state_removed' ||
-    finding.kind === 'state_transition_changed' ||
-    finding.kind === 'permission_changed' ||
-    finding.kind === 'validation_changed',
+  const shouldCheckSnippet = diffFindings.some(
+    (finding) =>
+      finding.kind === 'state_removed' ||
+      finding.kind === 'state_transition_changed' ||
+      finding.kind === 'permission_changed' ||
+      finding.kind === 'validation_changed',
   );
   for (const rule of rules) {
     if (!rule.evidence.length) continue;
     const normalized = normalizeEvidence(rule.evidence);
     const validationResults = await Promise.all(normalized.map((item) => validateEvidence(item, root)));
-    for (const result of validationResults) warnings.push(...result.warnings.map((warning) => `evidence validation: ${warning}`));
+    for (const result of validationResults)
+      warnings.push(...result.warnings.map((warning) => `evidence validation: ${warning}`));
     const availability = await Promise.all(rule.evidence.map((item) => evidenceExists(root, item)));
     if (!availability.some(Boolean)) {
       violations.push({
@@ -494,18 +518,20 @@ async function detectRuleViolations(
     if (!shouldCheckSnippet) continue;
     if (firstValid.snippet !== undefined) {
       const snippet = firstValid.snippet;
-      const snippetChanged = diffFindings.some((finding) =>
-        (finding.kind === 'state_removed' ||
+      const snippetChanged = diffFindings.some(
+        (finding) =>
+          (finding.kind === 'state_removed' ||
+            finding.kind === 'state_transition_changed' ||
+            finding.kind === 'permission_changed' ||
+            finding.kind === 'validation_changed') &&
+          `${finding.subject} ${finding.detail}`.toLowerCase().includes(snippet.toLowerCase().replaceAll(' ', '')),
+      );
+      const evidenceChanged = diffFindings.some(
+        (finding) =>
+          finding.kind === 'state_removed' ||
           finding.kind === 'state_transition_changed' ||
           finding.kind === 'permission_changed' ||
-          finding.kind === 'validation_changed') &&
-        `${finding.subject} ${finding.detail}`.toLowerCase().includes(snippet.toLowerCase().replaceAll(' ', '')),
-      );
-      const evidenceChanged = diffFindings.some((finding) =>
-        finding.kind === 'state_removed' ||
-        finding.kind === 'state_transition_changed' ||
-        finding.kind === 'permission_changed' ||
-        finding.kind === 'validation_changed',
+          finding.kind === 'validation_changed',
       );
       if (snippetChanged || evidenceChanged) {
         violations.push({
@@ -612,13 +638,19 @@ function buildSuggestedTests(mappings: DiffImpactMapping[], rules: BusinessRule[
   return buildReviewHint([], rules);
 }
 
-function filterImpactedEntities(entities: string[], manifest: Partial<DiscoverManifest>, changedFiles: string[]): string[] {
+function filterImpactedEntities(
+  entities: string[],
+  manifest: Partial<DiscoverManifest>,
+  changedFiles: string[],
+): string[] {
   const loweredFiles = changedFiles.map((file) => file.toLowerCase());
   return entities.filter((entity) => {
     const canonical = entity.toLowerCase();
     const descriptor = (manifest.entities ?? []).find((item) => item.name === entity);
     const evidenceText = `${descriptor?.description ?? ''} ${(descriptor?.evidence ?? []).join(' ')}`.toLowerCase();
-    return loweredFiles.some((file) => file.includes(canonical) || evidenceText.includes(file.split('/').pop()?.toLowerCase() ?? ''));
+    return loweredFiles.some(
+      (file) => file.includes(canonical) || evidenceText.includes(file.split('/').pop()?.toLowerCase() ?? ''),
+    );
   });
 }
 
@@ -648,7 +680,10 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
       chain.push(...traceGraph(file, start, graph, config.maxDepth, { terminalNodes, lowAccuracyRelationships }));
     }
   }
-  chain = unique(chain, (step) => `${step.file}:${step.node}:${step.depth}:${step.relationship ?? ''}:${step.direction}`);
+  chain = unique(
+    chain,
+    (step) => `${step.file}:${step.node}:${step.depth}:${step.relationship ?? ''}:${step.direction}`,
+  );
 
   let entities = collectEntitiesFromChain(chain);
   if (changedFiles.some((file) => file.includes('customer')) && !changedFiles.some((file) => file.includes('order'))) {
@@ -656,7 +691,9 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
   }
 
   const fallbackRules = findRulesByEvidence(storedRules, changedFiles);
-  const fallbackEntities = uniqueStrings(fallbackRules.map((rule) => resolveCanonicalNameFromIndex(rule.entity, aliasIndex)));
+  const fallbackEntities = uniqueStrings(
+    fallbackRules.map((rule) => resolveCanonicalNameFromIndex(rule.entity, aliasIndex)),
+  );
   entities = uniqueStrings([...entities, ...fallbackEntities]);
 
   const changedFilesHaveModule = (manifest.modules ?? []).some((module) =>
@@ -673,7 +710,12 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
           }),
         )
         .flatMap((relation) => [relation.source, relation.target])
-        .filter((node) => !node.startsWith('module:') && node !== 'OrderList' && changedTerms.some((term) => node.toLowerCase().includes(term))),
+        .filter(
+          (node) =>
+            !node.startsWith('module:') &&
+            node !== 'OrderList' &&
+            changedTerms.some((term) => node.toLowerCase().includes(term)),
+        ),
     );
     const fileMatchedEntities = (manifest.entities ?? [])
       .filter((entity) => changedTerms.some((term) => entity.name.toLowerCase().includes(term)))
@@ -698,7 +740,10 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     entities = uniqueStrings([...entities, ...manifestFallbackEntities, ...fileMatchedEntities, ...reachableEntities]);
   }
 
-  const rules = unique([...findRulesForEntities(storedRules, entities, aliasIndex), ...fallbackRules], (rule) => rule.id);
+  const rules = unique(
+    [...findRulesForEntities(storedRules, entities, aliasIndex), ...fallbackRules],
+    (rule) => rule.id,
+  );
   const relations = findRelationsForEntities(storedRelations, entities, aliasIndex);
   const apis = findApisForEntities(manifest.apis ?? [], entities, aliasIndex);
   const workflows = findWorkflows(manifest, entities, apis);
@@ -720,7 +765,14 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
       if (file) touchedModules.add(moduleNodeId(file));
     }
   }
-  const moduleBacklinks = inferModuleBacklinks(manifest, touchedModules, affectedPages, affectedActions, apis, relations);
+  const moduleBacklinks = inferModuleBacklinks(
+    manifest,
+    touchedModules,
+    affectedPages,
+    affectedActions,
+    apis,
+    relations,
+  );
 
   const diffFindings = parseDiffFindings(diff);
   const fieldSubjects = detectFieldContext(changedFiles, diff, manifest);
@@ -741,7 +793,9 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
   const contractDrift = buildContractDrift(diffFindings);
   const experiences = await loadTaskExperiences(root);
   const supportingTasks = experiences
-    .filter((item) => item.affectedEntities.some((entity) => entities.includes(resolveCanonicalNameFromIndex(entity, aliasIndex))))
+    .filter((item) =>
+      item.affectedEntities.some((entity) => entities.includes(resolveCanonicalNameFromIndex(entity, aliasIndex))),
+    )
     .map((item) => ({ taskId: item.taskId, intent: item.intent, lessons: item.lessons.slice(0, 3) }))
     .slice(0, 5);
 
@@ -757,17 +811,18 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
       })
     : undefined;
 
-  const evidenceRules = allRules.filter((rule) =>
-    rule.status === 'confirmed' &&
-    !rule.id.endsWith('.covered') &&
-    !rule.id.endsWith('.uncovered') &&
-    rule.evidence.some((evidence) => {
-      if (typeof evidence === 'string') {
-        const file = evidence.split(':')[0] ?? '';
-        return changedFiles.includes(file);
-      }
-      return changedFiles.includes((evidence as { file?: string }).file ?? '');
-    }),
+  const evidenceRules = allRules.filter(
+    (rule) =>
+      rule.status === 'confirmed' &&
+      !rule.id.endsWith('.covered') &&
+      !rule.id.endsWith('.uncovered') &&
+      rule.evidence.some((evidence) => {
+        if (typeof evidence === 'string') {
+          const file = evidence.split(':')[0] ?? '';
+          return changedFiles.includes(file);
+        }
+        return changedFiles.includes((evidence as { file?: string }).file ?? '');
+      }),
   );
   const { violations, warnings: violationWarnings } = await detectRuleViolations(root, evidenceRules, diffFindings);
   const risks = uniqueStrings([
@@ -873,7 +928,9 @@ export function impactMarkdown(report: ImpactReport): string {
     ...(report.coverage.missingRules.length
       ? report.coverage.missingRules.map((rule) => `- ${rule.ruleId}: ${rule.ruleName} (建议补测试)`)
       : ['- None identified']),
-    ...(report.contractDrift.length ? ['', '## Contract Drift', ...report.contractDrift.map((item) => `- ${item}`)] : []),
+    ...(report.contractDrift.length
+      ? ['', '## Contract Drift', ...report.contractDrift.map((item) => `- ${item}`)]
+      : []),
     ...(report.risks.length ? ['', '## Risks', ...report.risks.map((risk) => `- ${risk}`)] : []),
     ...(report.warnings.length ? ['', '## Warnings', ...report.warnings.map((warning) => `- ${warning}`)] : []),
     '',

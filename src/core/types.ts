@@ -81,7 +81,14 @@ const RELATIONSHIP_MIGRATIONS: Record<LegacyRelationshipKind, RelationshipKind> 
   action_updates_store: 'calls',
 };
 
-const RELATIONSHIP_KINDS = new Set<RelationshipKind>(['owns', 'aggregates', 'references', 'calls', 'renders', 'maps-to']);
+const RELATIONSHIP_KINDS = new Set<RelationshipKind>([
+  'owns',
+  'aggregates',
+  'references',
+  'calls',
+  'renders',
+  'maps-to',
+]);
 
 export function normalizeRelationship(value: string): RelationshipKind {
   if (RELATIONSHIP_KINDS.has(value as RelationshipKind)) return value as RelationshipKind;

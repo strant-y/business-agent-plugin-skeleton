@@ -69,9 +69,7 @@ export function detectConflicts(rules: BusinessRule[]): RuleConflict[] {
           sameTarget(aText, bText) &&
           (hasDifferentConditions(a, b) || ruleRole(aText) !== ruleRole(bText));
         const opposing =
-          aSign !== 0 &&
-          aSign === -bSign &&
-          (sameTarget(aText, bText) || (!ruleAction(aText) && !ruleAction(bText)));
+          aSign !== 0 && aSign === -bSign && (sameTarget(aText, bText) || (!ruleAction(aText) && !ruleAction(bText)));
         if (opposing) {
           conflicts.push({
             id: `conflict.${a.id.replace(/^rule\./, '')}-vs-${b.id.replace(/^rule\./, '')}`,

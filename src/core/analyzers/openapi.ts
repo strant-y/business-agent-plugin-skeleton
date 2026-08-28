@@ -24,7 +24,11 @@ function readOpenApiDocuments(
 ): Array<{ file: string; doc: OpenApiDocument }> {
   const docs: Array<{ file: string; doc: OpenApiDocument }> = [];
   for (const sample of scan.samples) {
-    if (!/openapi[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file) && !/(?:^|[/\\])swagger[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file)) continue;
+    if (
+      !/openapi[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file) &&
+      !/(?:^|[/\\])swagger[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file)
+    )
+      continue;
     try {
       const raw = scan.fileText[sample.file] ?? sample.text;
       const doc = JSON.parse(raw) as OpenApiDocument;
@@ -41,7 +45,10 @@ function readOpenApiDocuments(
   return docs;
 }
 
-function derefSchema(schema: OpenApiSchema | undefined, schemas: Record<string, OpenApiSchema>): OpenApiSchema | undefined {
+function derefSchema(
+  schema: OpenApiSchema | undefined,
+  schemas: Record<string, OpenApiSchema>,
+): OpenApiSchema | undefined {
   if (!schema) return undefined;
   if (!schema.$ref) return schema;
   const match = schema.$ref.match(/^#\/components\/schemas\/([^/]+)$/);
@@ -49,7 +56,11 @@ function derefSchema(schema: OpenApiSchema | undefined, schemas: Record<string, 
   return schemas[match[1]];
 }
 
-function schemaFieldRefs(entity: string, schema: OpenApiSchema | undefined, schemas: Record<string, OpenApiSchema>): FieldRef[] {
+function schemaFieldRefs(
+  entity: string,
+  schema: OpenApiSchema | undefined,
+  schemas: Record<string, OpenApiSchema>,
+): FieldRef[] {
   const resolved = derefSchema(schema, schemas);
   if (!resolved) return [];
   if (resolved.type === 'array') return schemaFieldRefs(entity, resolved.items, schemas);
@@ -79,7 +90,10 @@ function collectSchemaEntities(file: string, schemas: Record<string, OpenApiSche
   }));
 }
 
-function extractEntityFromSchema(schema: OpenApiSchema | undefined, schemas: Record<string, OpenApiSchema>): string | undefined {
+function extractEntityFromSchema(
+  schema: OpenApiSchema | undefined,
+  schemas: Record<string, OpenApiSchema>,
+): string | undefined {
   const resolved = derefSchema(schema, schemas);
   if (!resolved) return undefined;
   const ref = schema?.$ref?.match(/^#\/components\/schemas\/([^/]+)$/)?.[1];
@@ -120,9 +134,15 @@ function collectContractRoutes(file: string, doc: OpenApiDocument): ApiRoute[] {
       const fields = [
         ...schemaFieldRefs(entity ?? 'Unknown', response, schemas),
         ...schemaFieldRefs(entity ?? 'Unknown', request, schemas),
-      ].filter((field, index, list) => list.findIndex((item) => `${item.entity}.${item.field}` === `${field.entity}.${field.field}`) === index);
+      ].filter(
+        (field, index, list) =>
+          list.findIndex((item) => `${item.entity}.${item.field}` === `${field.entity}.${field.field}`) === index,
+      );
       apis.push({
-        id: `api.openapi.${upperMethod.toLowerCase()}-${routePath.replace(/[^a-zA-Z0-9]/g, '-').replace(/^-|-$/g, '').toLowerCase()}`,
+        id: `api.openapi.${upperMethod.toLowerCase()}-${routePath
+          .replace(/[^a-zA-Z0-9]/g, '-')
+          .replace(/^-|-$/g, '')
+          .toLowerCase()}`,
         method: upperMethod,
         path: routePath,
         entity,

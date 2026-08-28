@@ -520,16 +520,9 @@ export function computeAccuracy(predicted?: ImpactReport, actual?: ImpactReport)
     actualRelationCounts.set(identity, (actualRelationCounts.get(identity) ?? 0) + 1);
   }
   const relationships = [...relationshipNames].map((relationship) => {
-    const predictedRelations = (predicted?.relations ?? []).filter(
-      (item) => item.relationship === relationship,
-    );
-    const actualRelations = (actual?.relations ?? []).filter(
-      (item) => item.relationship === relationship,
-    );
-    const identities = new Set([
-      ...predictedRelations.map(relationIdentity),
-      ...actualRelations.map(relationIdentity),
-    ]);
+    const predictedRelations = (predicted?.relations ?? []).filter((item) => item.relationship === relationship);
+    const actualRelations = (actual?.relations ?? []).filter((item) => item.relationship === relationship);
+    const identities = new Set([...predictedRelations.map(relationIdentity), ...actualRelations.map(relationIdentity)]);
     let hits = 0;
     for (const identity of identities) {
       const predictedCount = predictedRelationCounts.get(identity) ?? 0;

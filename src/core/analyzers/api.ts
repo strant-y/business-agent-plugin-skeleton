@@ -47,7 +47,8 @@ function apiDtoFieldRefs(text: string, entities: Entity[]): FieldRef[] {
     }
   };
   for (const match of text.matchAll(/\b([A-Z][A-Za-z0-9_$]*DTO)(?:\[\])?\b/g)) add(normalizeDtoEntity(match[1]));
-  for (const match of text.matchAll(/Promise\s*<\s*([A-Z][A-Za-z0-9_$]*)(?:\[\])?\s*>/g)) add(normalizeDtoEntity(match[1]));
+  for (const match of text.matchAll(/Promise\s*<\s*([A-Z][A-Za-z0-9_$]*)(?:\[\])?\s*>/g))
+    add(normalizeDtoEntity(match[1]));
   return refs;
 }
 
@@ -84,7 +85,14 @@ export const apiAnalyzer: Analyzer = {
             path,
             entity,
             fields: entity
-              ? [...new Map([...(entityFieldIndex.get(entity.toLowerCase()) ?? []), ...dtoFields].map((field) => [`${field.entity}.${field.field}`, field])).values()]
+              ? [
+                  ...new Map(
+                    [...(entityFieldIndex.get(entity.toLowerCase()) ?? []), ...dtoFields].map((field) => [
+                      `${field.entity}.${field.field}`,
+                      field,
+                    ]),
+                  ).values(),
+                ]
               : dtoFields,
             kind: kindFrom(style),
             confidence: 'low',

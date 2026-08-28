@@ -230,7 +230,10 @@ export const javaAnalyzer: Analyzer = {
             const args = vm[2];
             const field = vm[4];
             rules.push({
-              id: `rule.java.validation-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${validationIndex++}`,
+              id: `rule.java.validation-${sample.file
+                .replace(/[^a-z0-9]/gi, '')
+                .toLowerCase()
+                .slice(-12)}-${validationIndex++}`,
               name: `Field constraint via @${annotation}`,
               entity: className,
               rule: [validationRuleText(annotation, args, className, field)],
@@ -261,7 +264,10 @@ export const javaAnalyzer: Analyzer = {
           }
           for (const sm of body.matchAll(STATUS_THROW_RE)) {
             rules.push({
-              id: `rule.java.status-throw-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${n++}`,
+              id: `rule.java.status-throw-${sample.file
+                .replace(/[^a-z0-9]/gi, '')
+                .toLowerCase()
+                .slice(-12)}-${n++}`,
               name: 'State-dependent validation error',
               entity: ruleEntity,
               preconditions: [sm[1].trim()],
@@ -292,7 +298,10 @@ export const javaAnalyzer: Analyzer = {
           let authIndex = 0;
           for (const pm of body.matchAll(PREAUTHORIZE_RE)) {
             rules.push({
-              id: `rule.java.auth-${sample.file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${authIndex++}`,
+              id: `rule.java.auth-${sample.file
+                .replace(/[^a-z0-9]/gi, '')
+                .toLowerCase()
+                .slice(-12)}-${authIndex++}`,
               name: `${pm[1]} authorization guard`,
               entity: ruleEntityName(className),
               preconditions: [pm[2]],

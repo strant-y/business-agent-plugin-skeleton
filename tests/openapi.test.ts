@@ -13,7 +13,7 @@ async function setupProject(): Promise<string> {
   await fs.writeFile(
     path.join(dir, 'src/api/orderApi.ts'),
     [
-      "export interface Order {",
+      'export interface Order {',
       '  id: number;',
       '  status: string;',
       '  total: number;',
@@ -147,7 +147,11 @@ describe('openapi analyzer', () => {
     );
     expect(manifest.entities.map((entity) => entity.name)).toContain('Order');
     expect(manifest.fieldIndex?.['order.amount']).toMatchObject({ entity: 'Order', field: 'amount' });
-    expect(manifest.fieldIndex?.['order.amount']?.evidence?.some((file) => file.replaceAll('\\', '/') === 'contracts/openapi.json')).toBe(true);
+    expect(
+      manifest.fieldIndex?.['order.amount']?.evidence?.some(
+        (file) => file.replaceAll('\\', '/') === 'contracts/openapi.json',
+      ),
+    ).toBe(true);
     expect(warnings).toEqual(
       expect.arrayContaining([
         expect.stringContaining('OpenAPI contract route missing from code: GET /api/order-history'),
@@ -156,9 +160,7 @@ describe('openapi analyzer', () => {
       ]),
     );
     expect(warnings).not.toEqual(
-      expect.arrayContaining([
-        expect.stringContaining('OpenAPI contract route missing from code: GET /api/orders'),
-      ]),
+      expect.arrayContaining([expect.stringContaining('OpenAPI contract route missing from code: GET /api/orders')]),
     );
   });
 

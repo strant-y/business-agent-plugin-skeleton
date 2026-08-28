@@ -114,8 +114,18 @@ export const useOrderStore = defineStore('order', {
 
     expect(result.relations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ source: 'OrderStore', target: 'UseOrderData', relationship: 'calls', subtype: 'composable_usage' }),
-        expect.objectContaining({ source: 'OrderApi', target: 'Order', relationship: 'calls', subtype: 'api_route_call' }),
+        expect.objectContaining({
+          source: 'OrderStore',
+          target: 'UseOrderData',
+          relationship: 'calls',
+          subtype: 'composable_usage',
+        }),
+        expect.objectContaining({
+          source: 'OrderApi',
+          target: 'Order',
+          relationship: 'calls',
+          subtype: 'api_route_call',
+        }),
       ]),
     );
   });

@@ -275,7 +275,9 @@ export async function refreshKnowledgeStateFromEvidence(
 
   for (const record of records) {
     if (record.status !== 'confirmed' && record.status !== 'verified') continue;
-    const relevantEvidence = record.evidence.filter((evidence) => evidence.file && changedFiles.includes(evidence.file));
+    const relevantEvidence = record.evidence.filter(
+      (evidence) => evidence.file && changedFiles.includes(evidence.file),
+    );
     if (relevantEvidence.length === 0) continue;
 
     const validations = await Promise.all(relevantEvidence.map((evidence) => validateEvidence(evidence, root)));

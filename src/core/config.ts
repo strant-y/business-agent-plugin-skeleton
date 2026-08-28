@@ -78,7 +78,12 @@ function mergeConfig(base: AgentConfig, partial: unknown, onWarning?: (message: 
     const value = partial[key];
     if (value === undefined) continue;
     if (key === 'impact') {
-      if (!isPlainObject(value) || typeof value.maxDepth !== 'number' || !Number.isFinite(value.maxDepth) || value.maxDepth < 1) {
+      if (
+        !isPlainObject(value) ||
+        typeof value.maxDepth !== 'number' ||
+        !Number.isFinite(value.maxDepth) ||
+        value.maxDepth < 1
+      ) {
         onWarning?.('Ignoring invalid impact configuration; expected maxDepth to be a positive finite number.');
         continue;
       }
@@ -91,11 +96,16 @@ function mergeConfig(base: AgentConfig, partial: unknown, onWarning?: (message: 
         continue;
       }
       const externalApis = value.externalApis;
-      if (externalApis !== undefined && (!Array.isArray(externalApis) || externalApis.some((item) => typeof item !== 'string'))) {
+      if (
+        externalApis !== undefined &&
+        (!Array.isArray(externalApis) || externalApis.some((item) => typeof item !== 'string'))
+      ) {
         onWarning?.('Ignoring invalid linkage.externalApis; expected an array of strings.');
         continue;
       }
-      record.linkage = { externalApis: Array.isArray(externalApis) ? externalApis : base.linkage?.externalApis ?? [] };
+      record.linkage = {
+        externalApis: Array.isArray(externalApis) ? externalApis : (base.linkage?.externalApis ?? []),
+      };
       continue;
     }
     if (key === 'llm') {

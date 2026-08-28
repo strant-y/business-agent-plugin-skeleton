@@ -177,9 +177,27 @@ describe('runAnalyzers', () => {
     expect(result.relations).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ relationship: 'references', source: 'Order', target: 'Customer' }),
-        expect.objectContaining({ relationship: 'calls', subtype: 'api_route_call', provenance: 'frontend_page', source: 'Order', target: 'Customer' }),
-        expect.objectContaining({ relationship: 'calls', subtype: 'api_route_call', provenance: 'frontend_linkage', source: 'Order', target: 'Customer' }),
-        expect.objectContaining({ relationship: 'calls', subtype: 'composable_usage', provenance: 'store_module', source: 'Order', target: 'Customer' }),
+        expect.objectContaining({
+          relationship: 'calls',
+          subtype: 'api_route_call',
+          provenance: 'frontend_page',
+          source: 'Order',
+          target: 'Customer',
+        }),
+        expect.objectContaining({
+          relationship: 'calls',
+          subtype: 'api_route_call',
+          provenance: 'frontend_linkage',
+          source: 'Order',
+          target: 'Customer',
+        }),
+        expect.objectContaining({
+          relationship: 'calls',
+          subtype: 'composable_usage',
+          provenance: 'store_module',
+          source: 'Order',
+          target: 'Customer',
+        }),
       ]),
     );
     expect(result.apis).toHaveLength(2);

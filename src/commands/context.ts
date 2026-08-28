@@ -76,11 +76,18 @@ export async function contextCommand(root: string, subject: string, options: Con
     matched = entities.filter((e) => names.has(e.name));
   }
   const matchedNames = new Set(matched.map((e) => e.name));
-  const directAliasMatch = aliasIndex[subject.trim().toLowerCase().replace(/[-_\s]/g, '')];
+  const directAliasMatch =
+    aliasIndex[
+      subject
+        .trim()
+        .toLowerCase()
+        .replace(/[-_\s]/g, '')
+    ];
   if (directAliasMatch) matchedNames.add(directAliasMatch);
 
   const relevantRules = rules.filter(
-    (r) => matchedNames.has(resolveCanonicalNameFromIndex(r.entity, aliasIndex)) || r.entity.toLowerCase() === subjectLower,
+    (r) =>
+      matchedNames.has(resolveCanonicalNameFromIndex(r.entity, aliasIndex)) || r.entity.toLowerCase() === subjectLower,
   );
   const relevantRelations = relations.filter(
     (r) =>
@@ -88,9 +95,12 @@ export async function contextCommand(root: string, subject: string, options: Con
       matchedNames.has(resolveCanonicalNameFromIndex(r.target, aliasIndex)),
   );
   const relevantConflicts = (manifest?.conflicts ?? []).filter(
-    (c) => matchedNames.has(resolveCanonicalNameFromIndex(c.entity, aliasIndex)) || c.entity.toLowerCase() === subjectLower,
+    (c) =>
+      matchedNames.has(resolveCanonicalNameFromIndex(c.entity, aliasIndex)) || c.entity.toLowerCase() === subjectLower,
   );
-  const relevantApis = (manifest?.apis ?? []).filter((a) => a.entity && matchedNames.has(resolveCanonicalNameFromIndex(a.entity, aliasIndex)));
+  const relevantApis = (manifest?.apis ?? []).filter(
+    (a) => a.entity && matchedNames.has(resolveCanonicalNameFromIndex(a.entity, aliasIndex)),
+  );
   const relevantPages = (manifest?.pages ?? []).filter(
     (page) =>
       matchedNames.has(page.component) ||
@@ -155,7 +165,13 @@ export async function contextCommand(root: string, subject: string, options: Con
       ? relevantRelations.map((r) => `- ${r.source} --(${r.relationship}, ${r.cardinality})--> ${r.target}`)
       : ['- None yet.']),
     ...(relationshipGraph?.mermaid
-      ? ['', '```mermaid', relationshipGraph.mermaid, '```', ...(relationshipGraph.truncated ? ['- Graph truncated at 40 nodes.'] : [])]
+      ? [
+          '',
+          '```mermaid',
+          relationshipGraph.mermaid,
+          '```',
+          ...(relationshipGraph.truncated ? ['- Graph truncated at 40 nodes.'] : []),
+        ]
       : []),
     '',
     '## Rule Conflicts',
@@ -168,7 +184,11 @@ export async function contextCommand(root: string, subject: string, options: Con
     '',
     '## State Machines',
     ...(manifest?.states
-      ?.filter((s) => matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) || s.entity.toLowerCase() === subjectLower)
+      ?.filter(
+        (s) =>
+          matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) ||
+          s.entity.toLowerCase() === subjectLower,
+      )
       .map((s) => `- ${s.entity}: ${s.states.join(', ')}\n\n  \`\`\`mermaid\n  ${s.mermaid}\n  \`\`\``) ?? [
       '- None detected.',
     ]),

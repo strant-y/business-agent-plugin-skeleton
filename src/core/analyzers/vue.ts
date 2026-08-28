@@ -98,7 +98,11 @@ function templateRules(text: string, file: string, entityName: string): Business
   const template = extractTemplate(text);
   if (!template) return rules;
   // Keep one candidate per component and constraint type; evidence retains every match.
-  const fileSlug = file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-16) || 'file';
+  const fileSlug =
+    file
+      .replace(/[^a-z0-9]/gi, '')
+      .toLowerCase()
+      .slice(-16) || 'file';
   const matches = (expression: RegExp): Array<{ value: string; context: string }> => {
     const seen = new Set<string>();
     return [...template.matchAll(expression)].flatMap((match) => {
@@ -107,7 +111,9 @@ function templateRules(text: string, file: string, entityName: string): Business
       seen.add(value);
       const start = Math.max(0, (match.index ?? 0) - 80);
       const end = Math.min(template.length, (match.index ?? 0) + match[0].length + 80);
-      return [{ value, context: `${file}: template context: ${template.slice(start, end).replace(/\s+/g, ' ').trim()}` }];
+      return [
+        { value, context: `${file}: template context: ${template.slice(start, end).replace(/\s+/g, ' ').trim()}` },
+      ];
     });
   };
 

@@ -134,7 +134,11 @@ export function buildAliasArtifacts(entities: Entity[], entries: GlossaryEntry[]
     for (const variant of buildAliasVariants(entity.name)) {
       const normalizedVariant = normalizeTerm(variant);
       if (directNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) continue;
-      if (isSqlDerivedEntity(entity) && singularEntityNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) {
+      if (
+        isSqlDerivedEntity(entity) &&
+        singularEntityNames.has(normalizedVariant) &&
+        normalizedVariant !== normalizeTerm(entity.name)
+      ) {
         continue;
       }
       registerAlias(entity.name, variant);
@@ -145,7 +149,11 @@ export function buildAliasArtifacts(entities: Entity[], entries: GlossaryEntry[]
       for (const variant of buildAliasVariants(tag)) {
         const normalizedVariant = normalizeTerm(variant);
         if (directNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) continue;
-        if (isSqlDerivedEntity(entity) && singularEntityNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) {
+        if (
+          isSqlDerivedEntity(entity) &&
+          singularEntityNames.has(normalizedVariant) &&
+          normalizedVariant !== normalizeTerm(entity.name)
+        ) {
           continue;
         }
         registerAlias(entity.name, variant);
@@ -165,7 +173,9 @@ export function buildAliasArtifacts(entities: Entity[], entries: GlossaryEntry[]
 
   const aliasesByEntity: Record<string, string[]> = {};
   for (const [canonical, items] of buckets) {
-    aliasesByEntity[canonical] = [...new Set([...items].filter((item) => normalizeTerm(item) !== normalizeTerm(canonical)))];
+    aliasesByEntity[canonical] = [
+      ...new Set([...items].filter((item) => normalizeTerm(item) !== normalizeTerm(canonical))),
+    ];
   }
 
   return {

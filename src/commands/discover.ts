@@ -9,9 +9,7 @@ export interface CommandOptions {
 
 export async function discoverCommand(root: string, options: CommandOptions = {}): Promise<void> {
   const config = await loadConfig(root, (message) => console.warn(`Warning: ${message}`));
-  const analyzers: AnalyzerName[] = options.deep
-    ? ['vue', 'stores', 'frontend', 'java', 'xml', 'linkage']
-    : [];
+  const analyzers: AnalyzerName[] = options.deep ? ['vue', 'stores', 'frontend', 'java', 'xml', 'linkage'] : [];
   const active = new Set<AnalyzerName>([...(config.analyzers as AnalyzerName[]), ...analyzers]);
   if (active.has('llm') || active.has('llm-rules')) {
     console.log('LLM enrichment active: source code snippets will be sent to the configured LLM endpoint.');

@@ -84,7 +84,7 @@ describe('command handlers', () => {
           },
         ],
         aliases: { Order: ['订单', 'OrderDTO'] },
-        aliasIndex: { order: 'Order', '订单': 'Order', orderdto: 'Order' },
+        aliasIndex: { order: 'Order', 订单: 'Order', orderdto: 'Order' },
         apis: [
           {
             id: 'api.get-orders',
@@ -210,7 +210,7 @@ describe('command handlers', () => {
         apis: [],
         conflicts: [],
         aliases: { Order: ['订单', 'OrderDTO'] },
-        aliasIndex: { order: 'Order', '订单': 'Order', orderdto: 'Order' },
+        aliasIndex: { order: 'Order', 订单: 'Order', orderdto: 'Order' },
       }),
       'utf8',
     );

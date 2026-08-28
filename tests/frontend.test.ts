@@ -73,9 +73,24 @@ function save() { submit(); }
     );
     expect(result.relations).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ source: 'OrderEdit', target: 'action.orderedit-submit-0', relationship: 'calls', subtype: 'page_action_trigger' }),
-        expect.objectContaining({ source: 'submit', relationship: 'calls', target: 'useOrderStore', subtype: 'action_store_update' }),
-        expect.objectContaining({ source: 'submit', relationship: 'calls', target: '/api/order', subtype: 'action_api_call' }),
+        expect.objectContaining({
+          source: 'OrderEdit',
+          target: 'action.orderedit-submit-0',
+          relationship: 'calls',
+          subtype: 'page_action_trigger',
+        }),
+        expect.objectContaining({
+          source: 'submit',
+          relationship: 'calls',
+          target: 'useOrderStore',
+          subtype: 'action_store_update',
+        }),
+        expect.objectContaining({
+          source: 'submit',
+          relationship: 'calls',
+          target: '/api/order',
+          subtype: 'action_api_call',
+        }),
       ]),
     );
   });

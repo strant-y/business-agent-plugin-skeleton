@@ -77,7 +77,9 @@ function normalizeDtoEntity(typeName: string): string {
 function fieldRefsForEntityName(name: string, entities: Entity[]): FieldRef[] {
   const normalized = normalizeDtoEntity(name);
   const entity = entities.find((item) => item.name.toLowerCase() === normalized.toLowerCase());
-  return entity ? entity.attributes?.map((attribute) => ({ entity: entity.name, field: attribute.name, via: name })) ?? [] : [];
+  return entity
+    ? (entity.attributes?.map((attribute) => ({ entity: entity.name, field: attribute.name, via: name })) ?? [])
+    : [];
 }
 
 function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: string[], fields: FieldRef[]): string[] {
@@ -91,7 +93,9 @@ function inferWorkflowSteps(actions: UserAction[], states: string[], apiCalls: s
 }
 
 function actionBody(text: string, name: string): string {
-  const functionMatch = text.match(new RegExp(`(?:function\\s+${name}\\s*\\([^)]*\\)|${name}\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>)\\s*\\{`));
+  const functionMatch = text.match(
+    new RegExp(`(?:function\\s+${name}\\s*\\([^)]*\\)|${name}\\s*=\\s*(?:async\\s*)?\\([^)]*\\)\\s*=>)\\s*\\{`),
+  );
   if (!functionMatch || functionMatch.index === undefined) return text;
   const open = text.indexOf('{', functionMatch.index + functionMatch[0].length - 1);
   if (open === -1) return text;
@@ -109,12 +113,14 @@ function actionBody(text: string, name: string): string {
 function actionUsesStore(text: string, action: UserAction, store: string): boolean {
   const body = actionBody(text, action.name);
   const storeBase = store.replace(/^use|Store$/g, '').toLowerCase();
-  const aliases = [...text.matchAll(new RegExp(`(?:const|let)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${store}\\s*\\(`, 'g'))].map(
-    (match) => match[1],
-  );
-  return aliases.some((alias) => new RegExp(`\\b${alias}\\s*(?:\\.|\\()`).test(body)) ||
+  const aliases = [
+    ...text.matchAll(new RegExp(`(?:const|let)\\s+([A-Za-z_$][\\w$]*)\\s*=\\s*${store}\\s*\\(`, 'g')),
+  ].map((match) => match[1]);
+  return (
+    aliases.some((alias) => new RegExp(`\\b${alias}\\s*(?:\\.|\\()`).test(body)) ||
     new RegExp(`\\b${store}\\s*\\(`).test(body) ||
-    (storeBase.length > 1 && new RegExp(`\\b${storeBase}\\w*\\s*(?:\\.|\\()`, 'i').test(body));
+    (storeBase.length > 1 && new RegExp(`\\b${storeBase}\\w*\\s*(?:\\.|\\()`, 'i').test(body))
+  );
 }
 
 function actionUsesApi(text: string, action: UserAction, api: string): boolean {
@@ -141,7 +147,9 @@ function detectFieldRefs(text: string, entities: Entity[]): FieldRef[] {
   for (const match of text.matchAll(DEFINE_PROPS_RE)) {
     const body = match[1];
     for (const field of body.matchAll(TYPE_FIELD_RE)) {
-      const owner = entities.find((entity) => (entity.attributes ?? []).some((attribute) => attribute.name === field[1]));
+      const owner = entities.find((entity) =>
+        (entity.attributes ?? []).some((attribute) => attribute.name === field[1]),
+      );
       if (owner) add([{ entity: owner.name, field: field[1], via: `props.${field[1]}` }]);
     }
   }

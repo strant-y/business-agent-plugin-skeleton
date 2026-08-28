@@ -128,15 +128,28 @@ export function linkFrontendModules(
       if (!imported) continue;
       const importedId = moduleIdByName(imported, modules);
       if (/use[A-Z]|composable/i.test(imported))
-        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`, [sample.file], 'composable_usage');
+        add(
+          importedId ?? imported,
+          'uses_composable',
+          `${source} uses composable ${imported}.`,
+          [sample.file],
+          'composable_usage',
+        );
       if (/store|state/i.test(imported)) add(importedId ?? imported, 'uses_store', `${source} uses store ${imported}.`);
-      if (/\.vue$/i.test(match[2])) add(importedId ?? imported, 'imports_component', `${source} imports component ${imported}.`);
+      if (/\.vue$/i.test(match[2]))
+        add(importedId ?? imported, 'imports_component', `${source} imports component ${imported}.`);
     }
     for (const match of sample.text.matchAll(SIDE_EFFECT_IMPORT_RE)) {
       const imported = relativeModuleName(match[1]);
       const importedId = imported ? moduleIdByName(imported, modules) : undefined;
       if (imported && /use[A-Z]|composable/i.test(imported))
-        add(importedId ?? imported, 'uses_composable', `${source} uses composable ${imported}.`, [sample.file], 'composable_usage');
+        add(
+          importedId ?? imported,
+          'uses_composable',
+          `${source} uses composable ${imported}.`,
+          [sample.file],
+          'composable_usage',
+        );
     }
     for (const entity of entityNames) {
       if (new RegExp(`\\b${entity}\\b`, 'i').test(sample.text)) {

@@ -15,7 +15,9 @@ describe('glossary helpers', () => {
         tags: ['OrderEntity'],
       },
     ];
-    const artifacts = buildAliasArtifacts(entities, [{ term: '订单', aliases: ['OrderDTO', '订单单据'], entity: 'Order' }]);
+    const artifacts = buildAliasArtifacts(entities, [
+      { term: '订单', aliases: ['OrderDTO', '订单单据'], entity: 'Order' },
+    ]);
 
     expect(artifacts.aliasesByEntity.Order).toEqual(
       expect.arrayContaining(['订单', 'OrderDTO', 'orders', 'order_entity', 'orderdto', '订单单据']),

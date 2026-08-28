@@ -68,7 +68,10 @@ function addJoinRelations(
 }
 
 function ruleId(file: string, index: number): string {
-  return `rule.sql.check-${file.replace(/[^a-z0-9]/gi, '').toLowerCase().slice(-12)}-${index}`;
+  return `rule.sql.check-${file
+    .replace(/[^a-z0-9]/gi, '')
+    .toLowerCase()
+    .slice(-12)}-${index}`;
 }
 
 function normalizeCheckValues(raw: string): string[] {
@@ -93,7 +96,12 @@ function parseColumnAttributes(body: string): Array<{ name: string; type?: strin
   return attributes;
 }
 
-function addCheckConstraintRules(text: string, file: string, addEntity: (table: string) => string, rules: BusinessRule[]): void {
+function addCheckConstraintRules(
+  text: string,
+  file: string,
+  addEntity: (table: string) => string,
+  rules: BusinessRule[],
+): void {
   const createTableRe = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(/gi;
   let index = 0;
   for (const match of text.matchAll(createTableRe)) {
@@ -204,7 +212,8 @@ export function parseSqlRelations(text: string, file: string, evidenceFiles: str
   addTableNames(text, names);
   for (const table of names) addEntity(table);
 
-  const createBodies = /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(((?:[^()]|\([^()]*\)|\([^()]*\([^()]*\)[^()]*\))*)\)/gi;
+  const createBodies =
+    /create\s+table\s+(?:if\s+not\s+exists\s+)?([a-z_][a-z0-9_$]*)\s*\(((?:[^()]|\([^()]*\)|\([^()]*\([^()]*\)[^()]*\))*)\)/gi;
   for (const match of text.matchAll(createBodies)) {
     const table = tableName(match[1]);
     if (table) entityAttributes.set(table, parseColumnAttributes(match[2]));

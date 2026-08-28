@@ -7,7 +7,14 @@ import {
   normalizeTerm,
   resolveCanonicalNameFromIndex,
 } from './glossary.js';
-import { normalizeRelationship, type DiscoverManifest, type Entity, type BusinessRule, type Relation, type FieldIndexEntry } from './types.js';
+import {
+  normalizeRelationship,
+  type DiscoverManifest,
+  type Entity,
+  type BusinessRule,
+  type Relation,
+  type FieldIndexEntry,
+} from './types.js';
 import { scanProject, type SampleFile } from './scanner.js';
 import { loadConfig, type AgentConfig, type AnalyzerName } from './config.js';
 import { validateManifest } from './validate.js';
@@ -164,7 +171,9 @@ function buildRuleCoveringTests(
       const lowerText = text.toLowerCase();
       return signals.some((signal) => lowerText.includes(signal.toLowerCase()));
     });
-    return coveringTests.length ? { ...rule, entity: canonicalEntity, coveringTests } : { ...rule, entity: canonicalEntity };
+    return coveringTests.length
+      ? { ...rule, entity: canonicalEntity, coveringTests }
+      : { ...rule, entity: canonicalEntity };
   });
 }
 
@@ -188,7 +197,8 @@ function ruleDescription(id: string, entity: string): string {
   const subject = entity === 'Unknown' ? '相关业务对象' : entity;
   if (id === 'validation-state') return `${subject} 的状态变化会影响可执行的校验与业务操作。`;
   if (id === 'disabled-control') return `${subject} 在特定业务条件下限制用户操作。`;
-  if (id === 'thrown-error') return `${subject} 不满足业务条件时会拒绝本次操作；Review thrown validation errors for the exact rejection message.`;
+  if (id === 'thrown-error')
+    return `${subject} 不满足业务条件时会拒绝本次操作；Review thrown validation errors for the exact rejection message.`;
   return 'Review the matched business signal as a candidate rule.';
 }
 
@@ -207,9 +217,11 @@ function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] 
       entity,
       rule: [
         id === 'thrown-error'
-          ? `${ruleDescription(id, entity)} ${samples
-              .find((sample) => evidence.includes(sample.file))
-              ?.text.match(/throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/i)?.[1] ?? ''}`.trim()
+          ? `${ruleDescription(id, entity)} ${
+              samples
+                .find((sample) => evidence.includes(sample.file))
+                ?.text.match(/throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/i)?.[1] ?? ''
+            }`.trim()
           : ruleDescription(id, entity),
       ],
       impact: ['Review related UI, API, service, and database code.'],
@@ -235,7 +247,9 @@ function mergeEntitiesByAlias(entities: Entity[], aliasIndex: Record<string, str
       name: canonical,
       description: canonical === entity.name ? entity.description : `Discovered business candidate: ${canonical}`,
       evidence: uniqStrings([...(existing?.evidence ?? []), ...entity.evidence]).slice(0, 8),
-      tags: uniqStrings([...(existing?.tags ?? []), ...(entity.tags ?? []), entity.name]).filter((tag) => tag !== canonical),
+      tags: uniqStrings([...(existing?.tags ?? []), ...(entity.tags ?? []), entity.name]).filter(
+        (tag) => tag !== canonical,
+      ),
       attributes: mergeEntityAttributes(existing?.attributes, entity.attributes),
       confidence:
         rankConfidence(entity.confidence) > rankConfidence(existing?.confidence ?? 'low')
@@ -475,7 +489,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   finalRules = mergeCandidateRules([
     ...persistedRules,
     ...confirmedRules,
-    ...confirmedKnowledgeRules.map((rule) => ({ ...rule, status: rule.status ?? 'confirmed' as const })),
+    ...confirmedKnowledgeRules.map((rule) => ({ ...rule, status: rule.status ?? ('confirmed' as const) })),
   ]);
 
   const finalAliasArtifacts = buildAliasArtifacts(finalEntities, glossary);
@@ -500,7 +514,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     const normalized = normalizeTerm(entity.name);
     if (
       singular !== entity.name &&
-      finalEntities.some((candidate) => candidate.name === singular && !candidate.description.startsWith('Discovered from SQL table '))
+      finalEntities.some(
+        (candidate) => candidate.name === singular && !candidate.description.startsWith('Discovered from SQL table '),
+      )
     ) {
       sqlAliasIndex[normalized] = singular;
     }
@@ -522,13 +538,30 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     .map((file) => buildModuleDescriptor(file));
 
   const testFiles = scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file));
-  const fieldIndex = buildFieldIndex(finalEntities, apis, pages, actions, finalRelations, testFiles, sqlAliasIndex, scan.fileText);
+  const fieldIndex = buildFieldIndex(
+    finalEntities,
+    apis,
+    pages,
+    actions,
+    finalRelations,
+    testFiles,
+    sqlAliasIndex,
+    scan.fileText,
+  );
   for (const api of apis) {
     if (api.kind !== 'backend') continue;
     for (const field of api.fields ?? []) {
       const canonicalEntity = resolveCanonicalNameFromIndex(field.entity, sqlAliasIndex);
       const key = `${canonicalEntity}.${field.field}`.toLowerCase();
-      fieldIndex[key] ??= { entity: canonicalEntity, field: field.field, apis: [], stores: [], pages: [], tests: [], evidence: [] };
+      fieldIndex[key] ??= {
+        entity: canonicalEntity,
+        field: field.field,
+        apis: [],
+        stores: [],
+        pages: [],
+        tests: [],
+        evidence: [],
+      };
       fieldIndex[key].evidence?.push(...api.evidence);
       const route = `${api.method} ${api.path}`;
       if (!fieldIndex[key].apis.includes(route)) fieldIndex[key].apis.push(route);

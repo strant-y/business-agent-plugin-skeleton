@@ -57,7 +57,11 @@ describe('discover', () => {
 
   it('does not create relations from name-only co-occurrence', async () => {
     const dir = await tempRoot();
-    await fs.writeFile(path.join(dir, 'a.ts'), 'export interface Order {}\nexport interface Customer {}\nconst text = "Order Customer";\n', 'utf8');
+    await fs.writeFile(
+      path.join(dir, 'a.ts'),
+      'export interface Order {}\nexport interface Customer {}\nconst text = "Order Customer";\n',
+      'utf8',
+    );
     const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
     expect(manifest.relations).toEqual([]);
   });
@@ -175,7 +179,8 @@ describe('discover', () => {
   it('builds fieldIndex entries from SQL attributes', async () => {
     const manifest = await discover(DEEP, { dryRun: true });
     expect(manifest.fieldIndex?.['order.status']).toMatchObject({ entity: 'Order', field: 'status' });
-    const fieldEvidence = (key: string) => manifest.fieldIndex?.[key]?.evidence?.map((file) => file.replaceAll('\\', '/'));
+    const fieldEvidence = (key: string) =>
+      manifest.fieldIndex?.[key]?.evidence?.map((file) => file.replaceAll('\\', '/'));
     expect(fieldEvidence('order.status')).toEqual(expect.arrayContaining(['db/schema.sql', 'db/schema.sql:9']));
     expect(manifest.fieldIndex?.['order.customer_id']).toMatchObject({ entity: 'Order', field: 'customer_id' });
     expect(fieldEvidence('order.customer_id')).toEqual(expect.arrayContaining(['db/schema.sql', 'db/schema.sql:8']));
@@ -189,13 +194,33 @@ describe('discover', () => {
     await fs.writeFile(path.join(dir, 'Order.ts'), 'export interface Order { status: string }\n', 'utf8');
     await fs.writeFile(path.join(dir, 'orders.ts'), 'export interface Orders { status: string }\n', 'utf8');
     await fs.mkdir(path.join(dir, 'tests'), { recursive: true });
-    await fs.writeFile(path.join(dir, 'tests', 'order-rule.test.ts'), "it('缴费 orders must be APPROVED', () => expect('APPROVED').toBe('APPROVED'));\n", 'utf8');
-    await fs.writeFile(path.join(dir, '.agent', 'business', 'glossary.md'), '| 术语 | 别名 | 实体 |\n| --- | --- | --- |\n| 缴费 | premium_payment | Order |\n', 'utf8');
-    await fs.writeFile(path.join(dir, '.agent', 'business', 'rules', 'rule-order-approved.json'), JSON.stringify({
-      id: 'rule.order-approved', name: 'Order approval rule', entity: 'Order', rule: ['Order must be APPROVED before shipment'], confidence: 'high', evidence: ['Order.ts'], status: 'confirmed',
-    }), 'utf8');
+    await fs.writeFile(
+      path.join(dir, 'tests', 'order-rule.test.ts'),
+      "it('缴费 orders must be APPROVED', () => expect('APPROVED').toBe('APPROVED'));\n",
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, '.agent', 'business', 'glossary.md'),
+      '| 术语 | 别名 | 实体 |\n| --- | --- | --- |\n| 缴费 | premium_payment | Order |\n',
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, '.agent', 'business', 'rules', 'rule-order-approved.json'),
+      JSON.stringify({
+        id: 'rule.order-approved',
+        name: 'Order approval rule',
+        entity: 'Order',
+        rule: ['Order must be APPROVED before shipment'],
+        confidence: 'high',
+        evidence: ['Order.ts'],
+        status: 'confirmed',
+      }),
+      'utf8',
+    );
     const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
-    expect(manifest.rules.find((rule) => rule.id === 'rule.order-approved')?.coveringTests).toEqual(['tests\\order-rule.test.ts']);
+    expect(manifest.rules.find((rule) => rule.id === 'rule.order-approved')?.coveringTests).toEqual([
+      'tests\\order-rule.test.ts',
+    ]);
   });
 
   it('rebuilds coveringTests for persisted confirmed rules without broad unknown matches', async () => {

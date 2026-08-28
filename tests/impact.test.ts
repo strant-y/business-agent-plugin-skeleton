@@ -295,7 +295,9 @@ describe('buildImpactReport (code-level chain)', () => {
     expect(markdown).toContain('actions=submitOrder');
     expect(markdown).toContain('ruleCoveringTests=tests/order-flow.test.ts; tests=tests/order-flow.test.ts');
     expect(markdown).toContain('### Field Tests\n- None identified');
-    expect(markdown).not.toContain('fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> Review tests related to:');
+    expect(markdown).not.toContain(
+      'fieldPath=Order.status -> GET /api/orders -> OrderStore -> submitOrder -> OrderList -> Review tests related to:',
+    );
     expect(report.risks.some((risk) => risk.includes('状态变化'))).toBe(true);
   });
 

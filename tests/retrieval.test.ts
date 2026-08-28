@@ -107,7 +107,7 @@ describe('retrieveTaskContext', () => {
         apis: [],
         conflicts: [],
         aliases: { Order: ['订单', 'OrderDTO'] },
-        aliasIndex: { order: 'Order', '订单': 'Order', orderdto: 'Order' },
+        aliasIndex: { order: 'Order', 订单: 'Order', orderdto: 'Order' },
       }),
       'utf8',
     );

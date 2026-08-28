@@ -1,6 +1,15 @@
 import type { ProjectScan } from './scanner.js';
 import type { AgentConfig, AnalyzerName } from './config.js';
-import { normalizeRelationship, type ApiRoute, type BusinessRule, type Entity, type FrontendPage, type Relation, type UserAction, type WorkflowTemplate } from './types.js';
+import {
+  normalizeRelationship,
+  type ApiRoute,
+  type BusinessRule,
+  type Entity,
+  type FrontendPage,
+  type Relation,
+  type UserAction,
+  type WorkflowTemplate,
+} from './types.js';
 import { AVAILABLE_ANALYZERS } from './config.js';
 import { sqlAnalyzer } from './analyzers/sql.js';
 import { apiAnalyzer } from './analyzers/api.js';
@@ -144,7 +153,18 @@ export interface RunAnalyzersResult {
  * Results are always merged in phase order, so the output is deterministic
  * regardless of which parallel analyzer finishes first.
  */
-const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend', 'go', 'python'];
+const ENTITY_PHASE: AnalyzerName[] = [
+  'sql',
+  'ast',
+  'vue',
+  'java',
+  'xml',
+  'stores',
+  'states',
+  'frontend',
+  'go',
+  'python',
+];
 const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'llm', 'llm-rules'];
 const CONTRACT_PHASE: AnalyzerName[] = ['openapi'];
 
@@ -239,9 +259,7 @@ export async function runAnalyzers(
       entities: uniqEntities([...baseEntities, ...accEntities]),
       rules: dedupeRules([...baseRules, ...accRules]),
       relations: dedupeRelations([...baseRelations, ...accRelations]),
-      apis: dedupeApis(
-        analyzers.some((analyzer) => analyzer.name === 'api') ? accApis : ctx.apis ?? [],
-      ),
+      apis: dedupeApis(analyzers.some((analyzer) => analyzer.name === 'api') ? accApis : (ctx.apis ?? [])),
       warn,
     };
 
