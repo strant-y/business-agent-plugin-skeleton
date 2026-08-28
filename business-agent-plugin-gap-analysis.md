@@ -5,16 +5,32 @@
 
 ---
 
+> **📌 文档状态（2026-08-29 刷新）**
+>
+> 本文原为实施前的差距分析。第 6 节的 **P0 / P1 / P2 共 15 项优化建议已全部实施完成**，
+> 第 2-5 节列出的 **22 条差距中 19 条已闭环、3 条部分闭环**。
+>
+> - 第 1 节评分、第 8 节验收标准：已按现状重写
+> - 第 2-5 节：每条差距新增「状态」列，标注闭环方式与代码落点
+> - 第 9 节：实施提示词保留作历史记录，均已执行完毕
+>
+> 图例：✅ 已闭环 ｜ 🟡 部分闭环 ｜ ⚪ 未处理（本文已无此项）
+
+---
+
 ## 1. 总体评估矩阵
 
-| 需求          | 当前完成度   | 一句话结论                                                                                        |
-| ------------- | ------------ | ------------------------------------------------------------------------------------------------- |
-| 1. 懂业务对象 | ★★★☆☆（60%） | 类型体系和分析器齐全，但"识别靠命名、描述靠模板"，缺业务语义和实体消歧                            |
-| 2. 懂业务关系 | ★★★★☆（70%） | 跨端链路（view→API→entity→table→rule）已通，但图节点靠文件名约定链接，且无统一关系本体            |
-| 3. 懂业务规则 | ★★★☆☆（55%） | 候选→评审→确认→冲突→废弃的生命周期完整，但提取覆盖面窄、规则不会说"业务话"                        |
-| 4. 影响分析   | ★★★★☆（75%） | 已是全插件最强项：图遍历 + diff 级 15 类 finding + 预测/实际对比，但字段级映射靠字符串 token 匹配 |
+| 需求          | 实施前       | 当前完成度       | 一句话结论                                                                                   |
+| ------------- | ------------ | ---------------- | -------------------------------------------------------------------------------------------- |
+| 1. 懂业务对象 | ★★★☆☆（60%） | ★★★★☆（**85%**） | 别名归并、glossary、生命周期回链、带证据的描述全部接通；业务语言仍依赖默认关闭的 LLM         |
+| 2. 懂业务关系 | ★★★★☆（70%） | ★★★★☆（**85%**） | 节点身份稳定、关系本体受控、mermaid 可视化、跨仓链路齐全；共现窗口产生的假关系只降权未消源头 |
+| 3. 懂业务规则 | ★★★☆☆（55%） | ★★★★☆（**80%**） | 提取覆盖面、规则↔测试、语义冲突、自动保鲜、违反判定均已落地；规则描述仍偏代码味              |
+| 4. 影响分析   | ★★★★☆（75%） | ★★★★★（**90%**） | 字段级传播、契约对账、深度自适应、证据违反判定齐全；历史准确率只用于降权，未参与排序         |
 
-**整体判断：** 这不是"缺功能"的问题，而是"已有能力的精度和默认开启程度"问题。P0-P2 优化方案（见第 6 节）大部分是对现有模块的增强，而非新造轮子。
+**整体判断：** 项目已从「缺功能」阶段进入「调精度」阶段。剩余三项（G2.3、G4.6、G3.2）有一个共同点——它们都不是纯静态分析能闭环的：要么需要更保守的默认策略，要么需要 LLM 参与语义理解。
+
+**当前门禁状态**：`npm run check` / `npm run lint` / `npm run format:check` 三项全绿；vitest 35 个文件、225 个用例全部通过。
+（注：Windows 环境下 vitest 跑完测试后进程不退出，属 vitest 4.1.10 + Node 22 的子进程回收问题，与项目代码无关，CI 里需包一层 `timeout`。）
 
 ---
 
@@ -22,20 +38,20 @@
 
 ### 2.1 已具备
 
-- 类型体系完整：`EntityType` 已区分 `business_entity / frontend_store / composable / page / component / api_client / backend_api / database_table`（src/core/types.ts），没有把 `OrderList.vue` 和 `Order` 混为一谈。
-- 实体属性提取：AST（TS interface/class）、JPA `@Column`、MyBatis resultMap、Pinia state/ref 均产出 attributes。
+- 类型体系完整：`EntityType` 已区分 `business_entity / frontend_store / composable / page / component / api_client / backend_api / database_table`（src/core/types.ts）。
+- 实体属性提取：TS AST（interface/class）、JPA `@Column`、MyBatis resultMap、Pinia state/ref、Go struct、Python dataclass 均产出 attributes。
 - 检索支持中文：retrieval.ts 对 CJK 做 bigram 切分，中文业务术语可召回。
 - 知识分层：entity markdown 人工编辑在 discover 重跑时保留。
 
-### 2.2 差距
+### 2.2 差距与当前状态
 
-| #    | 差距                            | 现状证据                                                                                                                                                                                                       |
-| ---- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G1.1 | **默认 discover 近乎裸奔**      | 不加 `--deep` 时 `detectEntities` 只匹配 `interface/class/type X` 正则 + preferred 列表，置信度全部 low；新用户第一次跑 `discover`（README 快速开始里没带 `--deep`）得到的几乎是空知识库                       |
-| G1.2 | **实体描述是模板句**            | 默认描述为 `"Discovered business candidate: X"`；没有中文名、没有业务含义。`llm` 分析器可选改写，但默认关闭且需要 API key                                                                                      |
-| G1.3 | **无实体消歧/归并**             | `orders` 表、`Order` 实体、`OrderDTO`、`OrderVo`、`orderStore` 是否同一业务对象？目前只靠 impact.ts 里的 `buildEntityTableAliases`（单复数规则）做局部别名，没有全局的同义实体合并，直接导致关系图出现重复节点 |
-| G1.4 | **glossary.md 是死模板**        | `templates/agent/business/glossary.md` 存在，但 `src/` 中零处引用（已验证 grep 无匹配）。业务术语表（"缴费=PremiumPayment"）没有接入 context/retrieve/impact 的任何链路                                        |
-| G1.5 | **实体与状态机/工作流是松耦合** | states 分析器产出 `StateMachine`，但 entity 上没有"该对象有哪些状态、处于什么生命周期"的回链；context 输出靠 entity 名匹配拼在一起                                                                             |
+| #    | 差距（原始发现）                                                                        | 状态      | 闭环方式 / 落点                                                                                                                                            |
+| ---- | --------------------------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G1.1 | **默认 discover 近乎裸奔**——不加 `--deep` 时只跑正则匹配，新用户得到近似空的知识库      | ✅ 已闭环 | P0-3：`DEFAULT_CONFIG.analyzers` 改为 `['sql','api','ast']`（`src/core/config.ts`），保留用户显式配置 `[]` 可全关的语义                                    |
+| G1.2 | **实体描述是模板句**——默认 `"Discovered business candidate: X"`，没有证据、没有业务含义 | ✅ 已闭环 | 新增 `src/core/entity-description.ts`，生成带证据文件的描述（最多列 3 个证据文件）；旧前缀仍被识别，存量知识不失效。_注：真正的业务语言仍需 LLM_           |
+| G1.3 | **无实体消歧/归并**——`orders` 表、`Order` 实体、`OrderDTO`、`orderStore` 被当成不同对象 | ✅ 已闭环 | P0-2：`src/core/glossary.ts` 的 `buildAliasIndex` 产出全局别名表，`mergeEntitiesByAlias` 归并同义实体（attributes/evidence 并集、confidence 取高）         |
+| G1.4 | **glossary.md 是死模板**——`src/` 中零处引用，业务术语未接入任何链路                     | ✅ 已闭环 | P0-2：glossary 结构化表格 → `aliasIndex` → discovery / retrieval / context / impact 全线查询前先过别名表                                                   |
+| G1.5 | **实体与状态机/工作流松耦合**——entity 上没有状态回链，context 靠实体名匹配拼在一起      | ✅ 已闭环 | `Entity` 新增可选 `states?: string[]`；`discovery.ts` 的 `attachEntityStates()` 按别名归一回写；`context.ts` 改读该字段；实体 markdown 增加 `## States` 段 |
 
 ---
 
@@ -43,20 +59,20 @@
 
 ### 3.1 已具备
 
-- 关系来源多样：SQL REFERENCES/JOIN、AST 类型引用、Vue 组件 import、Store/Composable 引用、JPA `@ManyToOne`（含 cardinality）、MyBatis `<association>`、linkage 跨端匹配（支持模板字面量路径）。
-- 双向图 + BFS：`buildGraph`/`traceChain` 在 impact 中双向遍历（MAX_DEPTH=3）。
-- 依赖相位化执行：entity producer → dependent → linkage，输出确定性。
+- 关系来源多样：SQL REFERENCES/JOIN、AST 类型引用、Vue 组件 import、Store/Composable 引用、JPA `@ManyToOne`、MyBatis `<association>`、linkage 跨端匹配、OpenAPI 契约。
+- 双向图 + BFS：`buildGraph`/`traceChain` 双向遍历，深度可配置。
+- 依赖相位化执行：entity producer → dependent → linkage → contract。
 
-### 3.2 差距
+### 3.2 差距与当前状态
 
-| #    | 差距                               | 现状证据                                                                                                                                                                                                                                      |
-| ---- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G2.1 | **图节点身份 = PascalCase 文件名** | `fileModuleName()` 用文件名转 Pascal 作为节点身份。重命名文件、kebab-case 与 PascalCase 风格混用、同名不同目录（`utils/Order.ts` vs `views/Order.vue`）都会断链或误连——这是整个关系图最脆弱的地基                                             |
-| G2.2 | **无统一关系本体**                 | relationship 值混用 `references_or_contains / join / calls / uses / renders` 等自由字符串；无受控词表（如 `owns / aggregates / references / calls / renders / maps-to`）。影响推导和检索无法按语义区分"强耦合（同表）"与"弱耦合（仅 import）" |
-| G2.3 | **默认引擎的关系是噪声**           | `detectRelations` 用"150 字符窗口内两实体名共现"生成 `references_or_contains, cardinality: unknown` 的 low 关系；中大型仓库会产生大量假关系污染图                                                                                             |
-| G2.4 | **无关系图可视化**                 | states 有 mermaid 输出，但关系图没有。`context`/`impact` 只有文本列表，人审成本高                                                                                                                                                             |
-| G2.5 | **cardinality 大多 unknown**       | 只有 SQL FK 和 JPA 注解给出基数；AST/前端关系的基数全部 unknown，影响分析无法区分"改 1 条影响 N 条"                                                                                                                                           |
-| G2.6 | **无跨服务/跨仓库边界**            | 微服务间 HTTP 调用、monorepo 多包边界不感知；前端和后端如果不在同一仓库，linkage 直接失效                                                                                                                                                     |
+| #    | 差距（原始发现）                                                                              | 状态        | 闭环方式 / 落点                                                                                                                                                            |
+| ---- | --------------------------------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G2.1 | **图节点身份 = PascalCase 文件名**——重命名、命名风格混用、同名不同目录都会断链或误连          | ✅ 已闭环   | P0-1：`src/core/module-id.ts` 的 `moduleNodeId()` 用「相对路径小写 + `module:` 前缀」做节点 ID，Pascal 名退化为显示名；旧 manifest 缺失 `modules` 时回退并告警             |
+| G2.2 | **无统一关系本体**——relationship 是自由字符串，无法区分强弱耦合                               | ✅ 已闭环   | P1-2：`schemas/relation.schema.json` 收敛为 `owns / aggregates / references / calls / renders / maps-to`；`types.ts` 有旧值迁移映射，不重写用户已有知识文件                |
+| G2.3 | **默认引擎的关系是噪声**——150 字符窗口内实体名共现就生成 `references_or_contains` 的 low 关系 | 🟡 部分闭环 | 保留窗口机制（`config.relationWindow` 仍为 150），但 `loadLowAccuracyRelationships()` 会把历史命中率为零的边降权（排序后置）。**噪声源头未消除**，中大型仓库仍会产生假关系 |
+| G2.4 | **无关系图可视化**——关系图和 impact 只有文本列表                                              | ✅ 已闭环   | P1-5：`src/core/graph.ts` 抽出 `buildGraph` 与 `renderMermaidSubgraph`；`context` 输出邻域 mermaid，`impactMarkdown` 输出 `## Impact Graph` 并高亮变更模块，超 40 节点截断 |
+| G2.5 | **cardinality 大多 unknown**——只有 SQL FK 和 JPA 注解给出基数                                 | ✅ 已闭环   | P1-2：`src/core/analyzers/ast.ts` 的 `typeCardinality()` 按类型引用形态推断（数组/`Promise<T[]>` → `N:1`，单引用 → `1:1`）                                                 |
+| G2.6 | **无跨服务/跨仓库边界**——前后端分仓时 linkage 直接失效                                        | ✅ 已闭环   | P2-e：`config.linkage.externalApis` 支持引入其它仓库导出的 manifest，`linkFrontendModules` 合并外部 API 后再建链，缺失/损坏只告警                                          |
 
 ---
 
@@ -64,19 +80,18 @@
 
 ### 4.1 已具备
 
-- 完整生命周期：candidate → review（交互/脚本/autoPromote）→ promote（schema 校验 + impact map）→ conflicts（检测 + suggestions）→ deprecate；knowledge-state 有 verified/stale/contradicted 状态机。
-- 提取源：v-if/:disabled、throw 异常、状态守卫、Java 服务层异常分支。
+- 完整生命周期：candidate → review → promote（schema 校验 + impact map）→ conflicts → deprecate；knowledge-state 有 verified/stale/contradicted 状态机。
 - llm-rules 分析器可把代码条件翻译成业务语言（默认关闭、片段上传需显式开启、有脱敏）。
 
-### 4.2 差距
+### 4.2 差距与当前状态
 
-| #    | 差距                     | 现状证据                                                                                                                                                                                                                                                                                   |
-| ---- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| G3.1 | **提取模式覆盖面窄**     | 默认引擎只有 3 个正则模式（AUDIT 状态、disabled、throw Error）。大量真实规则落在：后端校验注解（`@NotNull/@Valid/@PreAuthorize`，已验证零支持）、SQL CHECK 约束、错误码/i18n 文案、业务异常类（非 `Error/RuntimeException` 的自定义异常）、computed 计算属性中的业务判断。这些目前全部漏掉 |
-| G3.2 | **规则不会说业务话**     | 候选规则是代码语句的直译（"State-dependent validation discovered"），entity 常为 `Unknown`。把 "if (order.status === 'AUDIT') throw" 归纳成"审核中的订单不能修改核心信息"必须依赖 LLM 且默认关闭——结果是确认库里堆满代码味描述，Agent 复用价值低                                           |
-| G3.3 | **规则与测试无关联**     | "哪些规则被哪些测试保护着"没有建立。impact 的 tests 建议靠文件名关键词匹配；没有 `rule → covering tests` 的证据链，改动破坏规则时无法点名"这个规则失去测试保护了"                                                                                                                          |
-| G3.4 | **规则新鲜度不自动刷新** | 代码改了、证据行变了，知识不会自动标 stale（`audit` 能查 evidence drift，但要人跑；post-commit hook 只 capture 不 re-discover）。知识库会随时间静默腐烂                                                                                                                                    |
-| G3.5 | **规则冲突只有文本级**   | conflicts 启发式基于同一实体上 cannot/allow 对立；语义级冲突（"审核中不能改" vs "管理员任何时候都能改"——前置条件维度）检测不到                                                                                                                                                             |
+| #    | 差距（原始发现）                                                                                    | 状态        | 闭环方式 / 落点                                                                                                                                                                                                                                                                                            |
+| ---- | --------------------------------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G3.1 | **提取模式覆盖面窄**——只有 3 个正则，校验注解、SQL CHECK、错误码、自定义异常、computed 判断全部漏掉 | ✅ 已闭环   | P1-3：`java.ts` 支持 `@NotNull/@NotBlank/@NotEmpty/@Size/@Min/@Max/@Valid` 与 `@PreAuthorize/@PreFilter`；`parse.ts` 支持 SQL `CHECK`；`discovery.ts` 支持 `throw new \w*(Business\|Service\|Biz)\w*Exception`；`stores.ts` 支持 `const canXxx = computed(...)`。新候选一律 low confidence，不自动 promote |
+| G3.2 | **规则不会说业务话**——候选规则是代码语句直译，entity 常为 `Unknown`                                 | 🟡 部分闭环 | 规则实体归属已通过别名表改善（`Unknown` 大幅减少），但**业务语言归纳仍依赖默认关闭的 llm-rules 分析器**。保守策略是有意为之：宁可给代码味描述，也不臆测业务含义                                                                                                                                            |
+| G3.3 | **规则与测试无关联**——无法指出「这条规则失去测试保护了」                                            | ✅ 已闭环   | P1-4：`BusinessRule.coveringTests`；discover 按「测试路径含实体名或别名」+「测试内容含证据片段/状态字面量」登记；impact 报告新增 `## Test Coverage` 节，分「有测试保护 / 无测试保护（建议补测试）」两组                                                                                                    |
+| G3.4 | **规则新鲜度不自动刷新**——知识库静默腐烂                                                            | ✅ 已闭环   | P2-c：post-commit hook 调 `capture --refresh-knowledge`，对变更文件做增量 re-discover + `validateEvidence`，失效率效规则自动标 stale；刷新记录写入 `.agent/memory/hook-refresh.log`（JSONL，上限 200 行）；capture 总耗时超 10s 则跳过增量发现，避免拖慢 commit                                            |
+| G3.5 | **规则冲突只有文本级**——检测不到「审核中不能改」vs「管理员随时能改」这类条件性冲突                  | ✅ 已闭环   | P2-d：`src/core/conflicts.ts` 新增前置条件维度检测，同主语/谓语对立但 preconditions 不同 → 判定为「条件性冲突」，建议「确认两者前置条件是否互斥」                                                                                                                                                          |
 
 ---
 
@@ -84,140 +99,104 @@
 
 ### 5.1 已具备（当前最强项）
 
-- 文件 → 关系图双向 BFS（depth 3）→ 实体/规则/关系/API/页面/动作/工作流/测试。
+- 文件 → 关系图双向 BFS → 实体/规则/关系/API/页面/动作/工作流/测试。
 - diff 级 15 类变更识别（字段增删改类型、状态变化、API 路径/方法、请求/响应类型、权限、校验、库字段、测试）。
 - `task predict-impact` vs `checkpoint` 预测/实际对比，跨任务准确率统计。
 - deriveRisks 输出人类可读风险提示。
 
-### 5.2 差距
+### 5.2 差距与当前状态
 
-| #    | 差距                                   | 现状证据                                                                                                                                                                                                                  |
-| ---- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| G4.1 | **diff→影响的映射靠字符串 token 匹配** | `mapDiffImpact`/`matchesFinding` 用 subject/detail/evidence 分词后和候选字符串互相 includes。字段名 `status` 会命中一大片；改名后的字段（`auditFlag`→`reviewFlag`）直接断链。这是"报告很长但一半不准"的根源               |
-| G4.2 | **无字段级影响传播**                   | finding 已有 subject（如 `Order.status`），但没有沿"实体字段 → API 请求/响应类型 → Store state → 组件绑定 → 测试"的传播规则；影响链仍以实体/文件为粒度                                                                    |
-| G4.3 | **遍历深度硬编码 3**                   | MAX_DEPTH=3。真实项目"改表字段 → 实体 → DTO → API → wrapper → Store → 页面"轻轻松松 5-6 跳；超 3 跳的下游全部漏报                                                                                                         |
-| G4.4 | **无契约级对账**                       | 无 OpenAPI/Swagger 导入与 diff 对账（已验证零支持）。改了后端响应结构，前端类型是否同步只能靠启发式猜                                                                                                                     |
-| G4.5 | **不检查"是否违反已确认规则"**         | 风险提示是模板句（"本次变更涉及 N 条相关规则"）。diff 明明删除了 `if (status === 'AUDIT') throw` 这行证据，却不直接判定"confirmed rule X 的证据消失，可能被违反"——证据模型（contentHash/line）已有，缺的是把它接进 impact |
-| G4.6 | **准确率不反哺**                       | impact-accuracy.json 已统计预测命中率，但排序/置信度/深度上限都没用它（连续学习方案自己也承认这点）                                                                                                                       |
+| #    | 差距（原始发现）                                                          | 状态        | 闭环方式 / 落点                                                                                                                                                                                                                    |
+| ---- | ------------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| G4.1 | **diff→影响的映射靠字符串 token 匹配**——`status` 会命中一大片，改名则断链 | ✅ 已闭环   | P1-1：`manifest.fieldIndex`（key 为 `entity.field` 小写）精确匹配优先，`matchesFinding` 字符串匹配降级为兜底                                                                                                                       |
+| G4.2 | **无字段级影响传播**——影响链仍以实体/文件为粒度                           | ✅ 已闭环   | P1-1：fieldIndex 登记 `entity.field → {apis, stores, pages, tests, evidence}`；命中时输出链式传播行（如 `Order.status → GET /api/orders → orderStore → OrderEdit.vue → order-edit.spec.ts`）                                       |
+| G4.3 | **遍历深度硬编码 3**——真实项目 5-6 跳的下游全漏                           | ✅ 已闭环   | P2-b：`config.impact.maxDepth` 默认放宽到 6；`traceChain` 增加终止节点剪枝（到达页面/测试/API 等终态且深度足够时停止），避免爆炸                                                                                                   |
+| G4.4 | **无契约级对账**——改了后端响应结构，前端是否同步只能靠猜                  | ✅ 已闭环   | P2-a：`src/core/analyzers/openapi.ts` 导入 openapi.json/yaml，`buildContractDrift()` 在 diff 中输出「契约漂移」风险提示                                                                                                            |
+| G4.5 | **不检查「是否违反已确认规则」**——删了证据行却不判定规则被违反            | ✅ 已闭环   | P0-4：`detectRuleViolations()` 对证据文件在本次变更范围内的 confirmed 规则逐条 `validateEvidence`；文件消失 → `confirmed-missing`，行越界/snippet 丢失/hash 变化 → `likely-modified`；结果进 `## Rule Violations` 节并置顶到 risks |
+| G4.6 | **准确率不反哺**——impact-accuracy.json 统计了命中率却没被使用             | 🟡 部分闭环 | P2-b：`loadLowAccuracyRelationships()` 读取历史准确率，对命中率为零的边类型降权（排序后置、不删除）。**未参与排序打分与置信度计算**，仍是纯静态启发式                                                                              |
 
 ---
 
 ## 6. 优化建议（按优先级）
 
-### P0 —— 修地基（不做这些，上层能力精度上不去）
+> 状态：以下 15 项**全部已完成**并合并入 main。
 
-**P0-1 稳定图节点身份（解决 G2.1）**
+### P0 —— 修地基
 
-- 用 `file relative path + module name` 做节点 ID（如 `src/stores/orderStore`），显示名才用 Pascal；
-- discover 时为每个文件记录 `moduleName → path` 映射进 manifest，impact/linkage/stores 全部改读映射而不是现场推导文件名；
-- 保留旧 Pascal 节点做一版兼容别名，防止既有 `.agent/` 知识断裂。
-- 落点：`src/core/analyzers/linkage.ts`（`fileModuleName`）、`src/core/impact.ts`（`buildGraph`）。
-
-**P0-2 实体归并与 glossary 接线（解决 G1.3、G1.4、G3.2 一半）**
-
-- glossary.md 结构化（词条：中文术语 / 英文别名 / 指向实体 id），discover 读取后建立 `alias → entityId` 全局别名表；
-- 表名（orders）、DTO/Vo 后缀、单复数、中文名统一归并到同一实体节点；`buildEntityTableAliases` 从 impact 局部函数升级为 discovery 全局产物；
-- context/retrieve/impact 查询时先过别名表——"缴费"从此直接命中 PremiumPayment 及其全部关系。
-- 落点：新增 `src/core/glossary.ts`，接入 `discovery.ts`、`retrieval.ts`、`impact.ts`。
-
-**P0-3 默认 discover 不再裸奔（解决 G1.1）**
-
-- 把 `sql / api / ast` 三个零依赖或弱依赖分析器设为默认开启（`analyzers` 默认值由 `[]` 改为 `['sql','api','ast']`），需要 typescript 运行时的 ast 保持降级警告；
-- 快速开始文档与 `init` 输出提示同步修改。
-- 落点：`src/core/config.ts` 默认值、README。
-
-**P0-4 impact 接入证据校验，判定"规则被违反"（解决 G4.5）**
-
-- diff finding 生成后，对每条受影响 confirmed rule 跑 `validateEvidence`：证据行被删除/内容 hash 变化 → 输出 `VIOLATION: rule X 的证据 src/x.ts:42 已被修改/删除`，并列入 risks 顶部；
-- 这直接回答用户最关心的问题："我这次改动破坏了哪条已确认的业务规则"。
-- 落点：`src/core/impact.ts` 复用 `src/core/evidence.ts`。
+| 项                                | 目标       | 状态                                 |
+| --------------------------------- | ---------- | ------------------------------------ |
+| **P0-1** 稳定图节点身份           | G2.1       | ✅ 已完成 —— `src/core/module-id.ts` |
+| **P0-2** 实体归并与 glossary 接线 | G1.3、G1.4 | ✅ 已完成 —— `src/core/glossary.ts`  |
+| **P0-3** 默认 discover 不再裸奔   | G1.1       | ✅ 已完成 —— `src/core/config.ts`    |
+| **P0-4** impact 接入证据校验      | G4.5       | ✅ 已完成 —— `src/core/impact.ts`    |
 
 ### P1 —— 提精度
 
-**P1-1 字段级影响传播（解决 G4.1、G4.2）**
-
-- 给 manifest 增加字段级索引：`fieldIndex: Map<entity.field, { apis, stores, pages, tests }>`（sql/ast/stores/api 分析器产出时顺手登记）；
-- `mapDiffImpact` 优先走 fieldIndex 精确匹配，token 字符串匹配降级为兜底；
-- 输出格式升级为 "Order.status 变化 → GET /api/orders 响应 → orderStore.order → OrderEdit.vue disabled 条件 → tests/order-edit.spec.ts"。
-- 落点：`src/core/impact.ts`、各 analyzer 的 relation 产出处。
-
-**P1-2 关系本体受控词表 + cardinality 补全（解决 G2.2、G2.5）**
-
-- schema/`Relation.relationship` 收敛为枚举：`owns / aggregates / references / calls / renders / maps-to`，旧值一次性迁移映射；
-- AST 类型引用（`Order[]` → N，单引用 → 1）和 stores 引用推断 cardinality，消灭 unknown 大军。
-- 落点：`schemas/relation.schema.json`、`src/core/analyzers/ast.ts`。
-
-**P1-3 规则提取扩容（解决 G3.1）**
-
-- 新增模式：Java 校验/权限注解（`@NotNull/@Valid/@PreAuthorize/@PreFilter`）、SQL `CHECK` 约束、Vue/React computed 中的布尔业务判断、自定义业务异常（`throw new BusinessException(...)`）；
-- 全部 low confidence 进候选，维持保守策略。
-- 落点：`src/core/analyzers/java.ts`、`parse.ts`、`discovery.ts` 的 RULE_PATTERNS。
-
-**P1-4 规则↔测试关联（解决 G3.3）**
-
-- discover 扫描测试文件时，按"测试文件名/ describe 文本命中实体名 + 测试体内出现规则证据片段"登记 `rule.coveringTests`；
-- impact 报告新增一节："受影响规则中，X 有测试保护，Y 无任何测试覆盖"——Y 就是本次改动最该补测试的地方。
-- 落点：`src/core/scanner.ts`、`impact.ts`。
-
-**P1-5 关系图 mermaid 输出（解决 G2.4）**
-
-- `context <subject>` 附加该实体 1-2 跳邻域的 mermaid `graph LR`；impact 报告附加受影响子图（高亮 changed module）。人审效率数量级提升，成本极低。
+| 项                              | 目标       | 状态                                           |
+| ------------------------------- | ---------- | ---------------------------------------------- |
+| **P1-1** 字段级影响传播         | G4.1、G4.2 | ✅ 已完成 —— `manifest.fieldIndex`             |
+| **P1-2** 关系本体 + cardinality | G2.2、G2.5 | ✅ 已完成 —— schema 枚举 + `ast.ts`            |
+| **P1-3** 规则提取扩容           | G3.1       | ✅ 已完成 —— java / parse / stores / discovery |
+| **P1-4** 规则↔测试关联          | G3.3       | ✅ 已完成 —— `coveringTests`                   |
+| **P1-5** 关系图 mermaid 可视化  | G2.4       | ✅ 已完成 —— `src/core/graph.ts`               |
 
 ### P2 —— 补场景
 
-| 项                   | 解决       | 说明                                                                                                                     |
-| -------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------ |
-| **OpenAPI 契约对账** | G4.4       | 支持导入 openapi.json：路由/请求/响应与代码侧提取结果互相校验，diff 时报告前后端契约漂移                                 |
-| **影响深度自适应**   | G4.3、G4.6 | MAX_DEPTH 改为按"到达测试/页面等终止节点"停止，上限放宽到 6；用 impact-accuracy 历史命中率动态调高/调低高噪声边的权重    |
-| **知识自动保鲜**     | G3.4       | post-commit hook 在 capture 之外追加增量 re-discover（只扫变更文件），证据失效的规则自动打 stale 并出现在下次 audit 首页 |
-| **语义级规则冲突**   | G3.5       | 冲突检测扩展到前置条件维度（preconditions 不同但主语相同的对立约束），llm-rules 关闭时用纯启发式                         |
-| **多仓库 linkage**   | G2.6       | 支持配置 `linkage.externalApis`（指向另一个仓库的 manifest 导出），前端库与后端服务分仓时链路不断                        |
-| **更多语言**         | —          | Go struct/Python dataclass 分析器（ Analyzer 接口已插件化，照 java.ts 模式做即可）                                       |
+| 项                   | 目标       | 状态                                        |
+| -------------------- | ---------- | ------------------------------------------- |
+| **OpenAPI 契约对账** | G4.4       | ✅ 已完成                                   |
+| **影响深度自适应**   | G4.3、G4.6 | ✅ 已完成（G4.6 仅部分）                    |
+| **知识自动保鲜**     | G3.4       | ✅ 已完成                                   |
+| **语义级规则冲突**   | G3.5       | ✅ 已完成                                   |
+| **多仓库 linkage**   | G2.6       | ✅ 已完成                                   |
+| **Go/Python 分析器** | —          | ✅ 已完成 —— `analyzers/go.ts`、`python.ts` |
 
-### 不建议现在做
+### 不建议现在做（维持原判断）
 
-- 向量检索/embedding：词法 + 别名表 + 图扩展在当前数据量下够用，先让 P0-2 落地再说；
-- 运行时证据采集（埋点/APM）：投入大，且静态精度不够时收益低；
-- 自动流程（workflow）推理：维持人工模板 + 状态机自动提取的现状；
-- 把 `--deep` 全家桶设为默认：java/xml/frontend 等在纯前端仓库会产生告警噪声，只提 sql/api/ast。
+- 向量检索/embedding：词法 + 别名表 + 图扩展在当前数据量下够用；
+- 运行时证据采集（埋点/APM）：静态精度不足时收益低；
+- 自动流程（workflow）推理：维持人工模板 + 状态机自动提取；
+- 把 `--deep` 全家桶设为默认：只提 sql/api/ast。
 
 ---
 
-## 7. 建议实施顺序
+## 7. 实施顺序（回顾）
 
 ```text
-第 1 批（地基，1 个版本内）
-  P0-3 默认分析器提级          —— 半天，立即改善新用户体验
-  P0-4 impact 规则违反判定      —— 1 天，直接回答需求四的核心问题
-  P0-1 稳定节点身份            —— 2-3 天，所有图能力的精度基础
-  P0-2 实体归并 + glossary 接线 —— 2-3 天，中文业务话与实体精度基础
-
-第 2 批（精度，第 2 个版本）
-  P1-1 字段级影响传播
-  P1-4 规则↔测试关联
-  P1-5 mermaid 可视化
-  P1-3 规则提取扩容
-
-第 3 批（场景，按需排期）
-  P1-2 关系本体 + P2 各项
+已完成（全部落地）
+  第 1 批：P0-1 / P0-2 / P0-3 / P0-4
+  第 2 批：P1-1 / P1-2 / P1-3 / P1-4 / P1-5
+  第 3 批：P2-a OpenAPI / P2-b 深度自适应 / P2-c 知识保鲜
+           / P2-d 语义冲突 / P2-e 多仓 linkage / P2-f Go+Python
+  收尾：G1.2 实体描述去模板化、G1.5 实体↔状态机回链
 ```
-
-## 8. 验收标准（对照四条需求）
-
-- **懂业务对象**：`context 缴费`（中文业务词）能命中正确实体并给出中英文别名、状态生命周期、涉及页面/表/接口；不同命名风格的同一对象只有一个节点。
-- **懂业务关系**：任一实体可输出带 cardinality 的 mermaid 邻域图；改名一个文件不断链。
-- **懂业务规则**：删除某规则的证据代码行后，impact 直接报"违反 rule X"并指出失去测试保护；确认库中的规则描述是业务语言而非代码翻译。
-- **影响分析**：改一个 SQL 字段，报告能列出“表 → 实体 → API → Store → 页面 → 测试”全链路且每环有证据行号；预测准确率随任务积累上升并实际参与排序。
 
 ---
 
-## 9. 实施方法与执行提示词（交给实施 Agent 派发用）
+## 8. 验收标准（对照四条需求，按现状重写）
 
-> 每项包含：**实施方法**（精确到文件与数据结构，已对照当前代码核实）与**执行提示词**（整段复制即可派发给一个编码 Agent）。
+- **懂业务对象**：`context 缴费`（中文业务词）经别名表命中 `PremiumPayment` 实体，输出中英文别名、
+  生命周期状态、涉及页面/表/接口；`orders` 表、`OrderDTO`、`orderStore` 归并为同一节点；
+  实体描述至少带出它是在哪些文件里被发现的。
+- **懂业务关系**：任一实体可输出带 cardinality 的 mermaid 邻域图；文件重命名后链路不断；
+  前后端分仓时通过 `linkage.externalApis` 仍能连通。
+- **懂业务规则**：删除某规则的证据代码行后，impact 直接报 `## Rule Violations` 并指出哪些规则失去测试保护；
+  语义冲突能识别「审核中不能改」与「管理员随时能改」的差异。
+  _（规则描述的业务化程度取决于是否开启 llm-rules，默认关闭时仍是代码味描述。）_
+- **影响分析**：改一个 SQL 字段，报告能列出「表 → 实体 → API → Store → 页面 → 测试」全链路且每环有证据行号；
+  深度超过 3 跳的下游不再漏报；与 OpenAPI 契约不一致时给出漂移提示。
+  _（预测准确率目前只用于给零命中的边降权，尚未参与排序打分。）_
+
+---
+
+## 9. 实施方法与执行提示词（历史记录）
+
+> ⚠️ 本节为实施前的派发材料，**全部任务已执行完毕**，保留作历史记录与回归参考。
+> 如需重新实现同类能力，可复用其中的约束与验收要求。
 >
-> **通用项目约束**（各提示词已内嵌精简版）：TypeScript strict、零新增运行时依赖、vitest 测试、注释用英文与现有代码一致、静态分析只产候选（low/medium 置信度）、失败只告警不中断、每项完成后必须通过 `npm run check && npm run lint && npm run format:check && npm test`。
->
-> **派发顺序建议**：一次派一个任务，按 P0-3 → P0-4 → P0-1 → P0-2 → P1 顺序（P0-1/P0-2 会改 manifest 结构，先落地避免 P1 返工）。派发前确保工作区是干净基线（先 commit）。
+> **通用项目约束**：TypeScript strict、零新增运行时依赖、vitest 测试、注释用英文与现有代码一致、
+> 静态分析只产候选（low/medium 置信度）、失败只告警不中断、
+> 每项完成后必须通过 `npm run check && npm run lint && npm run format:check && npm test`。
 
 ### 9.1 P0-1 稳定图节点身份
 
@@ -229,6 +208,9 @@
 4. `src/core/impact.ts`：`buildGraph`/`traceChain` 的节点键改为 `moduleNodeId`；读取旧 manifest（无 `modules` 字段）时回退 `fileModuleName` 并 push warning `'Legacy manifest: node identity may be unstable; re-run discover.'`。
 5. 实体节点仍用实体名（entity 节点与 module 节点是两类节点，靠现有 relation 连接，不合并）。
 6. 测试：新增 `tests/module-id.test.ts`（同名不同目录、kebab/Pascal 混用、文件重命名后链路不断）；更新 `tests/linkage.test.ts`、`tests/impact.test.ts` 中因节点 ID 变化而失效的断言。
+
+**实际落点差异**：实现最终抽到了独立的 `src/core/module-id.ts`（而非放在 linkage.ts），
+测试覆盖落在 `tests/full.test.ts`、`tests/impact.test.ts`、`tests/linkage.test.ts`，未单独建 module-id.test.ts。
 
 **执行提示词**
 
@@ -493,9 +475,9 @@
 验收：npm run check && npm run lint && npm run format:check && npm test 全绿。
 ```
 
-### 9.10 P2 任务提示词集（按需派发）
+### 9.10 P2 任务提示词集
 
-以下为 P2 各项的精简版提示词，可直接派发：
+以下为 P2 各项的精简版提示词，均已执行完毕。
 
 **P2-a OpenAPI 契约对账**
 
