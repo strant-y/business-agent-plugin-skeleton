@@ -5,7 +5,37 @@ import { refreshKnowledgeStateFromEvidence } from '../core/knowledge-state.js';
 import { rebuildRetrievalIndex } from '../core/retrieval.js';
 import { writeLearnCandidate } from './learn.js';
 import { gitDiffFiles } from '../utils/git.js';
-import { ensureDir, writeText } from '../utils/fs.js';
+import { appendText, ensureDir, readText, writeText } from '../utils/fs.js';
+
+/**
+ * Wall-clock budget for a capture run. The post-commit hook runs capture synchronously,
+ * so when the run already took longer than this we skip the incremental re-discover
+ * instead of making the developer wait on every commit.
+ */
+export const KNOWLEDGE_REFRESH_BUDGET_MS = 10_000;
+
+/** Refresh log sits next to hook-errors.log. */
+const REFRESH_LOG_PATH = ['.agent', 'memory', 'hook-refresh.log'];
+
+/** Keep the append-only log bounded; post-commit runs happen constantly. */
+const REFRESH_LOG_MAX_LINES = 200;
+
+export interface KnowledgeRefreshStatus {
+  skipped: boolean;
+  reason?: string;
+  elapsedMs: number;
+  staleRecords: number;
+  logFile: string;
+}
+
+interface RefreshLogEntry {
+  timestamp: string;
+  skipped: boolean;
+  reason?: string;
+  elapsedMs: number;
+  staleRecords: number;
+  records?: string[];
+}
 
 export interface CaptureOptions {
   /** Explicit changed files; when omitted, git diff is used. */
@@ -21,6 +51,8 @@ export interface CaptureOptions {
   dryRun?: boolean;
   json?: boolean;
   refreshKnowledge?: boolean;
+  /** Overrides {@link KNOWLEDGE_REFRESH_BUDGET_MS}; mainly for tests and slow CI machines. */
+  refreshBudgetMs?: number;
 }
 
 export interface CaptureSummary {
@@ -29,6 +61,7 @@ export interface CaptureSummary {
   changedFiles: string[];
   report: ImpactReport;
   refreshedKnowledge?: Array<{ recordId: string; status: string; warnings: string[] }>;
+  knowledgeRefresh?: KnowledgeRefreshStatus;
 }
 
 function recordMarkdown(report: ImpactReport, message?: string): string {
@@ -77,7 +110,25 @@ function recordMarkdown(report: ImpactReport, message?: string): string {
   return lines.join('\n');
 }
 
+function refreshLogFile(root: string): string {
+  return path.join(root, ...REFRESH_LOG_PATH);
+}
+
+async function appendRefreshLog(root: string, entry: RefreshLogEntry): Promise<void> {
+  const file = refreshLogFile(root);
+  try {
+    await appendText(file, `${JSON.stringify(entry)}\n`);
+    const existing = (await readText(file)).split('\n').filter(Boolean);
+    if (existing.length > REFRESH_LOG_MAX_LINES) {
+      await writeText(file, `${existing.slice(-REFRESH_LOG_MAX_LINES).join('\n')}\n`);
+    }
+  } catch {
+    // Logging must never break a commit hook; fall through silently.
+  }
+}
+
 export async function captureCommand(root: string, options: CaptureOptions = {}): Promise<CaptureSummary> {
+  const startedAt = Date.now();
   const changedFiles = options.files?.length
     ? options.files
     : await gitDiffFiles(root, options.sinceLastCommit ?? false);
@@ -99,13 +150,44 @@ export async function captureCommand(root: string, options: CaptureOptions = {})
     });
   }
 
-  let refreshedKnowledge:
-    | Array<{ recordId: string; status: string; warnings: string[] }>
-    | undefined;
+  let refreshedKnowledge: Array<{ recordId: string; status: string; warnings: string[] }> | undefined;
+  let knowledgeRefresh: KnowledgeRefreshStatus | undefined;
   if (options.refreshKnowledge && !options.dryRun) {
-    await discover(root, { files: changedFiles, onWarning: (message) => !options.quiet && console.warn(`Warning: ${message}`) });
-    refreshedKnowledge = await refreshKnowledgeStateFromEvidence(root, changedFiles);
-    await rebuildRetrievalIndex(root);
+    const budget = options.refreshBudgetMs ?? KNOWLEDGE_REFRESH_BUDGET_MS;
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs > budget) {
+      const reason = `Capture took ${elapsedMs}ms, over the ${budget}ms budget; incremental re-discover skipped to keep the commit fast.`;
+      if (!options.quiet) console.warn(`Warning: ${reason}`);
+      knowledgeRefresh = { skipped: true, reason, elapsedMs, staleRecords: 0, logFile: refreshLogFile(root) };
+      await appendRefreshLog(root, {
+        timestamp: new Date().toISOString(),
+        skipped: true,
+        reason,
+        elapsedMs,
+        staleRecords: 0,
+      });
+    } else {
+      await discover(root, {
+        files: changedFiles,
+        onWarning: (message) => !options.quiet && console.warn(`Warning: ${message}`),
+      });
+      refreshedKnowledge = await refreshKnowledgeStateFromEvidence(root, changedFiles);
+      await rebuildRetrievalIndex(root);
+      const totalElapsedMs = Date.now() - startedAt;
+      knowledgeRefresh = {
+        skipped: false,
+        elapsedMs: totalElapsedMs,
+        staleRecords: refreshedKnowledge.length,
+        logFile: refreshLogFile(root),
+      };
+      await appendRefreshLog(root, {
+        timestamp: new Date().toISOString(),
+        skipped: false,
+        elapsedMs: totalElapsedMs,
+        staleRecords: refreshedKnowledge.length,
+        records: refreshedKnowledge.map((item) => item.recordId),
+      });
+    }
   }
 
   if (options.json) {
@@ -116,22 +198,25 @@ export async function captureCommand(root: string, options: CaptureOptions = {})
           changedFiles,
           learned,
           refreshedKnowledge,
+          knowledgeRefresh,
           report,
         },
         null,
         2,
       ),
     );
-    return { record, learned, changedFiles, report, refreshedKnowledge };
+    return { record, learned, changedFiles, report, refreshedKnowledge, knowledgeRefresh };
   }
   if (options.dryRun) {
     console.log(`Dry run: would write task record${learned ? ' and learning candidate' : ''}`);
   } else if (!options.quiet) {
     console.log(`Task record written to ${record}`);
     if (learned) console.log(`Learning candidate created: ${learned}`);
-    if (refreshedKnowledge?.length) {
+    if (knowledgeRefresh?.skipped) {
+      console.log(`Knowledge refresh skipped: ${knowledgeRefresh.reason}`);
+    } else if (refreshedKnowledge?.length) {
       console.log(`Knowledge refreshed: ${refreshedKnowledge.length} record(s) marked stale.`);
     }
   }
-  return { record, learned, changedFiles, report, refreshedKnowledge };
+  return { record, learned, changedFiles, report, refreshedKnowledge, knowledgeRefresh };
 }

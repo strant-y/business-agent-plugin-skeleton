@@ -100,7 +100,11 @@ describe('captureCommand', () => {
     await fs.mkdir(path.join(dir, '.agent', 'business'), { recursive: true });
     await fs.mkdir(path.join(dir, '.agent', 'memory'), { recursive: true });
     await fs.mkdir(path.join(dir, 'src'), { recursive: true });
-    await fs.writeFile(path.join(dir, 'src', 'Order.ts'), 'export interface Order { id: string; status: string }\n', 'utf8');
+    await fs.writeFile(
+      path.join(dir, 'src', 'Order.ts'),
+      'export interface Order { id: string; status: string }\n',
+      'utf8',
+    );
 
     const summary = await captureCommand(dir, {
       files: ['src/Order.ts'],
@@ -113,6 +117,83 @@ describe('captureCommand', () => {
     expect(manifest.entities.some((entity: { name: string }) => entity.name === 'Order')).toBe(true);
     const retrieval = JSON.parse(await readText(path.join(dir, '.agent', 'memory', 'indexes', 'retrieval-index.json')));
     expect(retrieval.some((doc: { title: string }) => doc.title === 'Order')).toBe(true);
+  });
+
+  it('writes a refresh log next to hook-errors.log after a knowledge refresh', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'src', 'Order.ts'),
+      'export interface Order { id: string; status: string }\n',
+      'utf8',
+    );
+
+    const summary = await captureCommand(dir, {
+      files: ['src/Order.ts'],
+      refreshKnowledge: true,
+      quiet: true,
+    });
+
+    expect(summary.knowledgeRefresh?.skipped).toBe(false);
+    const logFile = path.join(dir, '.agent', 'memory', 'hook-refresh.log');
+    const logLine = (await readText(logFile)).trim().split('\n').at(-1) ?? '';
+    expect(JSON.parse(logLine)).toMatchObject({ skipped: false, staleRecords: 0 });
+    expect(summary.knowledgeRefresh?.logFile).toBe(logFile);
+  });
+
+  it('skips the incremental re-discover when the time budget is already exhausted', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent', 'memory'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', 'Order.ts'), 'export interface Order { id: string }\n', 'utf8');
+    await saveKnowledgeRecord(dir, {
+      id: 'rule.order-lock',
+      type: 'rule',
+      subject: 'Order',
+      claim: 'Order is locked under audit',
+      confidence: 'high',
+      confidenceScore: 0.9,
+      status: 'confirmed',
+      source: 'human-confirmed',
+      evidence: [
+        {
+          id: 'e-order-lock',
+          kind: 'source',
+          file: 'src/Order.ts',
+          lineStart: 1,
+          snippet: 'export class Order {}',
+          capturedAt: new Date().toISOString(),
+          strength: 'direct',
+        },
+      ],
+      relatedTasks: [],
+      version: 1,
+      firstSeenAt: new Date().toISOString(),
+    });
+
+    const summary = await captureCommand(dir, {
+      files: ['src/Order.ts'],
+      refreshKnowledge: true,
+      // Any non-zero elapsed time exceeds a zero budget, so the refresh must be skipped.
+      refreshBudgetMs: 0,
+      quiet: true,
+    });
+
+    expect(summary.knowledgeRefresh?.skipped).toBe(true);
+    expect(summary.knowledgeRefresh?.reason).toContain('incremental re-discover skipped');
+    expect(summary.refreshedKnowledge).toBeUndefined();
+    // The rule keeps its status: skipping the refresh must not silently mark knowledge stale.
+    const unchanged = await loadKnowledgeState(dir, 'rule.order-lock');
+    expect(unchanged?.status).toBe('confirmed');
+    const manifestExists = await fs
+      .access(path.join(dir, '.agent', 'memory', 'discovery-manifest.json'))
+      .then(() => true)
+      .catch(() => false);
+    expect(manifestExists).toBe(false);
+
+    const logLine =
+      (await readText(path.join(dir, '.agent', 'memory', 'hook-refresh.log'))).trim().split('\n').at(-1) ?? '';
+    expect(JSON.parse(logLine)).toMatchObject({ skipped: true, staleRecords: 0 });
   });
 });
 

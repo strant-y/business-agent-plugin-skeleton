@@ -34,6 +34,11 @@ export async function writeText(file: string, content: string): Promise<void> {
   await fs.writeFile(file, content, 'utf8');
 }
 
+export async function appendText(file: string, content: string): Promise<void> {
+  await ensureDir(path.dirname(file));
+  await fs.appendFile(file, content, 'utf8');
+}
+
 export async function writeJson(file: string, value: unknown): Promise<void> {
   await ensureDir(path.dirname(file));
   const temporary = `${file}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
