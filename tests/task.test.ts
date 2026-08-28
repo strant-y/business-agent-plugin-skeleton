@@ -3,8 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { taskCommand } from '../src/commands/task.js';
+import type { ImpactReport } from '../src/core/impact.js';
 import {
   checkpointTask,
+  computeAccuracy,
   finishTask,
   loadTaskSession,
   predictTaskImpact,
@@ -117,6 +119,24 @@ async function setup(): Promise<string> {
 }
 
 describe('task lifecycle', () => {
+  it('matches relationship hits by source, target and relationship, including duplicates', () => {
+    const relation = (source: string, target: string, relationship: string) => ({
+      source,
+      target,
+      relationship,
+    });
+    const predicted = {
+      relations: [relation('A', 'B', 'calls'), relation('A', 'B', 'calls'), relation('A', 'C', 'calls')],
+    } as ImpactReport;
+    const actual = {
+      relations: [relation('A', 'B', 'calls'), relation('A', 'C', 'calls'), relation('A', 'D', 'calls')],
+    } as ImpactReport;
+
+    expect(computeAccuracy(predicted, actual).relationships).toEqual([
+      { relationship: 'calls', predicted: 3, actual: 3, hits: 2 },
+    ]);
+  });
+
   it('persists context, impact prediction, checkpoints, tests and completion', async () => {
     const dir = await setup();
     const started = await startTask(dir, '修改 Order 审核状态');

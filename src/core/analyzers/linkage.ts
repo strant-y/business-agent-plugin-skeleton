@@ -1,4 +1,6 @@
+import path from 'node:path';
 import type { Analyzer, AnalyzerContext } from '../analyzer.js';
+import { exists, readText } from '../../utils/fs.js';
 import { fileModuleName, moduleNodeId } from '../module-id.js';
 import { normalizeRelationship, type ApiRoute, type Relation } from '../types.js';
 import type { ModuleDescriptor } from '../types.js';
@@ -59,6 +61,25 @@ function relativeModuleName(importPath: string): string | undefined {
 
 function moduleIdByName(name: string, modules: ModuleDescriptor[] = []): string | undefined {
   return modules.find((item) => item.name === name)?.id;
+}
+
+async function loadExternalApis(paths: string[], warn?: (message: string) => void): Promise<ApiRoute[]> {
+  const apis: ApiRoute[] = [];
+  for (const manifestPath of paths) {
+    try {
+      const absolute = path.resolve(manifestPath);
+      if (!(await exists(absolute))) {
+        warn?.(`External API manifest not found: ${manifestPath}`);
+        continue;
+      }
+      const manifest = JSON.parse(await readText(absolute)) as { apis?: ApiRoute[] };
+      apis.push(...(manifest.apis ?? []).filter((api) => api.kind !== 'frontend'));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error);
+      warn?.(`Failed to load external API manifest ${manifestPath}: ${detail}`);
+    }
+  }
+  return apis;
 }
 
 export function linkFrontendModules(
@@ -162,8 +183,9 @@ export function linkViewsToApis(
 
 export const linkageAnalyzer: Analyzer = {
   name: 'linkage',
-  analyze(scan, ctx: AnalyzerContext) {
-    const apis = ctx.apis ?? [];
+  async analyze(scan, ctx: AnalyzerContext) {
+    const externalApis = await loadExternalApis(ctx.config.linkage?.externalApis ?? [], ctx.warn);
+    const apis = [...(ctx.apis ?? []), ...externalApis];
     const relations = linkViewsToApis(scan, apis);
     return relations.length ? { relations } : {};
   },

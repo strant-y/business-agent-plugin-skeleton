@@ -32,6 +32,7 @@ describe('loadConfig', () => {
 
   it('defaults discover analyzers to sql, api and ast', () => {
     expect(DEFAULT_CONFIG.analyzers).toEqual(['sql', 'api', 'ast']);
+    expect(DEFAULT_CONFIG.allowedExt).toEqual(expect.arrayContaining(['.yaml', '.yml']));
   });
 
   it('loads and bounds impact traversal depth', async () => {
@@ -52,6 +53,12 @@ describe('loadConfig', () => {
     const dir = await tempProject({ analyzers: [] });
     const config = await loadConfig(dir);
     expect(config.analyzers).toEqual([]);
+  });
+
+  it('loads linkage.externalApis as an array of strings', async () => {
+    const dir = await tempProject({ linkage: { externalApis: ['C:/other/discovery-manifest.json'] } });
+    const config = await loadConfig(dir);
+    expect(config.linkage?.externalApis).toEqual(['C:/other/discovery-manifest.json']);
   });
 
   it('falls back to defaults and warns on invalid JSON', async () => {

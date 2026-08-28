@@ -1,5 +1,8 @@
 import path from 'node:path';
+import { discover } from '../core/discovery.js';
 import { buildImpactReport, type ImpactReport } from '../core/impact.js';
+import { refreshKnowledgeStateFromEvidence } from '../core/knowledge-state.js';
+import { rebuildRetrievalIndex } from '../core/retrieval.js';
 import { writeLearnCandidate } from './learn.js';
 import { gitDiffFiles } from '../utils/git.js';
 import { ensureDir, writeText } from '../utils/fs.js';
@@ -17,6 +20,7 @@ export interface CaptureOptions {
   quiet?: boolean;
   dryRun?: boolean;
   json?: boolean;
+  refreshKnowledge?: boolean;
 }
 
 export interface CaptureSummary {
@@ -24,6 +28,7 @@ export interface CaptureSummary {
   learned?: string;
   changedFiles: string[];
   report: ImpactReport;
+  refreshedKnowledge?: Array<{ recordId: string; status: string; warnings: string[] }>;
 }
 
 function recordMarkdown(report: ImpactReport, message?: string): string {
@@ -94,6 +99,15 @@ export async function captureCommand(root: string, options: CaptureOptions = {})
     });
   }
 
+  let refreshedKnowledge:
+    | Array<{ recordId: string; status: string; warnings: string[] }>
+    | undefined;
+  if (options.refreshKnowledge && !options.dryRun) {
+    await discover(root, { files: changedFiles, onWarning: (message) => !options.quiet && console.warn(`Warning: ${message}`) });
+    refreshedKnowledge = await refreshKnowledgeStateFromEvidence(root, changedFiles);
+    await rebuildRetrievalIndex(root);
+  }
+
   if (options.json) {
     console.log(
       JSON.stringify(
@@ -101,19 +115,23 @@ export async function captureCommand(root: string, options: CaptureOptions = {})
           record: options.dryRun ? record : undefined,
           changedFiles,
           learned,
+          refreshedKnowledge,
           report,
         },
         null,
         2,
       ),
     );
-    return { record, learned, changedFiles, report };
+    return { record, learned, changedFiles, report, refreshedKnowledge };
   }
   if (options.dryRun) {
     console.log(`Dry run: would write task record${learned ? ' and learning candidate' : ''}`);
   } else if (!options.quiet) {
     console.log(`Task record written to ${record}`);
     if (learned) console.log(`Learning candidate created: ${learned}`);
+    if (refreshedKnowledge?.length) {
+      console.log(`Knowledge refreshed: ${refreshedKnowledge.length} record(s) marked stale.`);
+    }
   }
-  return { record, learned, changedFiles, report };
+  return { record, learned, changedFiles, report, refreshedKnowledge };
 }

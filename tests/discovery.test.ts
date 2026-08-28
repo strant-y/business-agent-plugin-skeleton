@@ -55,10 +55,31 @@ describe('discover', () => {
     expect(manifest.aliases?.Order).toEqual(expect.arrayContaining(['缴费', 'OrderDTO', 'orders']));
   });
 
+  it('does not create relations from name-only co-occurrence', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(path.join(dir, 'a.ts'), 'export interface Order {}\nexport interface Customer {}\nconst text = "Order Customer";\n', 'utf8');
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    expect(manifest.relations).toEqual([]);
+  });
+
   it('detects relations between entities appearing near each other', async () => {
     const manifest = await discover(FIXTURE, { dryRun: true });
     const hasProductOrder = manifest.relations.some((r) => r.source === 'Product' && r.target === 'Order');
     expect(hasProductOrder).toBe(true);
+  });
+
+  it('extracts custom business exceptions as candidate rules', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(
+      path.join(dir, 'OrderService.ts'),
+      "export class OrderService { update(order: Order) { if (order.status === 'AUDIT') throw new OrderBusinessException('Order cannot be modified'); } }\n",
+      'utf8',
+    );
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const exceptionRule = manifest.rules.find((rule) => rule.id === 'rule.discovery.thrown-error');
+    expect(exceptionRule).toBeDefined();
+    expect(exceptionRule?.rule[0]).toContain('Order cannot be modified');
+    expect(exceptionRule?.confidence).toBe('medium');
   });
 
   it('attributes rule evidence to files that actually match', async () => {
@@ -154,8 +175,27 @@ describe('discover', () => {
   it('builds fieldIndex entries from SQL attributes', async () => {
     const manifest = await discover(DEEP, { dryRun: true });
     expect(manifest.fieldIndex?.['order.status']).toMatchObject({ entity: 'Order', field: 'status' });
+    const fieldEvidence = (key: string) => manifest.fieldIndex?.[key]?.evidence?.map((file) => file.replaceAll('\\', '/'));
+    expect(fieldEvidence('order.status')).toEqual(expect.arrayContaining(['db/schema.sql', 'db/schema.sql:9']));
     expect(manifest.fieldIndex?.['order.customer_id']).toMatchObject({ entity: 'Order', field: 'customer_id' });
+    expect(fieldEvidence('order.customer_id')).toEqual(expect.arrayContaining(['db/schema.sql', 'db/schema.sql:8']));
     expect(manifest.fieldIndex?.['auditlog.event_type']).toMatchObject({ entity: 'AuditLog', field: 'event_type' });
+    expect(fieldEvidence('auditlog.event_type')).toEqual(expect.arrayContaining(['db/schema.sql', 'db/schema.sql:15']));
+  });
+
+  it('matches covering tests through entity aliases and plural forms', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent', 'business', 'rules'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'Order.ts'), 'export interface Order { status: string }\n', 'utf8');
+    await fs.writeFile(path.join(dir, 'orders.ts'), 'export interface Orders { status: string }\n', 'utf8');
+    await fs.mkdir(path.join(dir, 'tests'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'tests', 'order-rule.test.ts'), "it('缴费 orders must be APPROVED', () => expect('APPROVED').toBe('APPROVED'));\n", 'utf8');
+    await fs.writeFile(path.join(dir, '.agent', 'business', 'glossary.md'), '| 术语 | 别名 | 实体 |\n| --- | --- | --- |\n| 缴费 | premium_payment | Order |\n', 'utf8');
+    await fs.writeFile(path.join(dir, '.agent', 'business', 'rules', 'rule-order-approved.json'), JSON.stringify({
+      id: 'rule.order-approved', name: 'Order approval rule', entity: 'Order', rule: ['Order must be APPROVED before shipment'], confidence: 'high', evidence: ['Order.ts'], status: 'confirmed',
+    }), 'utf8');
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    expect(manifest.rules.find((rule) => rule.id === 'rule.order-approved')?.coveringTests).toEqual(['tests\\order-rule.test.ts']);
   });
 
   it('rebuilds coveringTests for persisted confirmed rules without broad unknown matches', async () => {

@@ -9,6 +9,11 @@ export interface GlossaryEntry {
   entity: string;
 }
 
+export interface AliasArtifacts {
+  aliasesByEntity: Record<string, string[]>;
+  aliasToEntity: Record<string, string>;
+}
+
 function normalizeCell(value: string): string {
   return value
     .replace(/<br\s*\/?>/gi, ',')
@@ -68,6 +73,14 @@ function stripEntitySuffix(value: string): string[] {
   return [...forms];
 }
 
+function singularPascal(value: string): string {
+  return value.endsWith('s') ? value.slice(0, -1) : value;
+}
+
+function isSqlDerivedEntity(entity: Entity): boolean {
+  return entity.description.startsWith('Discovered from SQL table ');
+}
+
 function toSnakeCase(value: string): string {
   return value
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
@@ -86,8 +99,17 @@ function buildAliasVariants(value: string): string[] {
   return [...variants].filter(Boolean);
 }
 
-export function buildAliasMap(entities: Entity[], entries: GlossaryEntry[]): Record<string, string[]> {
+export function normalizeTerm(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[-_\s]/g, '');
+}
+
+export function buildAliasArtifacts(entities: Entity[], entries: GlossaryEntry[]): AliasArtifacts {
   const buckets = new Map<string, Set<string>>();
+  const aliasToEntity = new Map<string, string>();
+
   const ensure = (canonical: string): Set<string> => {
     const existing = buckets.get(canonical);
     if (existing) return existing;
@@ -96,36 +118,64 @@ export function buildAliasMap(entities: Entity[], entries: GlossaryEntry[]): Rec
     return created;
   };
 
+  const registerAlias = (canonical: string, alias: string): void => {
+    const normalized = normalizeTerm(alias);
+    if (!normalized || normalized === normalizeTerm(canonical)) return;
+    ensure(canonical).add(alias);
+    aliasToEntity.set(normalized, canonical);
+  };
+
+  const directNames = new Set(entities.map((entity) => normalizeTerm(entity.name)));
+  const singularEntityNames = new Set(entities.map((entity) => normalizeTerm(singularPascal(entity.name))));
+
   for (const entity of entities) {
+    aliasToEntity.set(normalizeTerm(entity.name), entity.name);
     const bucket = ensure(entity.name);
-    for (const variant of buildAliasVariants(entity.name)) bucket.add(variant);
+    for (const variant of buildAliasVariants(entity.name)) {
+      const normalizedVariant = normalizeTerm(variant);
+      if (directNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) continue;
+      if (isSqlDerivedEntity(entity) && singularEntityNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) {
+        continue;
+      }
+      registerAlias(entity.name, variant);
+    }
     for (const tag of entity.tags ?? []) {
-      for (const variant of buildAliasVariants(tag)) bucket.add(variant);
+      bucket.add(tag);
+      registerAlias(entity.name, tag);
+      for (const variant of buildAliasVariants(tag)) {
+        const normalizedVariant = normalizeTerm(variant);
+        if (directNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) continue;
+        if (isSqlDerivedEntity(entity) && singularEntityNames.has(normalizedVariant) && normalizedVariant !== normalizeTerm(entity.name)) {
+          continue;
+        }
+        registerAlias(entity.name, variant);
+      }
     }
   }
 
   for (const entry of entries) {
-    const bucket = ensure(entry.entity);
-    bucket.add(entry.term);
-    for (const variant of buildAliasVariants(entry.term)) bucket.add(variant);
+    aliasToEntity.set(normalizeTerm(entry.entity), entry.entity);
+    registerAlias(entry.entity, entry.term);
+    for (const variant of buildAliasVariants(entry.term)) registerAlias(entry.entity, variant);
     for (const alias of entry.aliases) {
-      bucket.add(alias);
-      for (const variant of buildAliasVariants(alias)) bucket.add(variant);
+      registerAlias(entry.entity, alias);
+      for (const variant of buildAliasVariants(alias)) registerAlias(entry.entity, variant);
     }
   }
 
-  const out: Record<string, string[]> = {};
+  const aliasesByEntity: Record<string, string[]> = {};
   for (const [canonical, items] of buckets) {
-    out[canonical] = [...new Set([canonical, ...items].filter((item) => normalizeTerm(item) !== normalizeTerm(canonical)))];
+    aliasesByEntity[canonical] = [...new Set([...items].filter((item) => normalizeTerm(item) !== normalizeTerm(canonical)))];
   }
-  return out;
+
+  return {
+    aliasesByEntity,
+    aliasToEntity: Object.fromEntries(aliasToEntity),
+  };
 }
 
-export function normalizeTerm(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[-_\s]/g, '');
+export function buildAliasMap(entities: Entity[], entries: GlossaryEntry[]): Record<string, string[]> {
+  return buildAliasArtifacts(entities, entries).aliasesByEntity;
 }
 
 export function resolveCanonicalName(value: string, aliases: Record<string, string[]>): string {
@@ -134,4 +184,23 @@ export function resolveCanonicalName(value: string, aliases: Record<string, stri
     if ([canonical, ...items].some((item) => normalizeTerm(item) === target)) return canonical;
   }
   return value;
+}
+
+export function resolveCanonicalNameFromIndex(value: string, aliasToEntity: Record<string, string>): string {
+  return aliasToEntity[normalizeTerm(value)] ?? value;
+}
+
+export function invertAliasMap(aliasesByEntity: Record<string, string[]>): Record<string, string> {
+  const index: Record<string, string> = {};
+  for (const [entity, aliases] of Object.entries(aliasesByEntity)) {
+    index[normalizeTerm(entity)] = entity;
+    for (const alias of aliases) {
+      index[normalizeTerm(alias)] = entity;
+    }
+  }
+  return index;
+}
+
+export function getEntityAliases(entity: string, aliasesByEntity: Record<string, string[]>): string[] {
+  return aliasesByEntity[entity] ?? [];
 }

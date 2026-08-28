@@ -10,8 +10,32 @@ export function ruleSign(text: string): 1 | -1 | 0 {
   return sign as 1 | -1 | 0;
 }
 
-function buildSuggestions(a: BusinessRule, b: BusinessRule): string[] {
+const ACTIONS = /(modify|edit|change|update|delete|archive|修改|编辑|变更|更新|删除|归档)/i;
+const ROLES = /(admin(?:istrator)?|管理员|管理)/i;
+
+function ruleAction(text: string): string | undefined {
+  return ACTIONS.exec(text)?.[1]?.toLowerCase();
+}
+
+function ruleRole(text: string): string | undefined {
+  return ROLES.test(text) ? 'admin' : undefined;
+}
+
+function sameTarget(a: string, b: string): boolean {
+  const actionA = ruleAction(a);
+  const actionB = ruleAction(b);
+  return actionA !== undefined && actionA === actionB;
+}
+
+function hasDifferentConditions(a: BusinessRule, b: BusinessRule): boolean {
+  const left = (a.preconditions ?? []).join(' ').toLowerCase();
+  const right = (b.preconditions ?? []).join(' ').toLowerCase();
+  return left !== right && (left.length > 0 || right.length > 0);
+}
+
+function buildSuggestions(a: BusinessRule, b: BusinessRule, conditional = false): string[] {
   const suggestions: string[] = [];
+  if (conditional) suggestions.push('确认两者前置条件是否互斥，尤其是角色权限与业务状态。');
   if ((a.preconditions?.length ?? 0) > 0 && (b.preconditions?.length ?? 0) > 0) {
     suggestions.push('合并两条规则的前置条件，确认是否只在不同状态下分别成立。');
   }
@@ -39,16 +63,27 @@ export function detectConflicts(rules: BusinessRule[]): RuleConflict[] {
         const bText = b.rule.join(' ');
         const aSign = ruleSign(aText);
         const bSign = ruleSign(bText);
-        if (aSign !== 0 && aSign === -bSign) {
+        const conditional =
+          aSign !== 0 &&
+          aSign === -bSign &&
+          sameTarget(aText, bText) &&
+          (hasDifferentConditions(a, b) || ruleRole(aText) !== ruleRole(bText));
+        const opposing =
+          aSign !== 0 &&
+          aSign === -bSign &&
+          (sameTarget(aText, bText) || (!ruleAction(aText) && !ruleAction(bText)));
+        if (opposing) {
           conflicts.push({
             id: `conflict.${a.id.replace(/^rule\./, '')}-vs-${b.id.replace(/^rule\./, '')}`,
             ruleA: a.id,
             ruleB: b.id,
             entity,
-            description: `Rules "${a.name}" and "${b.name}" express opposing constraints on ${entity}.`,
+            description: conditional
+              ? `Rules "${a.name}" and "${b.name}" may conflict under different roles or preconditions on ${entity}.`
+              : `Rules "${a.name}" and "${b.name}" express opposing constraints on ${entity}.`,
             confidence: 'low',
             evidence: [...a.evidence, ...b.evidence].slice(0, 10),
-            suggestions: buildSuggestions(a, b),
+            suggestions: buildSuggestions(a, b, conditional),
           });
         }
       }

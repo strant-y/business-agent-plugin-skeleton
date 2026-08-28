@@ -226,6 +226,7 @@ export interface FieldIndexEntry {
   storeActions?: string[];
   pages: string[];
   tests: string[];
+  evidence?: string[];
 }
 
 export interface DiscoverManifest {
@@ -244,5 +245,6 @@ export interface DiscoverManifest {
   actions?: UserAction[];
   modules?: ModuleDescriptor[];
   aliases?: Record<string, string[]>;
+  aliasIndex?: Record<string, string>;
   fieldIndex?: Record<string, FieldIndexEntry>;
 }

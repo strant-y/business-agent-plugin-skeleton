@@ -15,8 +15,14 @@ export interface GraphWalkStep {
   direction: 'out' | 'in';
 }
 
-const DEFAULT_MAX_DEPTH = 3;
+export const DEFAULT_MAX_DEPTH = 6;
 const MAX_CHAIN_STEPS = 300;
+const TERMINAL_DEPTH = 3;
+
+export interface TraceGraphOptions {
+  terminalNodes?: Set<string>;
+  lowAccuracyRelationships?: Set<string>;
+}
 const MERMAID_NODE_LIMIT = 40;
 
 function resolveAliasTarget(node: string, aliases: Record<string, string[]> = {}): string {
@@ -58,7 +64,13 @@ export function buildGraph(manifest: Partial<DiscoverManifest>, relations: Relat
   return graph;
 }
 
-export function traceGraph(file: string, start: string, graph: Graph, maxDepth = DEFAULT_MAX_DEPTH): GraphWalkStep[] {
+export function traceGraph(
+  file: string,
+  start: string,
+  graph: Graph,
+  maxDepth = DEFAULT_MAX_DEPTH,
+  options: TraceGraphOptions = {},
+): GraphWalkStep[] {
   const steps: GraphWalkStep[] = [];
   const seen = new Set<string>([start]);
   const queue: Array<{ node: string; depth: number; relationship?: string; direction: 'out' | 'in' }> = [
@@ -74,6 +86,7 @@ export function traceGraph(file: string, start: string, graph: Graph, maxDepth =
       direction: current.direction,
     });
     if (current.depth >= maxDepth) continue;
+    if (current.depth >= TERMINAL_DEPTH && options.terminalNodes?.has(current.node)) continue;
     const neighbors = new Map<string, { relationship: string; direction: 'out' | 'in' }>();
     for (const [node, rel] of graph.out.get(current.node) ?? []) {
       neighbors.set(node, { relationship: rel, direction: 'out' });
@@ -81,7 +94,12 @@ export function traceGraph(file: string, start: string, graph: Graph, maxDepth =
     for (const [node, rel] of graph.in.get(current.node) ?? []) {
       if (!neighbors.has(node)) neighbors.set(node, { relationship: rel, direction: 'in' });
     }
-    for (const [node, edge] of neighbors) {
+    const orderedNeighbors = [...neighbors].sort(([left], [right]) => {
+      const leftLow = options.lowAccuracyRelationships?.has(neighbors.get(left)!.relationship) ? 1 : 0;
+      const rightLow = options.lowAccuracyRelationships?.has(neighbors.get(right)!.relationship) ? 1 : 0;
+      return leftLow - rightLow;
+    });
+    for (const [node, edge] of orderedNeighbors) {
       if (seen.has(node)) continue;
       seen.add(node);
       queue.push({

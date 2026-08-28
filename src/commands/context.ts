@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { exists, readText, writeText } from '../utils/fs.js';
+import { getEntityAliases, invertAliasMap, resolveCanonicalNameFromIndex } from '../core/glossary.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
-import { resolveCanonicalName } from '../core/glossary.js';
 import { buildGraph, renderMermaidSubgraph } from '../core/graph.js';
 import { retrieveTaskContext } from '../core/retrieval.js';
 import type { DiscoverManifest } from '../core/types.js';
@@ -33,11 +33,10 @@ export async function contextCommand(root: string, subject: string, options: Con
       console.warn(`Warning: ignoring unreadable manifest at ${manifestFile}`);
     }
   }
-  const aliasMap = manifest?.aliases ?? {};
-  const canonicalSubject = resolveCanonicalName(subject, aliasMap);
+  const aliasesByEntity = manifest?.aliases ?? {};
+  const aliasIndex = manifest?.aliasIndex ?? invertAliasMap(aliasesByEntity);
+  const canonicalSubject = resolveCanonicalNameFromIndex(subject, aliasIndex);
   const subjectLower = canonicalSubject.toLowerCase();
-  // Exact match first, then word-boundary match, then a conservative substring
-  // fallback so "der" does not match "Order".
   const entities = manifest?.entities ?? [];
   const boundaryRe = new RegExp(`\\b${escapeRegExp(subjectLower)}\\b`, 'i');
   let matched = entities.filter((e) => e.name.toLowerCase() === subjectLower || boundaryRe.test(e.name));
@@ -46,9 +45,6 @@ export async function contextCommand(root: string, subject: string, options: Con
   const relations = await loadRelations(agentRoot);
   const impacts = await listImpacts(agentRoot);
 
-  // Fallback for subjects without an exact entity-name match (e.g. Chinese
-  // business terms like 缴费): resolve entities through the content retrieval
-  // index, which indexes rule context snippets and task experience text.
   let retrievalFallback = false;
   if (!matched.length) {
     retrievalFallback = true;
@@ -61,42 +57,44 @@ export async function contextCommand(root: string, subject: string, options: Con
       }
       const manifestRule = (manifest?.rules ?? []).find((r) => r.id === hit.id);
       if (manifestRule) {
-        names.add(manifestRule.entity);
+        names.add(resolveCanonicalNameFromIndex(manifestRule.entity, aliasIndex));
         continue;
       }
       const confirmedRule = rules.find((r) => r.id === hit.id);
       if (confirmedRule) {
-        names.add(confirmedRule.entity);
+        names.add(resolveCanonicalNameFromIndex(confirmedRule.entity, aliasIndex));
         continue;
       }
       if (hit.type === 'relation') {
-        // Relation titles are formatted as `${source} ${relationship} ${target}`.
         const parts = hit.title.split(' ');
         if (parts.length >= 3) {
-          names.add(parts[0]);
-          names.add(parts[parts.length - 1]);
+          names.add(resolveCanonicalNameFromIndex(parts[0], aliasIndex));
+          names.add(resolveCanonicalNameFromIndex(parts[parts.length - 1], aliasIndex));
         }
       }
     }
     matched = entities.filter((e) => names.has(e.name));
   }
   const matchedNames = new Set(matched.map((e) => e.name));
-  for (const [canonical, aliases] of Object.entries(aliasMap)) {
-    if (canonical.toLowerCase() === subjectLower || aliases.some((alias) => alias.toLowerCase() === subjectLower)) {
-      matchedNames.add(canonical);
-    }
-  }
+  const directAliasMatch = aliasIndex[subject.trim().toLowerCase().replace(/[-_\s]/g, '')];
+  if (directAliasMatch) matchedNames.add(directAliasMatch);
 
-  const relevantRules = rules.filter((r) => matchedNames.has(r.entity) || r.entity.toLowerCase() === subjectLower);
-  const relevantRelations = relations.filter((r) => matchedNames.has(r.source) || matchedNames.has(r.target));
-  const relevantConflicts = (manifest?.conflicts ?? []).filter(
-    (c) => matchedNames.has(c.entity) || c.entity.toLowerCase() === subjectLower,
+  const relevantRules = rules.filter(
+    (r) => matchedNames.has(resolveCanonicalNameFromIndex(r.entity, aliasIndex)) || r.entity.toLowerCase() === subjectLower,
   );
-  const relevantApis = (manifest?.apis ?? []).filter((a) => a.entity && matchedNames.has(a.entity));
+  const relevantRelations = relations.filter(
+    (r) =>
+      matchedNames.has(resolveCanonicalNameFromIndex(r.source, aliasIndex)) ||
+      matchedNames.has(resolveCanonicalNameFromIndex(r.target, aliasIndex)),
+  );
+  const relevantConflicts = (manifest?.conflicts ?? []).filter(
+    (c) => matchedNames.has(resolveCanonicalNameFromIndex(c.entity, aliasIndex)) || c.entity.toLowerCase() === subjectLower,
+  );
+  const relevantApis = (manifest?.apis ?? []).filter((a) => a.entity && matchedNames.has(resolveCanonicalNameFromIndex(a.entity, aliasIndex)));
   const relevantPages = (manifest?.pages ?? []).filter(
     (page) =>
       matchedNames.has(page.component) ||
-      page.stores.some((store) => matchedNames.has(store)) ||
+      page.stores.some((store) => matchedNames.has(resolveCanonicalNameFromIndex(store, aliasIndex))) ||
       page.apiCalls.some((api) => api.toLowerCase().includes(subjectLower)),
   );
   const relevantActions = (manifest?.actions ?? []).filter(
@@ -110,7 +108,6 @@ export async function contextCommand(root: string, subject: string, options: Con
       workflow.steps.some((step) => step.toLowerCase().includes(subjectLower)),
   );
 
-  // Impact maps are keyed by rule/relation file id; only surface relevant ones.
   const relevantImpactFiles = new Set<string>();
   for (const rule of relevantRules) relevantImpactFiles.add(`${safeFileId(rule.id)}.md`);
   for (const relation of relevantRelations) relevantImpactFiles.add(`${safeFileId(relation.id)}.md`);
@@ -142,7 +139,7 @@ export async function contextCommand(root: string, subject: string, options: Con
     ...(matched.length
       ? matched.map(
           (e) =>
-            `- ${e.name} (${e.confidence}): ${e.description}${aliasMap[e.name]?.length ? ` [aliases: ${aliasMap[e.name].join(', ')}]` : ''}`,
+            `- ${e.name} (${e.confidence}): ${e.description}${getEntityAliases(e.name, aliasesByEntity).length ? ` [aliases: ${getEntityAliases(e.name, aliasesByEntity).join(', ')}]` : ''}`,
         )
       : ['- No exact entity match. Review Business Index.']),
     '',
@@ -171,7 +168,7 @@ export async function contextCommand(root: string, subject: string, options: Con
     '',
     '## State Machines',
     ...(manifest?.states
-      ?.filter((s) => matchedNames.has(s.entity) || s.entity.toLowerCase() === subjectLower)
+      ?.filter((s) => matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) || s.entity.toLowerCase() === subjectLower)
       .map((s) => `- ${s.entity}: ${s.states.join(', ')}\n\n  \`\`\`mermaid\n  ${s.mermaid}\n  \`\`\``) ?? [
       '- None detected.',
     ]),

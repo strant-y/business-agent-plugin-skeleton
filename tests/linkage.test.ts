@@ -162,6 +162,56 @@ describe('linkageAnalyzer', () => {
     expect(relations[0].target).toBe('Order');
     expect(relations[0].subtype).toBe('api_route_call');
   });
+
+  it('loads external API manifests for cross-repo linkage', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-link-external-'));
+    await fs.mkdir(path.join(dir, 'ui'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'ui', 'OrderList.vue'),
+      '<script setup lang="ts">import axios from "axios";\naxios.get("/api/orders");</script>',
+      'utf8',
+    );
+
+    const externalDir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-link-external-manifest-'));
+    const manifestPath = path.join(externalDir, 'discovery-manifest.json');
+    await fs.writeFile(
+      manifestPath,
+      JSON.stringify({
+        apis: [
+          {
+            id: 'api.external.orders',
+            method: 'GET',
+            path: '/api/orders',
+            entity: 'Order',
+            kind: 'backend',
+            confidence: 'medium',
+            evidence: ['server/order.ts'],
+          },
+        ],
+      }),
+      'utf8',
+    );
+
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    const result = await linkageAnalyzer.analyze(scan, {
+      config: { ...DEFAULT_CONFIG, linkage: { externalApis: [manifestPath] } },
+      entities: [ORDER_ENTITY],
+      rules: [],
+      relations: [],
+      apis: [],
+      warn: () => undefined,
+    });
+
+    expect(result.relations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: moduleNodeId('ui/OrderList.vue'),
+          target: 'Order',
+          relationship: 'calls',
+        }),
+      ]),
+    );
+  });
 });
 
 describe('module-id', () => {

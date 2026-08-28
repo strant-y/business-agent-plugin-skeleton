@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { buildModuleDescriptor } from './module-id.js';
-import { buildAliasMap, loadGlossary, resolveCanonicalName } from './glossary.js';
+import {
+  buildAliasArtifacts,
+  getEntityAliases,
+  loadGlossary,
+  normalizeTerm,
+  resolveCanonicalNameFromIndex,
+} from './glossary.js';
 import { normalizeRelationship, type DiscoverManifest, type Entity, type BusinessRule, type Relation, type FieldIndexEntry } from './types.js';
 import { scanProject, type SampleFile } from './scanner.js';
 import { loadConfig, type AgentConfig, type AnalyzerName } from './config.js';
@@ -62,14 +68,18 @@ function detectEntities(text: string, files: string[], preferred: string[], maxE
   }));
 }
 
-function detectRelations(entities: Entity[], text: string, window = 150): Relation[] {
+function detectRelations(textEntities: Entity[], text: string, window = 150): Relation[] {
   const relations: Relation[] = [];
-  const names = new Set(entities.map((e) => e.name));
+  const names = new Set(textEntities.map((e) => e.name));
   for (const source of names) {
     for (const target of names) {
       if (source === target) continue;
       const relationHint = new RegExp(`${escapeRegExp(source)}[\\s\\S]{0,${window}}${escapeRegExp(target)}`, 'm');
-      if (!relationHint.test(text)) continue;
+      const structuralHint = new RegExp(
+        `(?:extends|implements|imports?|has|contains|references|belongsTo|\\b${escapeRegExp(source)}\\b[\\s\\S]{0,40}(?:\\.|<|\\[))`,
+        'i',
+      );
+      if (!relationHint.test(text) || !structuralHint.test(text)) continue;
       relations.push({
         id: `relation.${source.toLowerCase()}-${target.toLowerCase()}`,
         source,
@@ -135,10 +145,13 @@ function buildRuleCoveringTests(
   rules: BusinessRule[],
   testFiles: string[],
   fileText: Record<string, string>,
-  aliases: Record<string, string[]>,
+  aliasesByEntity: Record<string, string[]>,
+  aliasIndex: Record<string, string>,
 ): BusinessRule[] {
   return rules.map((rule) => {
-    const entityTokens = [rule.entity, ...(aliases[rule.entity] ?? [])]
+    const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
+    const entityTokens = [canonicalEntity, ...getEntityAliases(canonicalEntity, aliasesByEntity)]
+      .flatMap((token) => [token, token.endsWith('s') ? token.slice(0, -1) : `${token}s`])
       .map((token) => token.toLowerCase())
       .filter((token) => token && token !== 'unknown');
     const signals = ruleEvidenceSignals(rule);
@@ -151,7 +164,7 @@ function buildRuleCoveringTests(
       const lowerText = text.toLowerCase();
       return signals.some((signal) => lowerText.includes(signal.toLowerCase()));
     });
-    return coveringTests.length ? { ...rule, coveringTests } : rule;
+    return coveringTests.length ? { ...rule, entity: canonicalEntity, coveringTests } : { ...rule, entity: canonicalEntity };
   });
 }
 
@@ -210,19 +223,17 @@ function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] 
   return rules;
 }
 
-function mergeEntitiesByAlias(entities: Entity[], aliases: Record<string, string[]>): Entity[] {
+function mergeEntitiesByAlias(entities: Entity[], aliasIndex: Record<string, string>): Entity[] {
   const merged = new Map<string, Entity>();
+
   for (const entity of entities) {
-    const canonical = resolveCanonicalName(entity.name, aliases);
+    const canonical = resolveCanonicalNameFromIndex(entity.name, aliasIndex);
     const existing = merged.get(canonical);
     const next: Entity = {
       ...entity,
       id: canonical === entity.name ? entity.id : entityId(canonical),
       name: canonical,
-      description:
-        canonical === entity.name
-          ? entity.description
-          : `Discovered business candidate: ${canonical}`,
+      description: canonical === entity.name ? entity.description : `Discovered business candidate: ${canonical}`,
       evidence: uniqStrings([...(existing?.evidence ?? []), ...entity.evidence]).slice(0, 8),
       tags: uniqStrings([...(existing?.tags ?? []), ...(entity.tags ?? []), entity.name]).filter((tag) => tag !== canonical),
       attributes: mergeEntityAttributes(existing?.attributes, entity.attributes),
@@ -234,6 +245,7 @@ function mergeEntitiesByAlias(entities: Entity[], aliases: Record<string, string
     };
     merged.set(canonical, existing ? { ...existing, ...next } : next);
   }
+
   return [...merged.values()];
 }
 
@@ -258,13 +270,34 @@ function buildFieldIndex(
   actions: DiscoverManifest['actions'],
   relations: DiscoverManifest['relations'],
   tests: string[],
+  aliasIndex: Record<string, string>,
+  fileText: Record<string, string>,
 ): Record<string, FieldIndexEntry> {
   const index = new Map<string, FieldIndexEntry>();
+  const addFieldEvidence = (entry: FieldIndexEntry, field: string, files: string[]): void => {
+    const fieldPattern = new RegExp(`\\b${escapeRegExp(field)}\\b`);
+    for (const file of files) {
+      const text = fileText[file];
+      if (!text) continue;
+      const line = text.split(/\r?\n/).findIndex((value) => fieldPattern.test(value));
+      if (line >= 0) entry.evidence?.push(`${file}:${line + 1}`);
+    }
+  };
   const ensure = (entity: string, field: string): FieldIndexEntry => {
-    const key = `${entity}.${field}`.toLowerCase();
+    const canonicalEntity = resolveCanonicalNameFromIndex(entity, aliasIndex);
+    const key = `${canonicalEntity}.${field}`.toLowerCase();
     const existing = index.get(key);
     if (existing) return existing;
-    const created: FieldIndexEntry = { entity, field, apis: [], stores: [], storeActions: [], pages: [], tests: [] };
+    const created: FieldIndexEntry = {
+      entity: canonicalEntity,
+      field,
+      apis: [],
+      stores: [],
+      storeActions: [],
+      pages: [],
+      tests: [],
+      evidence: [],
+    };
     index.set(key, created);
     return created;
   };
@@ -279,19 +312,32 @@ function buildFieldIndex(
   for (const entity of entities) {
     for (const attribute of entity.attributes ?? []) {
       const entry = ensure(entity.name, attribute.name);
+      entry.evidence?.push(...entity.evidence);
+      addFieldEvidence(entry, attribute.name, entity.evidence);
       entry.tests.push(...tests.filter((test) => test.toLowerCase().includes(entity.name.toLowerCase())));
     }
   }
   for (const api of apis ?? []) {
-    for (const field of api.fields ?? []) ensure(field.entity, field.field).apis.push(`${api.method} ${api.path}`);
+    for (const field of api.fields ?? []) {
+      const entry = ensure(field.entity, field.field);
+      entry.apis.push(`${api.method} ${api.path}`);
+      entry.evidence?.push(...api.evidence);
+      addFieldEvidence(entry, field.field, api.evidence);
+    }
   }
   for (const page of pages ?? []) {
-    for (const field of page.fields ?? []) ensure(field.entity, field.field).pages.push(page.component);
+    for (const field of page.fields ?? []) {
+      const entry = ensure(field.entity, field.field);
+      entry.pages.push(page.component);
+      addFieldEvidence(entry, field.field, page.evidence);
+    }
   }
   for (const action of actions ?? []) {
     for (const field of action.fields ?? []) {
       const entry = ensure(field.entity, field.field);
       entry.pages.push(action.source);
+      entry.evidence?.push(...action.evidence);
+      addFieldEvidence(entry, field.field, action.evidence);
       entry.stores.push(...(action.stores ?? actionStoreIndex.get(action.name) ?? []));
       entry.storeActions?.push(action.name);
     }
@@ -306,6 +352,7 @@ function buildFieldIndex(
         storeActions: [...new Set(entry.storeActions ?? [])],
         pages: [...new Set(entry.pages)],
         tests: [...new Set(entry.tests)],
+        evidence: [...new Set(entry.evidence ?? [])],
       },
     ]),
   );
@@ -365,6 +412,7 @@ export interface DiscoverOptions {
   dryRun?: boolean;
   config?: AgentConfig;
   analyzers?: AnalyzerName[];
+  files?: string[];
   /** Receives non-fatal warnings (analyzer failures, preserved manual edits, unknown analyzers). */
   onWarning?: (message: string) => void;
 }
@@ -372,11 +420,25 @@ export interface DiscoverOptions {
 export async function discover(root: string, options: DiscoverOptions = {}): Promise<DiscoverManifest> {
   const warn = options.onWarning ?? ((): void => {});
   const config = options.config ?? (await loadConfig(root, warn));
-  const scan = await scanProject(root, config);
+  const fullScan = await scanProject(root, config);
+  const selectedFiles = options.files?.length
+    ? new Set(options.files.map((file) => file.replaceAll('/', path.sep).replaceAll('\\', path.sep)))
+    : undefined;
+  const scan = selectedFiles
+    ? {
+        files: fullScan.files.filter((file) => selectedFiles.has(file)),
+        sampleText: fullScan.samples
+          .filter((sample) => selectedFiles.has(sample.file))
+          .map((sample) => `\n--- ${sample.file} ---\n${sample.text}`)
+          .join('\n'),
+        samples: fullScan.samples.filter((sample) => selectedFiles.has(sample.file)),
+        fileText: Object.fromEntries(Object.entries(fullScan.fileText).filter(([file]) => selectedFiles.has(file))),
+      }
+    : fullScan;
   const glossary = await loadGlossary(root);
   const entities = detectEntities(scan.sampleText, scan.files, config.preferredEntities, config.maxEntities);
-  const aliases = buildAliasMap(entities, glossary);
-  const canonicalEntities = mergeEntitiesByAlias(entities, aliases);
+  const initialAliases = buildAliasArtifacts(entities, glossary);
+  const canonicalEntities = mergeEntitiesByAlias(entities, initialAliases.aliasToEntity);
   const relations = detectRelations(canonicalEntities, scan.sampleText, config.relationWindow);
   const rules = detectRules(scan.samples, canonicalEntities);
 
@@ -416,8 +478,43 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     ...confirmedKnowledgeRules.map((rule) => ({ ...rule, status: rule.status ?? 'confirmed' as const })),
   ]);
 
-  finalEntities = mergeEntitiesByAlias(finalEntities, aliases);
-  const manifestAliases = buildAliasMap(finalEntities, glossary);
+  const finalAliasArtifacts = buildAliasArtifacts(finalEntities, glossary);
+  finalEntities = mergeEntitiesByAlias(finalEntities, finalAliasArtifacts.aliasToEntity);
+  finalEntities = finalEntities.filter(
+    (entity) =>
+      !(
+        entity.description.startsWith('Discovered business candidate: ') &&
+        finalEntities.some(
+          (candidate) =>
+            candidate !== entity &&
+            candidate.name !== entity.name &&
+            candidate.evidence.some((evidence) => entity.evidence.includes(evidence)),
+        )
+      ),
+  );
+  const manifestAliasArtifacts = buildAliasArtifacts(finalEntities, glossary);
+  const sqlAliasIndex = { ...manifestAliasArtifacts.aliasToEntity };
+  for (const entity of finalEntities) {
+    if (!entity.description.startsWith('Discovered from SQL table ')) continue;
+    const singular = entity.name.endsWith('s') ? entity.name.slice(0, -1) : entity.name;
+    const normalized = normalizeTerm(entity.name);
+    if (
+      singular !== entity.name &&
+      finalEntities.some((candidate) => candidate.name === singular && !candidate.description.startsWith('Discovered from SQL table '))
+    ) {
+      sqlAliasIndex[normalized] = singular;
+    }
+  }
+  finalRules = buildRuleCoveringTests(
+    finalRules,
+    scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file)),
+    scan.fileText,
+    manifestAliasArtifacts.aliasesByEntity,
+    sqlAliasIndex,
+  ).map((rule) => ({
+    ...rule,
+    entity: resolveCanonicalNameFromIndex(rule.entity, manifestAliasArtifacts.aliasToEntity),
+  }));
   const conflicts = detectConflicts(finalRules);
 
   const modules = scan.files
@@ -425,8 +522,32 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     .map((file) => buildModuleDescriptor(file));
 
   const testFiles = scan.files.filter((file) => /(?:^|\/|\\).*\.(?:test|spec)\.[jt]sx?$/.test(file));
-  finalRules = buildRuleCoveringTests(finalRules, testFiles, scan.fileText, manifestAliases);
-  const fieldIndex = buildFieldIndex(finalEntities, apis, pages, actions, relations, testFiles);
+  const fieldIndex = buildFieldIndex(finalEntities, apis, pages, actions, finalRelations, testFiles, sqlAliasIndex, scan.fileText);
+  for (const api of apis) {
+    if (api.kind !== 'backend') continue;
+    for (const field of api.fields ?? []) {
+      const canonicalEntity = resolveCanonicalNameFromIndex(field.entity, sqlAliasIndex);
+      const key = `${canonicalEntity}.${field.field}`.toLowerCase();
+      fieldIndex[key] ??= { entity: canonicalEntity, field: field.field, apis: [], stores: [], pages: [], tests: [], evidence: [] };
+      fieldIndex[key].evidence?.push(...api.evidence);
+      const route = `${api.method} ${api.path}`;
+      if (!fieldIndex[key].apis.includes(route)) fieldIndex[key].apis.push(route);
+    }
+  }
+  for (const entity of finalEntities) {
+    for (const attribute of entity.attributes ?? []) {
+      const key = `${entity.name}.${attribute.name}`.toLowerCase();
+      fieldIndex[key] ??= {
+        entity: entity.name,
+        field: attribute.name,
+        apis: [],
+        stores: [],
+        pages: [],
+        tests: [],
+        evidence: [],
+      };
+    }
+  }
 
   const manifest: DiscoverManifest = {
     generatedAt: new Date().toISOString(),
@@ -443,7 +564,8 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     pages,
     actions,
     modules,
-    aliases: manifestAliases,
+    aliases: manifestAliasArtifacts.aliasesByEntity,
+    aliasIndex: sqlAliasIndex,
     fieldIndex,
   };
   const problems = await validateManifest(manifest);
@@ -456,7 +578,6 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   await writeJson(path.join(agentRoot, 'memory', 'discovery-manifest.json'), manifest);
   await saveReviewState(agentRoot, reviewState);
 
-  // Entities: never clobber files the user has edited since the last discovery.
   const preserved: string[] = [];
   for (const entity of finalEntities) {
     const target = path.join(agentRoot, 'business', 'entities', `${entity.name.toLowerCase()}.md`);
@@ -477,8 +598,6 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     warn(`Preserved manual edits in entity file(s): ${preserved.join(', ')}`);
   }
 
-  // Knowledge model: only confirmed rules belong in .agent/business/rules.
-  // Discovered candidates stay in memory/candidates until promoted.
   for (const rule of finalRules.filter((r) => r.status === 'confirmed')) {
     await writeRule(agentRoot, rule);
   }

@@ -23,11 +23,12 @@ export interface AgentConfig {
   autoPromote: 'never' | 'high' | 'medium';
   llm?: LlmConfig;
   impact?: { maxDepth: number };
+  linkage?: { externalApis?: string[] };
 }
 
 export const DEFAULT_CONFIG: AgentConfig = {
   ignoreDirs: ['node_modules', '.git', 'dist', 'build', '.idea', '.vscode', '.agent', 'coverage'],
-  allowedExt: ['.ts', '.tsx', '.vue', '.java', '.sql', '.xml', '.js', '.jsx', '.json'],
+  allowedExt: ['.ts', '.tsx', '.vue', '.java', '.sql', '.xml', '.js', '.jsx', '.json', '.yaml', '.yml'],
   preferredEntities: [],
   maxFileBytes: 1024 * 1024,
   maxEntities: 100,
@@ -41,6 +42,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   // llm settings are merged over these defaults instead of being dropped.
   llm: { provider: 'openai-compatible', apiKeyEnv: 'OPENAI_API_KEY', allowSourceUpload: false },
   impact: { maxDepth: 6 },
+  linkage: { externalApis: [] },
 };
 
 export const CONFIG_FILE = 'business-agent.json';
@@ -59,6 +61,8 @@ export const AVAILABLE_ANALYZERS = [
   'states',
   'frontend',
   'openapi',
+  'go',
+  'python',
 ] as const;
 export type AnalyzerName = (typeof AVAILABLE_ANALYZERS)[number];
 
@@ -79,6 +83,19 @@ function mergeConfig(base: AgentConfig, partial: unknown, onWarning?: (message: 
         continue;
       }
       record.impact = { maxDepth: Math.max(1, Math.min(10, Math.floor(value.maxDepth))) };
+      continue;
+    }
+    if (key === 'linkage') {
+      if (!isPlainObject(value)) {
+        onWarning?.('Ignoring invalid linkage configuration: expected an object.');
+        continue;
+      }
+      const externalApis = value.externalApis;
+      if (externalApis !== undefined && (!Array.isArray(externalApis) || externalApis.some((item) => typeof item !== 'string'))) {
+        onWarning?.('Ignoring invalid linkage.externalApis; expected an array of strings.');
+        continue;
+      }
+      record.linkage = { externalApis: Array.isArray(externalApis) ? externalApis : base.linkage?.externalApis ?? [] };
       continue;
     }
     if (key === 'llm') {

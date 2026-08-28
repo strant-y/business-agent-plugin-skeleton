@@ -60,6 +60,7 @@ export const canSubmit = computed(() => store.state.status === 'DRAFT' && store.
     const computedRule = (result.rules ?? []).find((rule) => rule.name === 'Computed permission guard');
     expect(computedRule?.preconditions).toContain('reads state.status');
     expect(computedRule?.rule[0]).toContain("store.state.status === 'DRAFT'");
+    expect(result.rules?.some((rule) => rule.rule[0]?.includes('仅在以下业务条件满足'))).toBe(true);
     expect(result.relations).toBeUndefined();
   });
 

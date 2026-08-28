@@ -59,6 +59,7 @@ export interface ImpactAccuracy {
   mappedRuleRecall: number;
   mappedTestPrecision: number;
   mappedTestRecall: number;
+  relationships?: Array<{ relationship: string; predicted: number; actual: number; hits: number }>;
 }
 
 export interface ImpactComparison {
@@ -489,7 +490,7 @@ function ratio(numerator: number, denominator: number): number {
   return denominator === 0 ? 1 : Number((numerator / denominator).toFixed(4));
 }
 
-function computeAccuracy(predicted?: ImpactReport, actual?: ImpactReport): ImpactAccuracy {
+export function computeAccuracy(predicted?: ImpactReport, actual?: ImpactReport): ImpactAccuracy {
   const predictedEntities = new Set(predicted?.entities ?? []);
   const actualEntities = new Set(actual?.entities ?? []);
   const predictedFindings = new Set(
@@ -502,6 +503,41 @@ function computeAccuracy(predicted?: ImpactReport, actual?: ImpactReport): Impac
   const actualMappedTests = new Set((actual?.diffImpact ?? []).flatMap((mapping) => mapping.tests));
   const intersection = (left: Set<string>, right: Set<string>): number =>
     [...left].filter((item) => right.has(item)).length;
+  const relationshipNames = new Set([
+    ...(predicted?.relations ?? []).map((relation) => relation.relationship),
+    ...(actual?.relations ?? []).map((relation) => relation.relationship),
+  ]);
+  const relationIdentity = (relation: Relation): string =>
+    `${relation.source}\u0000${relation.target}\u0000${relation.relationship}`;
+  const predictedRelationCounts = new Map<string, number>();
+  const actualRelationCounts = new Map<string, number>();
+  for (const relation of predicted?.relations ?? []) {
+    const identity = relationIdentity(relation);
+    predictedRelationCounts.set(identity, (predictedRelationCounts.get(identity) ?? 0) + 1);
+  }
+  for (const relation of actual?.relations ?? []) {
+    const identity = relationIdentity(relation);
+    actualRelationCounts.set(identity, (actualRelationCounts.get(identity) ?? 0) + 1);
+  }
+  const relationships = [...relationshipNames].map((relationship) => {
+    const predictedRelations = (predicted?.relations ?? []).filter(
+      (item) => item.relationship === relationship,
+    );
+    const actualRelations = (actual?.relations ?? []).filter(
+      (item) => item.relationship === relationship,
+    );
+    const identities = new Set([
+      ...predictedRelations.map(relationIdentity),
+      ...actualRelations.map(relationIdentity),
+    ]);
+    let hits = 0;
+    for (const identity of identities) {
+      const predictedCount = predictedRelationCounts.get(identity) ?? 0;
+      const actualCount = actualRelationCounts.get(identity) ?? 0;
+      hits += predictedCount < actualCount ? predictedCount : actualCount;
+    }
+    return { relationship, predicted: predictedRelations.length, actual: actualRelations.length, hits };
+  });
   return {
     entityPrecision: ratio(intersection(predictedEntities, actualEntities), predictedEntities.size),
     entityRecall: ratio(intersection(predictedEntities, actualEntities), actualEntities.size),
@@ -511,11 +547,20 @@ function computeAccuracy(predicted?: ImpactReport, actual?: ImpactReport): Impac
     mappedRuleRecall: ratio(intersection(predictedMappedRules, actualMappedRules), actualMappedRules.size),
     mappedTestPrecision: ratio(intersection(predictedMappedTests, actualMappedTests), predictedMappedTests.size),
     mappedTestRecall: ratio(intersection(predictedMappedTests, actualMappedTests), actualMappedTests.size),
+    relationships,
   };
+}
+
+export interface RelationshipAccuracy {
+  predicted: number;
+  actual: number;
+  hits: number;
+  precision: number;
 }
 
 export interface ImpactAccuracySummary {
   tasks: number;
+  relationshipAccuracy?: Record<string, RelationshipAccuracy>;
   averageEntityPrecision: number;
   averageEntityRecall: number;
   averageFindingPrecision: number;
@@ -535,6 +580,7 @@ async function updateAccuracySummary(
   const file = path.join(root, '.agent', 'memory', 'impact-accuracy.json');
   let summary: ImpactAccuracySummary = {
     tasks: 0,
+    relationshipAccuracy: {},
     averageEntityPrecision: 0,
     averageEntityRecall: 0,
     averageFindingPrecision: 0,
@@ -549,6 +595,15 @@ async function updateAccuracySummary(
     summary = JSON.parse(await readText(file)) as ImpactAccuracySummary;
   }
   const nextTasks = summary.tasks + 1;
+  const relationshipAccuracy = summary.relationshipAccuracy ?? {};
+  for (const mapping of accuracy.relationships ?? []) {
+    const current = relationshipAccuracy[mapping.relationship] ?? { predicted: 0, actual: 0, hits: 0, precision: 0 };
+    current.predicted += mapping.predicted;
+    current.actual += mapping.actual;
+    current.hits += mapping.hits;
+    current.precision = current.predicted ? Number((current.hits / current.predicted).toFixed(4)) : 0;
+    relationshipAccuracy[mapping.relationship] = current;
+  }
   const average = (current: number, value: number) =>
     Number(((current * summary.tasks + value) / nextTasks).toFixed(4));
   summary = {
@@ -561,6 +616,7 @@ async function updateAccuracySummary(
     averageMappedRuleRecall: average(summary.averageMappedRuleRecall, accuracy.mappedRuleRecall),
     averageMappedTestPrecision: average(summary.averageMappedTestPrecision, accuracy.mappedTestPrecision),
     averageMappedTestRecall: average(summary.averageMappedTestRecall, accuracy.mappedTestRecall),
+    relationshipAccuracy,
     updatedAt: new Date().toISOString(),
   };
   await writeJson(file, summary);

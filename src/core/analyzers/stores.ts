@@ -196,7 +196,7 @@ function bodyRules(
       {
         name: 'Computed permission guard',
         preconditions: states.length ? states.map((state) => `reads state.${state}`) : undefined,
-        rule: [`Computed guard ${m[1]} controls behavior when: ${expression}.`],
+        rule: [`${m[1]} 仅在以下业务条件满足时允许相关操作：${expression}。`],
       },
       'computed',
       m.index ?? 0,

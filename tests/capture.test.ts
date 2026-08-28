@@ -4,6 +4,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { captureCommand } from '../src/commands/capture.js';
 import { hookCommand } from '../src/commands/hook.js';
+import { saveKnowledgeRecord, loadKnowledgeState } from '../src/core/knowledge-state.js';
+import { readText } from '../src/utils/fs.js';
 
 async function tempRoot(): Promise<string> {
   return fs.mkdtemp(path.join(os.tmpdir(), 'ba-capture-'));
@@ -49,6 +51,69 @@ describe('captureCommand', () => {
     await expect(fs.readdir(path.join(dir, '.agent/memory/candidates'))).rejects.toThrow();
     expect(summary.record.endsWith('.md')).toBe(true);
   });
+
+  it('refreshes stale knowledge from changed evidence when requested', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent/memory'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src/Order.ts'), 'export class OrderUpdated {}\n', 'utf8');
+    await saveKnowledgeRecord(dir, {
+      id: 'rule.order-lock',
+      type: 'rule',
+      subject: 'Order',
+      claim: 'Order is locked under audit',
+      confidence: 'high',
+      confidenceScore: 0.9,
+      status: 'confirmed',
+      source: 'human-confirmed',
+      evidence: [
+        {
+          id: 'e-order-lock',
+          kind: 'source',
+          file: 'src/Order.ts',
+          lineStart: 1,
+          snippet: 'export class Order {}',
+          capturedAt: new Date().toISOString(),
+          strength: 'direct',
+        },
+      ],
+      relatedTasks: [],
+      version: 1,
+      firstSeenAt: new Date().toISOString(),
+    });
+
+    const summary = await captureCommand(dir, {
+      files: ['src/Order.ts'],
+      refreshKnowledge: true,
+      quiet: true,
+    });
+
+    expect(summary.refreshedKnowledge).toEqual([
+      expect.objectContaining({ recordId: 'rule.order-lock', status: 'stale' }),
+    ]);
+    const updated = await loadKnowledgeState(dir, 'rule.order-lock');
+    expect(updated?.status).toBe('stale');
+  });
+
+  it('runs incremental discover and rebuilds retrieval index during knowledge refresh', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, '.agent', 'business'), { recursive: true });
+    await fs.mkdir(path.join(dir, '.agent', 'memory'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', 'Order.ts'), 'export interface Order { id: string; status: string }\n', 'utf8');
+
+    const summary = await captureCommand(dir, {
+      files: ['src/Order.ts'],
+      refreshKnowledge: true,
+      quiet: true,
+    });
+
+    expect(summary.refreshedKnowledge).toEqual([]);
+    const manifest = JSON.parse(await readText(path.join(dir, '.agent', 'memory', 'discovery-manifest.json')));
+    expect(manifest.entities.some((entity: { name: string }) => entity.name === 'Order')).toBe(true);
+    const retrieval = JSON.parse(await readText(path.join(dir, '.agent', 'memory', 'indexes', 'retrieval-index.json')));
+    expect(retrieval.some((doc: { title: string }) => doc.title === 'Order')).toBe(true);
+  });
 });
 
 describe('hookCommand', () => {
@@ -64,7 +129,7 @@ describe('hookCommand', () => {
 
     await hookCommand(dir, 'install');
     const content = await fs.readFile(hookFile, 'utf8');
-    expect(content).toContain('business-agent capture --since last-commit --quiet');
+    expect(content).toContain('business-agent capture --since last-commit --quiet --refresh-knowledge');
     expect(content).toContain('hook-errors.log');
     expect(content).toContain('|| true');
 

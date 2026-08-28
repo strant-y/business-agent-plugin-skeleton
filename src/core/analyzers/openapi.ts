@@ -18,17 +18,24 @@ interface OpenApiDocument {
   };
 }
 
-function readOpenApiDocuments(scan: Parameters<Analyzer['analyze']>[0]): Array<{ file: string; doc: OpenApiDocument }> {
+function readOpenApiDocuments(
+  scan: Parameters<Analyzer['analyze']>[0],
+  warn?: (message: string) => void,
+): Array<{ file: string; doc: OpenApiDocument }> {
   const docs: Array<{ file: string; doc: OpenApiDocument }> = [];
   for (const sample of scan.samples) {
-    if (!/openapi[^/\\]*\.json$/i.test(sample.file) && !/(?:^|[/\\])swagger[^/\\]*\.json$/i.test(sample.file)) continue;
+    if (!/openapi[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file) && !/(?:^|[/\\])swagger[^/\\]*\.(?:json|ya?ml)$/i.test(sample.file)) continue;
     try {
       const raw = scan.fileText[sample.file] ?? sample.text;
       const doc = JSON.parse(raw) as OpenApiDocument;
       if (!doc.paths && !doc.components?.schemas) continue;
       docs.push({ file: sample.file, doc });
     } catch {
-      continue;
+      if (/\.(?:ya?ml)$/i.test(sample.file)) {
+        warn?.(`OpenAPI YAML contract skipped because YAML parsing is unavailable: ${sample.file}`);
+      } else {
+        warn?.(`OpenAPI contract could not be parsed: ${sample.file}`);
+      }
     }
   }
   return docs;
@@ -132,7 +139,7 @@ function collectContractRoutes(file: string, doc: OpenApiDocument): ApiRoute[] {
 export const openapiAnalyzer: Analyzer = {
   name: 'openapi',
   analyze(scan, ctx) {
-    const docs = readOpenApiDocuments(scan);
+    const docs = readOpenApiDocuments(scan, ctx.warn);
     if (!docs.length) return {};
     const entities: Entity[] = [];
     const apis: ApiRoute[] = [];

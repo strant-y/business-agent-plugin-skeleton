@@ -218,6 +218,7 @@ async function main(): Promise<void> {
         quiet: flags.quiet,
         dryRun: flags.dryRun,
         json: flags.json,
+        refreshKnowledge: args.includes('--refresh-knowledge'),
       });
       break;
     }

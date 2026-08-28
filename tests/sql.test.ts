@@ -35,7 +35,9 @@ describe('sqlAnalyzer', () => {
     const result = await sqlAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [], rules: [] });
 
     const rules = result.rules ?? [];
-    expect(rules.some((rule) => rule.rule[0]?.includes('Orders.status') && rule.rule[0]?.includes('DRAFT, APPROVED'))).toBe(true);
+    expect(rules.some((rule) => rule.name.includes('CHECK'))).toBe(true);
+    expect(rules.some((rule) => rule.rule[0]?.includes('只能取以下业务状态'))).toBe(true);
+    expect(rules.some((rule) => rule.rule[0]?.includes('Orders.status') && rule.rule[0]?.includes('DRAFT'))).toBe(true);
     expect(rules.some((rule) => rule.rule[0]?.includes('AuditLog.event_type') && rule.rule[0]?.includes('ORDER_UPDATED'))).toBe(true);
   });
 });

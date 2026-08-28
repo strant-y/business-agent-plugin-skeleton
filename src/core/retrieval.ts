@@ -3,7 +3,7 @@ import { exists, readText, writeJson } from '../utils/fs.js';
 import { normalizeEvidence, type EvidenceRef } from './evidence.js';
 import { loadFeedback } from './feedback.js';
 import { loadRules, buildIndex } from './knowledge.js';
-import { resolveCanonicalName } from './glossary.js';
+import { getEntityAliases, invertAliasMap, resolveCanonicalNameFromIndex } from './glossary.js';
 import type { DiscoverManifest } from './types.js';
 import type { KnowledgeRecord, KnowledgeStatus } from './knowledge-state.js';
 import type { TaskExperience } from './task.js';
@@ -41,9 +41,6 @@ export interface RetrieveOptions {
   includeLowConfidence?: boolean;
 }
 
-// CJK (Han script) has no separators: a whole sentence would become one giant token
-// that never equals a short query. Index CJK runs as overlapping bigrams, the
-// standard lightweight approach for Chinese/Japanese substring retrieval.
 function tokens(value: string): string[] {
   const result = new Set<string>();
   const runs = value.toLowerCase().match(/\p{Script=Han}+|[^\p{Script=Han}]+/gu) ?? [];
@@ -109,17 +106,19 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
   const knowledgeRecords = await loadKnowledgeRecords(root);
   if (await exists(manifestPath(root))) {
     const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
-    const aliases = manifest.aliases ?? {};
+    const aliasesByEntity = manifest.aliases ?? {};
+    const aliasIndex = manifest.aliasIndex ?? invertAliasMap(aliasesByEntity);
     for (const entity of manifest.entities ?? []) {
       const knowledge = knowledgeRecords[entity.id];
+      const entityAliases = getEntityAliases(entity.name, aliasesByEntity);
       documents.push({
         id: entity.id,
         type: 'entity',
         title: entity.name,
         tokens: tokens(
-          `${entity.name} ${entity.description} ${(entity.tags ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+          `${entity.name} ${entity.description} ${(entity.tags ?? []).join(' ')} ${entityAliases.join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: [...new Set([...(entity.tags ?? []), ...(aliases[entity.name] ?? [])])],
+        aliases: [...new Set([...(entity.tags ?? []), ...entityAliases])],
         relatedIds: knowledge?.relatedTasks ?? [],
         status: knowledge?.status,
         confidence:
@@ -131,17 +130,17 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     }
     for (const rule of manifest.rules ?? []) {
       const knowledge = knowledgeRecords[rule.id];
+      const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
+      const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
       documents.push({
         id: rule.id,
         type: 'rule',
         title: rule.name,
-        // rule.context carries source snippets (often Chinese UI copy) that make
-        // business terms like 缴费/特约 searchable in the retrieval index.
         tokens: tokens(
-          `${rule.name} ${rule.entity} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+          `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: [...new Set([rule.entity, ...(aliases[rule.entity] ?? [])])],
-        relatedIds: [resolveCanonicalName(rule.entity, aliases), ...(knowledge?.relatedTasks ?? [])],
+        aliases: [...new Set([canonicalEntity, ...entityAliases])],
+        relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
         status:
           knowledge?.status ??
           (rule.status === 'deprecated' ? 'deprecated' : rule.status === 'confirmed' ? 'confirmed' : 'candidate'),
@@ -152,22 +151,21 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
         evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
       });
     }
-    // Confirmed rules under .agent/business/rules/ (promoted or hand-written)
-    // are the highest-value knowledge; they must also enter the retrieval
-    // index even though they never appear in the discovery manifest.
     const manifestRuleIds = new Set((manifest.rules ?? []).map((r) => r.id));
     for (const rule of await loadRules(path.join(root, '.agent'))) {
       if (manifestRuleIds.has(rule.id)) continue;
       const knowledge = knowledgeRecords[rule.id];
+      const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
+      const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
       documents.push({
         id: rule.id,
         type: 'rule',
         title: rule.name,
         tokens: tokens(
-          `${rule.name} ${rule.entity} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+          `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
         ),
-        aliases: [...new Set([rule.entity, ...(aliases[rule.entity] ?? [])])],
-        relatedIds: [resolveCanonicalName(rule.entity, aliases), ...(knowledge?.relatedTasks ?? [])],
+        aliases: [...new Set([canonicalEntity, ...entityAliases])],
+        relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
         status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : (rule.status ?? 'confirmed')),
         confidence:
           knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
@@ -178,13 +176,23 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     }
     for (const relation of manifest.relations ?? []) {
       const knowledge = knowledgeRecords[relation.id];
+      const canonicalSource = resolveCanonicalNameFromIndex(relation.source, aliasIndex);
+      const canonicalTarget = resolveCanonicalNameFromIndex(relation.target, aliasIndex);
+      const relationAliases = [
+        canonicalSource,
+        canonicalTarget,
+        ...getEntityAliases(canonicalSource, aliasesByEntity),
+        ...getEntityAliases(canonicalTarget, aliasesByEntity),
+      ];
       documents.push({
         id: relation.id,
         type: 'relation',
         title: `${relation.source} ${relation.relationship} ${relation.target}`,
-        tokens: tokens(`${relation.source} ${relation.target} ${relation.relationship} ${knowledge?.claim ?? ''}`),
-        aliases: [relation.source, relation.target],
-        relatedIds: [relation.source, relation.target, ...(knowledge?.relatedTasks ?? [])],
+        tokens: tokens(
+          `${relation.source} ${canonicalSource} ${relation.target} ${canonicalTarget} ${relationAliases.join(' ')} ${relation.relationship} ${knowledge?.claim ?? ''}`,
+        ),
+        aliases: [...new Set(relationAliases)],
+        relatedIds: [canonicalSource, canonicalTarget, ...(knowledge?.relatedTasks ?? [])],
         status: knowledge?.status,
         confidence:
           knowledge?.confidenceScore ??
@@ -248,8 +256,6 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     });
   }
   await writeJson(path.join(root, '.agent', 'memory', 'indexes', 'retrieval-index.json'), documents);
-  // Keep the human-readable INDEX.md in sync with confirmed knowledge files
-  // (buildIndex was previously dead code — never invoked anywhere).
   if (await exists(manifestPath(root))) {
     const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
     await buildIndex(path.join(root, '.agent'), manifest.entities ?? []);
@@ -316,7 +322,6 @@ function isUnhealthy(document: RetrievalDocument): boolean {
 }
 
 function isLowConfidence(document: RetrievalDocument): boolean {
-  // Task experiences and user feedback remain valuable regardless of status/confidence.
   if (document.type === 'task' || document.type === 'feedback') return false;
   if (document.status === 'candidate' && (document.confidence ?? 0) < 0.6) return true;
   if (document.status === undefined && document.confidence !== undefined && document.confidence < 0.5) return true;
@@ -392,9 +397,6 @@ export async function retrieveTaskContext(
       .sort((a, b) => b.score - a.score || b.evidence.length - a.evidence.length || a.title.localeCompare(b.title))
       .slice(0, limit);
   const hits = score(options.includeLowConfidence ?? false);
-  // Chinese content typically lives in low-confidence candidate rules (source
-  // snippets); when the strict pass finds nothing, retry once with low-confidence
-  // candidates included instead of returning an empty result set.
   if (hits.length === 0 && !(options.includeLowConfidence ?? false)) {
     return score(true);
   }

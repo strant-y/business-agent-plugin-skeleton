@@ -54,6 +54,10 @@ describe('javaAnalyzer', () => {
     expect(authRule?.preconditions).toContain("hasRole('ORDER_VIEWER')");
     const filterRule = rules.find((rule) => rule.name.includes('PreFilter'));
     expect(filterRule?.preconditions).toContain("filterObject.status == 'DRAFT'");
+    expect(authRule?.confidence).toBe('low');
+    expect(filterRule?.confidence).toBe('low');
+    expect(authRule?.status).toBe('candidate');
+    expect(filterRule?.status).toBe('candidate');
   });
 
   it('extracts combined @RestController routes with class prefix', async () => {

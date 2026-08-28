@@ -15,6 +15,8 @@ import { llmRulesAnalyzer } from './analyzers/llm-rules.js';
 import { statesAnalyzer } from './analyzers/states.js';
 import { frontendAnalyzer } from './analyzers/frontend.js';
 import { openapiAnalyzer } from './analyzers/openapi.js';
+import { goAnalyzer } from './analyzers/go.js';
+import { pythonAnalyzer } from './analyzers/python.js';
 import { buildModuleDescriptor } from './module-id.js';
 
 export interface AnalyzerContext {
@@ -57,6 +59,8 @@ const REGISTRY: Record<AnalyzerName, Analyzer> = {
   states: statesAnalyzer,
   frontend: frontendAnalyzer,
   openapi: openapiAnalyzer,
+  go: goAnalyzer,
+  python: pythonAnalyzer,
 };
 
 export function resolveAnalyzers(
@@ -140,7 +144,7 @@ export interface RunAnalyzersResult {
  * Results are always merged in phase order, so the output is deterministic
  * regardless of which parallel analyzer finishes first.
  */
-const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend'];
+const ENTITY_PHASE: AnalyzerName[] = ['sql', 'ast', 'vue', 'java', 'xml', 'stores', 'states', 'frontend', 'go', 'python'];
 const DEPENDENT_PHASE: AnalyzerName[] = ['api', 'llm', 'llm-rules'];
 const CONTRACT_PHASE: AnalyzerName[] = ['openapi'];
 

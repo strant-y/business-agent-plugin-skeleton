@@ -538,6 +538,9 @@ describe('buildImpactReport (code-level chain)', () => {
     const fieldTypeMapping = report.diffImpact.find((mapping) => mapping.finding.kind === 'field_type_changed');
     expect(fieldTypeMapping?.fieldTests).toEqual(['tests/frontend.test.ts']);
     expect(fieldTypeMapping?.fieldPath?.[0]).toBe('Order.status');
+    expect(fieldTypeMapping?.fieldPath).toEqual(
+      expect.arrayContaining(['GET /api/orders', 'OrderStore', 'submitOrder', 'OrderList']),
+    );
     expect(fieldTypeMapping?.entities).toContain('Order');
     expect(fieldTypeMapping?.entities).not.toContain('Customer');
   });

@@ -264,3 +264,35 @@ export async function updateKnowledgeStatus(
   await persistKnowledgeState(root, next, { ...input, from: record.status });
   return next;
 }
+
+export async function refreshKnowledgeStateFromEvidence(
+  root: string,
+  changedFiles: string[],
+): Promise<Array<{ recordId: string; status: KnowledgeStatus; warnings: string[] }>> {
+  if (changedFiles.length === 0) return [];
+  const records = Object.values(await loadKnowledgeStateMap(root));
+  const updates: Array<{ recordId: string; status: KnowledgeStatus; warnings: string[] }> = [];
+
+  for (const record of records) {
+    if (record.status !== 'confirmed' && record.status !== 'verified') continue;
+    const relevantEvidence = record.evidence.filter((evidence) => evidence.file && changedFiles.includes(evidence.file));
+    if (relevantEvidence.length === 0) continue;
+
+    const validations = await Promise.all(relevantEvidence.map((evidence) => validateEvidence(evidence, root)));
+    const warnings = validations.flatMap((validation) => validation.warnings);
+    if (warnings.length === 0) continue;
+
+    await updateKnowledgeStatus(root, record, {
+      id: `refresh-${record.id}-${Date.now()}`,
+      recordId: record.id,
+      to: 'stale',
+      reason: 'Evidence drift detected during post-commit knowledge refresh.',
+      evidence: [],
+      actor: 'system',
+      timestamp: new Date().toISOString(),
+    });
+    updates.push({ recordId: record.id, status: 'stale', warnings });
+  }
+
+  return updates;
+}

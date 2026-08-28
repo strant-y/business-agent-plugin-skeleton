@@ -146,6 +146,8 @@ describe('openapi analyzer', () => {
       expect.arrayContaining(['GET /api/orders', 'GET /api/order-history']),
     );
     expect(manifest.entities.map((entity) => entity.name)).toContain('Order');
+    expect(manifest.fieldIndex?.['order.amount']).toMatchObject({ entity: 'Order', field: 'amount' });
+    expect(manifest.fieldIndex?.['order.amount']?.evidence?.some((file) => file.replaceAll('\\', '/') === 'contracts/openapi.json')).toBe(true);
     expect(warnings).toEqual(
       expect.arrayContaining([
         expect.stringContaining('OpenAPI contract route missing from code: GET /api/order-history'),
@@ -156,6 +158,24 @@ describe('openapi analyzer', () => {
     expect(warnings).not.toEqual(
       expect.arrayContaining([
         expect.stringContaining('OpenAPI contract route missing from code: GET /api/orders'),
+      ]),
+    );
+  });
+
+  it('ignores YAML contracts without a YAML parser', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-openapi-yaml-'));
+    await fs.mkdir(path.join(dir, 'contracts'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'contracts/openapi.yaml'), 'openapi: 3.0.0\npaths: {}\n', 'utf8');
+    const warnings: string[] = [];
+    const manifest = await discover(dir, {
+      dryRun: true,
+      config: { ...DEFAULT_CONFIG, analyzers: ['openapi'] },
+      onWarning: (message) => warnings.push(message),
+    });
+    expect(manifest.apis).toEqual([]);
+    expect(warnings).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('OpenAPI YAML contract skipped because YAML parsing is unavailable'),
       ]),
     );
   });
