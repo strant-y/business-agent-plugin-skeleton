@@ -11,6 +11,7 @@ import {
   type WorkflowTemplate,
 } from './types.js';
 import { AVAILABLE_ANALYZERS } from './config.js';
+import { isSkeletonDescription } from './entity-description.js';
 import { sqlAnalyzer } from './analyzers/sql.js';
 import { apiAnalyzer } from './analyzers/api.js';
 import { astAnalyzer } from './analyzers/ast.js';
@@ -107,10 +108,9 @@ export function uniqEntities(items: Entity[]): Entity[] {
     }
     byName.set(item.name, {
       ...existing,
-      description:
-        existing.description === 'Discovered business candidate: ' + item.name
-          ? item.description
-          : existing.description,
+      // A generated description carries no business meaning, so a richer one always wins.
+      // Human- or LLM-authored descriptions are kept.
+      description: isSkeletonDescription(existing.description) ? item.description : existing.description,
       attributes: mergeEntityAttributes(existing.attributes, item.attributes),
       evidence: uniqStrings([...existing.evidence, ...item.evidence]).slice(0, 8),
       confidence:

@@ -280,4 +280,45 @@ describe('discover', () => {
     const unknown = manifest.rules.find((rule) => rule.id === 'rule.unknown-approved');
     expect(unknown?.coveringTests).toBeUndefined();
   });
+
+  it('copies discovered lifecycle states onto the entity (G1.5)', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(
+      path.join(dir, 'Order.ts'),
+      [
+        'export interface Order { id: string; status: string }',
+        '',
+        'export function submit(order: Order): void {',
+        "  if (order.status === 'DRAFT') {",
+        "    order.status = 'AUDIT';",
+        '  }',
+        "  if (order.status === 'AUDIT') {",
+        "    order.status = 'APPROVED';",
+        '  }',
+        '}',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: ['states'] } });
+    const machine = manifest.states?.find((item) => item.entity.toLowerCase() === 'order');
+    expect(machine).toBeDefined();
+
+    const order = manifest.entities.find((entity) => entity.name.toLowerCase() === 'order');
+    expect(order?.states).toBeDefined();
+    expect(order?.states).toEqual(expect.arrayContaining(machine?.states ?? []));
+  });
+
+  it('describes discovered entities with their evidence instead of a bare template (G1.2)', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(path.join(dir, 'Order.ts'), 'export interface Order { id: string; status: string }\n', 'utf8');
+
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const order = manifest.entities.find((entity) => entity.name === 'Order');
+
+    expect(order?.description).not.toBe('Discovered business candidate: Order');
+    expect(order?.description).toContain('Order');
+    expect(order?.description).toContain('Order.ts');
+  });
 });

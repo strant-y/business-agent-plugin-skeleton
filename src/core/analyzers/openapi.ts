@@ -1,5 +1,6 @@
 import type { Analyzer } from '../analyzer.js';
 import type { ApiRoute, Entity, FieldRef } from '../types.js';
+import { skeletonDescription } from '../entity-description.js';
 
 interface OpenApiSchema {
   type?: string;
@@ -72,7 +73,7 @@ function schemaToEntity(name: string): Entity {
     id: `entity.${name.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase()}`,
     name,
     type: 'business_entity',
-    description: `Discovered business candidate: ${name}`,
+    description: skeletonDescription(name),
     confidence: 'low',
     evidence: [],
   };

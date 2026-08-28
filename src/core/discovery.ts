@@ -19,6 +19,7 @@ import { scanProject, type SampleFile } from './scanner.js';
 import { loadConfig, type AgentConfig, type AnalyzerName } from './config.js';
 import { validateManifest } from './validate.js';
 import { heuristicScorer } from './evidence.js';
+import { isSkeletonDescription, isSqlTableDescription, skeletonDescription } from './entity-description.js';
 import { runAnalyzers, resolveAnalyzers, uniqStrings } from './analyzer.js';
 import { detectConflicts } from './conflicts.js';
 import { writeRule, writeRelation, buildIndex, loadRules } from './knowledge.js';
@@ -65,14 +66,40 @@ function detectEntities(text: string, files: string[], preferred: string[], maxE
     if (new RegExp(`\\b${escapeRegExp(p)}\\b`).test(text)) candidates.add(p);
   }
 
-  return [...candidates].slice(0, Math.max(1, maxEntities)).map((name): Entity => ({
-    id: entityId(name),
-    name,
-    type: 'business_entity',
-    description: `Discovered business candidate: ${name}`,
-    confidence: preferredSet.has(name) ? 'medium' : 'low',
-    evidence: files.filter((f) => f.includes(name)).slice(0, 8),
-  }));
+  return [...candidates].slice(0, Math.max(1, maxEntities)).map((name): Entity => {
+    const evidence = files.filter((f) => f.includes(name)).slice(0, 8);
+    return {
+      id: entityId(name),
+      name,
+      type: 'business_entity',
+      description: skeletonDescription(name, evidence),
+      confidence: preferredSet.has(name) ? 'medium' : 'low',
+      evidence,
+    };
+  });
+}
+
+/**
+ * Copy discovered lifecycle states onto the entities they belong to, so consumers
+ * can read `entity.states` instead of re-matching state machines by entity name.
+ */
+function attachEntityStates(
+  entities: Entity[],
+  states: DiscoverManifest['states'],
+  aliasToEntity: Record<string, string>,
+): Entity[] {
+  if (!states?.length) return entities;
+  const statesByEntity = new Map<string, string[]>();
+  for (const machine of states) {
+    const canonical = resolveCanonicalNameFromIndex(machine.entity, aliasToEntity);
+    statesByEntity.set(canonical, uniqStrings([...(statesByEntity.get(canonical) ?? []), ...machine.states]));
+  }
+  return entities.map((entity) => {
+    const canonical = resolveCanonicalNameFromIndex(entity.name, aliasToEntity);
+    const matched = statesByEntity.get(canonical) ?? statesByEntity.get(entity.name);
+    if (!matched?.length) return entity;
+    return { ...entity, states: uniqStrings([...(entity.states ?? []), ...matched]) };
+  });
 }
 
 function detectRelations(textEntities: Entity[], text: string, window = 150): Relation[] {
@@ -245,7 +272,7 @@ function mergeEntitiesByAlias(entities: Entity[], aliasIndex: Record<string, str
       ...entity,
       id: canonical === entity.name ? entity.id : entityId(canonical),
       name: canonical,
-      description: canonical === entity.name ? entity.description : `Discovered business candidate: ${canonical}`,
+      description: canonical === entity.name ? entity.description : skeletonDescription(canonical, entity.evidence),
       evidence: uniqStrings([...(existing?.evidence ?? []), ...entity.evidence]).slice(0, 8),
       tags: uniqStrings([...(existing?.tags ?? []), ...(entity.tags ?? []), entity.name]).filter(
         (tag) => tag !== canonical,
@@ -378,6 +405,7 @@ function entityMarkdown(e: Entity): string {
     `> Status: ${e.confidence}\n\n` +
     `## Description\n${e.description}\n\n` +
     `## Attributes\n${e.attributes?.length ? e.attributes.map((a) => `- ${a.name}${a.type ? `: ${a.type}` : ''}`).join('\n') : '- TBD'}\n\n` +
+    `## States\n${e.states?.length ? e.states.map((s) => `- ${s}`).join('\n') : '- None discovered'}\n\n` +
     `## Evidence\n${e.evidence.length ? e.evidence.map((x) => `- ${x}`).join('\n') : '- None captured yet'}\n`
   );
 }
@@ -497,7 +525,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   finalEntities = finalEntities.filter(
     (entity) =>
       !(
-        entity.description.startsWith('Discovered business candidate: ') &&
+        isSkeletonDescription(entity.description) &&
         finalEntities.some(
           (candidate) =>
             candidate !== entity &&
@@ -507,16 +535,15 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
       ),
   );
   const manifestAliasArtifacts = buildAliasArtifacts(finalEntities, glossary);
+  finalEntities = attachEntityStates(finalEntities, states, manifestAliasArtifacts.aliasToEntity);
   const sqlAliasIndex = { ...manifestAliasArtifacts.aliasToEntity };
   for (const entity of finalEntities) {
-    if (!entity.description.startsWith('Discovered from SQL table ')) continue;
+    if (!isSqlTableDescription(entity.description)) continue;
     const singular = entity.name.endsWith('s') ? entity.name.slice(0, -1) : entity.name;
     const normalized = normalizeTerm(entity.name);
     if (
       singular !== entity.name &&
-      finalEntities.some(
-        (candidate) => candidate.name === singular && !candidate.description.startsWith('Discovered from SQL table '),
-      )
+      finalEntities.some((candidate) => candidate.name === singular && !isSqlTableDescription(candidate.description))
     ) {
       sqlAliasIndex[normalized] = singular;
     }

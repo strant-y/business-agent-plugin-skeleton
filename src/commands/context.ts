@@ -118,6 +118,24 @@ export async function contextCommand(root: string, subject: string, options: Con
       workflow.steps.some((step) => step.toLowerCase().includes(subjectLower)),
   );
 
+  // Entities carry their lifecycle states directly (G1.5); state machines add the mermaid view.
+  const stateMachines = (manifest?.states ?? []).filter(
+    (s) =>
+      matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) || s.entity.toLowerCase() === subjectLower,
+  );
+  const entityStateLines = matched
+    .filter(
+      (entity) =>
+        entity.states?.length &&
+        !stateMachines.some((machine) => machine.entity.toLowerCase() === entity.name.toLowerCase()),
+    )
+    .map((entity) => `- ${entity.name}: ${(entity.states ?? []).join(', ')}`);
+  const stateMachineLines = stateMachines.map((machine) => {
+    const fromEntity = matched.find((entity) => entity.name.toLowerCase() === machine.entity.toLowerCase())?.states;
+    return `- ${machine.entity}: ${(fromEntity ?? machine.states).join(', ')}\n\n  \`\`\`mermaid\n  ${machine.mermaid}\n  \`\`\``;
+  });
+  const stateLines = [...stateMachineLines, ...entityStateLines];
+
   const relevantImpactFiles = new Set<string>();
   for (const rule of relevantRules) relevantImpactFiles.add(`${safeFileId(rule.id)}.md`);
   for (const relation of relevantRelations) relevantImpactFiles.add(`${safeFileId(relation.id)}.md`);
@@ -183,15 +201,7 @@ export async function contextCommand(root: string, subject: string, options: Con
       : ['- None detected.']),
     '',
     '## State Machines',
-    ...(manifest?.states
-      ?.filter(
-        (s) =>
-          matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) ||
-          s.entity.toLowerCase() === subjectLower,
-      )
-      .map((s) => `- ${s.entity}: ${s.states.join(', ')}\n\n  \`\`\`mermaid\n  ${s.mermaid}\n  \`\`\``) ?? [
-      '- None detected.',
-    ]),
+    ...(stateLines.length ? stateLines : ['- None detected.']),
     '',
     '## Frontend Pages',
     ...(relevantPages.length

@@ -2,6 +2,7 @@ import path from 'node:path';
 import { exists, readText } from '../utils/fs.js';
 
 import type { Entity } from './types.js';
+import { isSqlTableDescription } from './entity-description.js';
 
 export interface GlossaryEntry {
   term: string;
@@ -78,7 +79,7 @@ function singularPascal(value: string): string {
 }
 
 function isSqlDerivedEntity(entity: Entity): boolean {
-  return entity.description.startsWith('Discovered from SQL table ');
+  return isSqlTableDescription(entity.description);
 }
 
 function toSnakeCase(value: string): string {

@@ -22,6 +22,8 @@ export interface Entity {
   confidence: Confidence;
   evidence: string[];
   tags?: string[];
+  /** Lifecycle states discovered for this object; back-link into the manifest state machines. */
+  states?: string[];
 }
 
 export interface BusinessRule {
