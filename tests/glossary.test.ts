@@ -52,18 +52,17 @@ describe('glossary helpers', () => {
       confidence: 'low',
       evidence: ['src/order.ts'],
     };
-    const enriched = applyGlossaryEnrichment([entity], [
-      { term: '缴费', aliases: ['PremiumPayment'], entity: 'Order' },
-    ]);
+    const enriched = applyGlossaryEnrichment(
+      [entity],
+      [{ term: '缴费', aliases: ['PremiumPayment'], entity: 'Order' }],
+    );
 
     expect(enriched[0].tags).toEqual(expect.arrayContaining(['缴费', 'PremiumPayment']));
     expect(enriched[0].description).toContain('business aliases: 缴费, PremiumPayment');
     expect(enriched[0].description).toContain('Auto-discovered candidate Order');
 
     // Idempotent: a second discover run must not duplicate the suffix or tags.
-    const again = applyGlossaryEnrichment(enriched, [
-      { term: '缴费', aliases: ['PremiumPayment'], entity: 'Order' },
-    ]);
+    const again = applyGlossaryEnrichment(enriched, [{ term: '缴费', aliases: ['PremiumPayment'], entity: 'Order' }]);
     expect(again[0].description).toBe(enriched[0].description);
     expect(again[0].tags).toEqual(enriched[0].tags);
   });
