@@ -363,4 +363,19 @@ describe('discover', () => {
     expect(order?.description).toContain('Order');
     expect(order?.description).toContain('Order.ts');
   });
+
+  it('sanitizes relation ids with special characters so the manifest validates', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'src/order.ts'),
+      'export interface Order { id: string; status: string }\nexport const orderStatus: Record<string, string> = {};\n',
+      'utf8',
+    );
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: ['sql', 'ast'] } });
+    for (const relation of manifest.relations) {
+      expect(relation.id).toMatch(/^relation\.[a-z0-9._-]+$/);
+    }
+    expect(manifest.relations.some((r) => r.id.includes(':') || r.id.includes('/'))).toBe(false);
+  });
 });

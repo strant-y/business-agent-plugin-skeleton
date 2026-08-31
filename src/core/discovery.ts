@@ -158,6 +158,29 @@ function detectRelations(textEntities: Entity[], samples: SampleFile[], window =
   return uniq(relations, (r) => `${r.source}|${r.target}`);
 }
 
+/**
+ * Relation ids are assembled from entity/module names that may contain
+ * characters outside the schema pattern (`^relation\.[a-z0-9._-]+$`), e.g.
+ * `module:src/order.ts` or Chinese glossary aliases — a real-project manifest
+ * would otherwise fail validation. Rewrites every id once, before it is
+ * persisted, and guarantees uniqueness after sanitization.
+ */
+function sanitizeRelationIds(relations: Relation[]): Relation[] {
+  const seen = new Set<string>();
+  return relations.map((relation) => {
+    const base = relation.id
+      .replace(/^relation\./i, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    let id = `relation.${base}`;
+    let suffix = 2;
+    while (seen.has(id)) id = `relation.${base}-${suffix++}`;
+    seen.add(id);
+    return id === relation.id ? relation : { ...relation, id };
+  });
+}
+
 const RULE_PATTERNS: Array<{ id: string; name: string; pattern: RegExp }> = [
   {
     id: 'validation-state',
@@ -285,8 +308,7 @@ function enrichRuleText(snippet: string | undefined): { condition?: string; prec
   return { condition, preconditions: preconditions.length ? preconditions : undefined };
 }
 
-function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {
-  const rules: BusinessRule[] = [];
+function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {  const rules: BusinessRule[] = [];
   for (const { id, name, pattern } of RULE_PATTERNS) {
     const evidence: string[] = [];
     let firstSnippet: string | undefined;
@@ -536,6 +558,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     : undefined;
   const scan = selectedFiles
     ? {
+        root,
         files: fullScan.files.filter((file) => selectedFiles.has(file)),
         sampleText: fullScan.samples
           .filter((sample) => selectedFiles.has(sample.file))
@@ -686,7 +709,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     filesScanned: scan.files.length,
     entities: finalEntities,
     rules: finalRules,
-    relations: finalRelations,
+    relations: sanitizeRelationIds(finalRelations),
     apis,
     conflicts,
     tests: testFiles,

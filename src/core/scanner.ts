@@ -9,6 +9,7 @@ export interface SampleFile {
 }
 
 export interface ProjectScan {
+  root: string;
   files: string[];
   sampleText: string;
   samples: SampleFile[];
@@ -90,5 +91,5 @@ export async function scanProject(root: string, config: AgentConfig = DEFAULT_CO
   }
 
   const sampleText = samples.map((s) => `\n--- ${s.file} ---\n${s.text}`).join('\n');
-  return { files, sampleText, samples, fileText };
+  return { root, files, sampleText, samples, fileText };
 }

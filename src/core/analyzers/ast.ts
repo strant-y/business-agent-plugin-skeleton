@@ -1,21 +1,38 @@
+import path from 'node:path';
+import { createRequire } from 'node:module';
 import type { Analyzer, AnalyzeResult } from '../analyzer.js';
 import type { Entity, Relation } from '../types.js';
 import { pascal, entityId } from './parse.js';
 import type ts from 'typescript';
 
-// Cache the load as a promise: concurrent callers (ast + vue analyzers run in
-// parallel) must await the same in-flight import instead of reading a not-yet
-// assigned tsModule, which previously made the second caller see "missing".
-let tsPromise: Promise<typeof import('typescript') | undefined> | undefined;
+// Cache the load per project root: concurrent callers (ast + vue analyzers run
+// in parallel) must await the same in-flight import instead of reading a not-yet
+// assigned tsModule. When the plugin is installed globally (npm -g / tgz), the
+// project's own `typescript` devDependency is resolved from the scanned project
+// root before falling back to the plugin's own resolution.
+const tsByRoot = new Map<string, Promise<typeof ts | undefined>>();
 
-export function loadTs(): Promise<typeof ts | undefined> {
-  if (!tsPromise) {
-    tsPromise = import('typescript').then(
-      (mod) => mod,
-      () => undefined,
-    );
-  }
-  return tsPromise;
+export function loadTs(root?: string): Promise<typeof ts | undefined> {
+  const key = root ?? '';
+  const cached = tsByRoot.get(key);
+  if (cached) return cached;
+  const promise = (async (): Promise<typeof ts | undefined> => {
+    if (root) {
+      try {
+        const requireFromProject = createRequire(path.join(root, 'package.json'));
+        return requireFromProject('typescript') as typeof ts;
+      } catch {
+        // Project has no typescript; fall through to the plugin's own resolution.
+      }
+    }
+    try {
+      return await import('typescript');
+    } catch {
+      return undefined;
+    }
+  })();
+  tsByRoot.set(key, promise);
+  return promise;
 }
 
 export const TS_MISSING_WARNING = 'ast/vue analysis skipped: install "typescript" to enable TypeScript AST analysis';
@@ -137,7 +154,7 @@ export async function analyzeTypeScript(
 export const astAnalyzer: Analyzer = {
   name: 'ast',
   async analyze(scan, ctx) {
-    if (!(await loadTs())) {
+    if (!(await loadTs(scan.root))) {
       ctx.warn?.(TS_MISSING_WARNING);
       return {};
     }

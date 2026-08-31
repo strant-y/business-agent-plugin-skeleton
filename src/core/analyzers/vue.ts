@@ -155,7 +155,7 @@ export const vueAnalyzer: Analyzer = {
     const relations: Relation[] = [];
     const rules: BusinessRule[] = [];
     const knownNames = new Set(ctx.entities.map((e) => e.name));
-    if (!(await loadTs())) ctx.warn?.(TS_MISSING_WARNING);
+    if (!(await loadTs(scan.root))) ctx.warn?.(TS_MISSING_WARNING);
 
     for (const sample of scan.samples) {
       if (!/\.vue$/i.test(sample.file)) continue;
