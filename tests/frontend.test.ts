@@ -160,4 +160,31 @@ function submit() { quoteStore.doQuote(); }
     expect(page?.stores).toContain('useQuoteStore');
     expect(page?.apiCalls).toEqual(expect.arrayContaining(['/quote/calc', '/quote/detail']));
   });
+
+  it('inherits api-wrapper module URLs onto pages and drops pure template noise', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-frontend-import-api-'));
+    await fs.mkdir(path.join(dir, 'api'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'views'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'api/orderApi.ts'),
+      `import request from './request';
+export const getOrder = (id: string) => request({ url: '/api/orders/' + id });
+export const listOrders = () => axios.get('/api/orders');`,
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'views/OrderList.vue'),
+      `<script setup lang="ts">
+import { listOrders, getOrder } from '../api/orderApi';
+const rows = listOrders();
+</script>`,
+      'utf8',
+    );
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    const result = await frontendAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [] });
+
+    const page = result.pages?.find((p) => p.component === 'OrderList');
+    expect(page).toBeDefined();
+    expect(page?.apiCalls).toEqual(expect.arrayContaining(['/api/orders', '/api/orders/' ]));
+  });
 });
