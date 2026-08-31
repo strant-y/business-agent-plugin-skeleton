@@ -719,13 +719,17 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     }
   }
 
+  // Sanitize once and reuse for BOTH the manifest and the confirmed knowledge
+  // files: writing the raw finalRelations to .agent/business/relationships
+  // re-introduced ids with ':'/'/' on every re-run, breaking schema validation.
+  const manifestRelations = sanitizeRelationIds(finalRelations);
   const manifest: DiscoverManifest = {
     generatedAt: new Date().toISOString(),
     projectRoot: root,
     filesScanned: scan.files.length,
     entities: finalEntities,
     rules: finalRules,
-    relations: sanitizeRelationIds(finalRelations),
+    relations: manifestRelations,
     apis,
     conflicts,
     tests: testFiles,
@@ -774,7 +778,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   for (const rule of finalRules.filter((r) => r.status !== 'confirmed')) {
     await writeCandidate(agentRoot, rule, candidateMarkdown);
   }
-  for (const relation of finalRelations) {
+  for (const relation of manifestRelations) {
     await writeRelation(agentRoot, relation);
   }
   await buildIndex(

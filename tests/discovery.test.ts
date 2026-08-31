@@ -392,4 +392,22 @@ describe('discover', () => {
     expect(disabledRule?.entity).not.toBe('Props');
     expect(['CustomerSection', 'Unknown']).toContain(disabledRule?.entity);
   });
+
+  it('writes confirmed relation files with schema-valid ids on a real run', async () => {
+    const dir = await tempRoot();
+    await fs.mkdir(path.join(dir, 'src'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'src/order.ts'),
+      'export interface Order { id: string; status: string }\nexport interface OrderList { orders: Order[]; total: number }\n',
+      'utf8',
+    );
+    await discover(dir, { config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const relDir = path.join(dir, '.agent/business/relationships');
+    const files = (await fs.readdir(relDir)).filter((f) => f.endsWith('.json'));
+    expect(files.length).toBeGreaterThan(0);
+    for (const file of files) {
+      const relation = JSON.parse(await fs.readFile(path.join(relDir, file), 'utf8'));
+      expect(relation.id).toMatch(/^relation\.[a-z0-9._-]+$/);
+    }
+  });
 });
