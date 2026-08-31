@@ -91,7 +91,8 @@ describe('discover', () => {
 
     const productOrder = manifest.relations.find((r) => r.source === 'Product' && r.target === 'Order');
     expect(productOrder).toBeDefined();
-    expect(productOrder?.evidence).toEqual(['catalog.ts']);
+    expect(productOrder?.evidence).toHaveLength(1);
+    expect(productOrder?.evidence[0]).toMatch(/^catalog\.ts:\d+$/);
 
     const customerInvoice = manifest.relations.find((r) => r.source === 'Customer' && r.target === 'Invoice');
     expect(customerInvoice).toBeUndefined();

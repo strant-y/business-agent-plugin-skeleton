@@ -4,7 +4,7 @@ import { normalizeEvidence, type EvidenceRef } from './evidence.js';
 import { loadFeedback } from './feedback.js';
 import { loadRules, buildIndex } from './knowledge.js';
 import { getEntityAliases, invertAliasMap, resolveCanonicalNameFromIndex } from './glossary.js';
-import type { DiscoverManifest } from './types.js';
+import { loadManifestSafe } from './manifest-loader.js';
 import type { KnowledgeRecord, KnowledgeStatus } from './knowledge-state.js';
 import type { TaskExperience } from './task.js';
 
@@ -60,10 +60,6 @@ function tokens(value: string): string[] {
   return [...result];
 }
 
-function manifestPath(root: string): string {
-  return path.join(root, '.agent', 'memory', 'discovery-manifest.json');
-}
-
 function knowledgeStatePath(root: string): string {
   return path.join(root, '.agent', 'memory', 'knowledge-state.json');
 }
@@ -104,116 +100,114 @@ async function loadTaskExperiences(root: string): Promise<TaskExperience[]> {
 export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocument[]> {
   const documents: RetrievalDocument[] = [];
   const knowledgeRecords = await loadKnowledgeRecords(root);
-  if (await exists(manifestPath(root))) {
-    const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
-    const aliasesByEntity = manifest.aliases ?? {};
-    const aliasIndex = manifest.aliasIndex ?? invertAliasMap(aliasesByEntity);
-    for (const entity of manifest.entities ?? []) {
-      const knowledge = knowledgeRecords[entity.id];
-      const entityAliases = getEntityAliases(entity.name, aliasesByEntity);
-      documents.push({
-        id: entity.id,
-        type: 'entity',
-        title: entity.name,
-        tokens: tokens(
-          `${entity.name} ${entity.description} ${(entity.tags ?? []).join(' ')} ${entityAliases.join(' ')} ${knowledge?.claim ?? ''}`,
-        ),
-        aliases: [...new Set([...(entity.tags ?? []), ...entityAliases])],
-        relatedIds: knowledge?.relatedTasks ?? [],
-        status: knowledge?.status,
-        confidence:
-          knowledge?.confidenceScore ?? (entity.confidence === 'high' ? 1 : entity.confidence === 'medium' ? 0.6 : 0.3),
-        updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${entity.description} ${knowledge?.claim ?? ''}`.trim(),
-        evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(entity.evidence),
-      });
-    }
-    for (const rule of manifest.rules ?? []) {
-      const knowledge = knowledgeRecords[rule.id];
-      const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
-      const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
-      documents.push({
-        id: rule.id,
-        type: 'rule',
-        title: rule.name,
-        tokens: tokens(
-          `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
-        ),
-        aliases: [...new Set([canonicalEntity, ...entityAliases])],
-        relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
-        status:
-          knowledge?.status ??
-          (rule.status === 'deprecated' ? 'deprecated' : rule.status === 'confirmed' ? 'confirmed' : 'candidate'),
-        confidence:
-          knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
-        updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
-        evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
-      });
-    }
-    const manifestRuleIds = new Set((manifest.rules ?? []).map((r) => r.id));
-    for (const rule of await loadRules(path.join(root, '.agent'))) {
-      if (manifestRuleIds.has(rule.id)) continue;
-      const knowledge = knowledgeRecords[rule.id];
-      const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
-      const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
-      documents.push({
-        id: rule.id,
-        type: 'rule',
-        title: rule.name,
-        tokens: tokens(
-          `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
-        ),
-        aliases: [...new Set([canonicalEntity, ...entityAliases])],
-        relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
-        status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : (rule.status ?? 'confirmed')),
-        confidence:
-          knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
-        updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
-        evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
-      });
-    }
-    for (const relation of manifest.relations ?? []) {
-      const knowledge = knowledgeRecords[relation.id];
-      const canonicalSource = resolveCanonicalNameFromIndex(relation.source, aliasIndex);
-      const canonicalTarget = resolveCanonicalNameFromIndex(relation.target, aliasIndex);
-      const relationAliases = [
-        canonicalSource,
-        canonicalTarget,
-        ...getEntityAliases(canonicalSource, aliasesByEntity),
-        ...getEntityAliases(canonicalTarget, aliasesByEntity),
-      ];
-      documents.push({
-        id: relation.id,
-        type: 'relation',
-        title: `${relation.source} ${relation.relationship} ${relation.target}`,
-        tokens: tokens(
-          `${relation.source} ${canonicalSource} ${relation.target} ${canonicalTarget} ${relationAliases.join(' ')} ${relation.relationship} ${knowledge?.claim ?? ''}`,
-        ),
-        aliases: [...new Set(relationAliases)],
-        relatedIds: [canonicalSource, canonicalTarget, ...(knowledge?.relatedTasks ?? [])],
-        status: knowledge?.status,
-        confidence:
-          knowledge?.confidenceScore ??
-          (relation.confidence === 'high' ? 1 : relation.confidence === 'medium' ? 0.6 : 0.3),
-        updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
-        text: `${relation.description ?? ''} ${knowledge?.claim ?? ''}`.trim(),
-        evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(relation.evidence),
-      });
-    }
-    for (const workflow of manifest.workflows ?? []) {
-      documents.push({
-        id: workflow.id,
-        type: 'workflow',
-        title: workflow.name,
-        tokens: tokens(`${workflow.name} ${workflow.description} ${workflow.steps.join(' ')}`),
-        aliases: [],
-        relatedIds: [],
-        updatedAt: new Date().toISOString(),
-        text: workflow.description,
-      });
-    }
+  const manifest = await loadManifestSafe(root, (message) => console.warn(`Warning: ${message}`));
+  const aliasesByEntity = manifest.aliases ?? {};
+  const aliasIndex = manifest.aliasIndex ?? invertAliasMap(aliasesByEntity);
+  for (const entity of manifest.entities ?? []) {
+    const knowledge = knowledgeRecords[entity.id];
+    const entityAliases = getEntityAliases(entity.name, aliasesByEntity);
+    documents.push({
+      id: entity.id,
+      type: 'entity',
+      title: entity.name,
+      tokens: tokens(
+        `${entity.name} ${entity.description} ${(entity.tags ?? []).join(' ')} ${entityAliases.join(' ')} ${knowledge?.claim ?? ''}`,
+      ),
+      aliases: [...new Set([...(entity.tags ?? []), ...entityAliases])],
+      relatedIds: knowledge?.relatedTasks ?? [],
+      status: knowledge?.status,
+      confidence:
+        knowledge?.confidenceScore ?? (entity.confidence === 'high' ? 1 : entity.confidence === 'medium' ? 0.6 : 0.3),
+      updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
+      text: `${entity.description} ${knowledge?.claim ?? ''}`.trim(),
+      evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(entity.evidence),
+    });
+  }
+  for (const rule of manifest.rules ?? []) {
+    const knowledge = knowledgeRecords[rule.id];
+    const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
+    const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
+    documents.push({
+      id: rule.id,
+      type: 'rule',
+      title: rule.name,
+      tokens: tokens(
+        `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+      ),
+      aliases: [...new Set([canonicalEntity, ...entityAliases])],
+      relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
+      status:
+        knowledge?.status ??
+        (rule.status === 'deprecated' ? 'deprecated' : rule.status === 'confirmed' ? 'confirmed' : 'candidate'),
+      confidence:
+        knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
+      updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
+      text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+      evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
+    });
+  }
+  const manifestRuleIds = new Set((manifest.rules ?? []).map((r) => r.id));
+  for (const rule of await loadRules(path.join(root, '.agent'))) {
+    if (manifestRuleIds.has(rule.id)) continue;
+    const knowledge = knowledgeRecords[rule.id];
+    const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
+    const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);
+    documents.push({
+      id: rule.id,
+      type: 'rule',
+      title: rule.name,
+      tokens: tokens(
+        `${rule.name} ${canonicalEntity} ${entityAliases.join(' ')} ${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`,
+      ),
+      aliases: [...new Set([canonicalEntity, ...entityAliases])],
+      relatedIds: [canonicalEntity, ...(knowledge?.relatedTasks ?? [])],
+      status: knowledge?.status ?? (rule.status === 'deprecated' ? 'deprecated' : (rule.status ?? 'confirmed')),
+      confidence:
+        knowledge?.confidenceScore ?? (rule.confidence === 'high' ? 1 : rule.confidence === 'medium' ? 0.6 : 0.3),
+      updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
+      text: `${(rule.rule ?? []).join(' ')} ${(rule.context ?? []).join(' ')} ${knowledge?.claim ?? ''}`.trim(),
+      evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(rule.evidence),
+    });
+  }
+  for (const relation of manifest.relations ?? []) {
+    const knowledge = knowledgeRecords[relation.id];
+    const canonicalSource = resolveCanonicalNameFromIndex(relation.source, aliasIndex);
+    const canonicalTarget = resolveCanonicalNameFromIndex(relation.target, aliasIndex);
+    const relationAliases = [
+      canonicalSource,
+      canonicalTarget,
+      ...getEntityAliases(canonicalSource, aliasesByEntity),
+      ...getEntityAliases(canonicalTarget, aliasesByEntity),
+    ];
+    documents.push({
+      id: relation.id,
+      type: 'relation',
+      title: `${relation.source} ${relation.relationship} ${relation.target}`,
+      tokens: tokens(
+        `${relation.source} ${canonicalSource} ${relation.target} ${canonicalTarget} ${relationAliases.join(' ')} ${relation.relationship} ${knowledge?.claim ?? ''}`,
+      ),
+      aliases: [...new Set(relationAliases)],
+      relatedIds: [canonicalSource, canonicalTarget, ...(knowledge?.relatedTasks ?? [])],
+      status: knowledge?.status,
+      confidence:
+        knowledge?.confidenceScore ??
+        (relation.confidence === 'high' ? 1 : relation.confidence === 'medium' ? 0.6 : 0.3),
+      updatedAt: knowledge?.lastVerifiedAt ?? new Date().toISOString(),
+      text: `${relation.description ?? ''} ${knowledge?.claim ?? ''}`.trim(),
+      evidence: knowledge?.evidence?.length ? knowledge.evidence : normalizeEvidence(relation.evidence),
+    });
+  }
+  for (const workflow of manifest.workflows ?? []) {
+    documents.push({
+      id: workflow.id,
+      type: 'workflow',
+      title: workflow.name,
+      tokens: tokens(`${workflow.name} ${workflow.description} ${workflow.steps.join(' ')}`),
+      aliases: [],
+      relatedIds: [],
+      updatedAt: new Date().toISOString(),
+      text: workflow.description,
+    });
   }
   const experiences = await loadTaskExperiences(root);
   for (const item of experiences) {
@@ -256,10 +250,8 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     });
   }
   await writeJson(path.join(root, '.agent', 'memory', 'indexes', 'retrieval-index.json'), documents);
-  if (await exists(manifestPath(root))) {
-    const manifest = JSON.parse(await readText(manifestPath(root))) as DiscoverManifest;
-    await buildIndex(path.join(root, '.agent'), manifest.entities ?? []);
-  }
+  const manifestForIndex = await loadManifestSafe(root, (message) => console.warn(`Warning: ${message}`));
+  await buildIndex(path.join(root, '.agent'), manifestForIndex.entities ?? []);
   return documents;
 }
 

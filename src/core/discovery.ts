@@ -130,11 +130,18 @@ function detectRelations(textEntities: Entity[], samples: SampleFile[], window =
         'i',
       );
       // Co-occurrence and the structural hint must hold inside the SAME file, and
-      // that file becomes the evidence — cross-file co-occurrence is noise (G2.3).
-      const evidence = coFiles.filter((file) => {
+      // that file (with the matching line) becomes the evidence — cross-file
+      // co-occurrence is noise (G2.3), and a bare file list cannot be reviewed
+      // without re-searching (aligned with rule evidence "file:line" format).
+      const evidence: string[] = [];
+      for (const file of coFiles) {
         const text = textByFile.get(file) ?? '';
-        return relationHint.test(text) && structuralHint.test(text);
-      });
+        relationHint.lastIndex = 0;
+        const match = relationHint.exec(text);
+        if (!match || !structuralHint.test(text)) continue;
+        const line = text.slice(0, match.index).split(/\r?\n/).length;
+        evidence.push(`${file}:${line}`);
+      }
       if (!evidence.length) continue;
       relations.push({
         id: `relation.${source.toLowerCase()}-${target.toLowerCase()}`,

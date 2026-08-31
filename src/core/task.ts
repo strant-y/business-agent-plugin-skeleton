@@ -4,6 +4,7 @@ import { execFile } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { promisify } from 'node:util';
 import { exists, readText, writeJson } from '../utils/fs.js';
+import { loadManifestSafe } from './manifest-loader.js';
 import { buildImpactReport, type ImpactReport } from './impact.js';
 import { writeLearnCandidate } from '../commands/learn.js';
 import { gitDiffFiles, gitDiffText, gitBranch } from '../utils/git.js';
@@ -255,13 +256,8 @@ function keywords(task: string): string[] {
 }
 
 async function readManifest(root: string): Promise<DiscoverManifest | undefined> {
-  const file = path.join(root, '.agent', 'memory', 'discovery-manifest.json');
-  if (!(await exists(file))) return undefined;
-  try {
-    return JSON.parse(await readText(file)) as DiscoverManifest;
-  } catch {
-    return undefined;
-  }
+  const manifest = await loadManifestSafe(root);
+  return manifest.entities ? (manifest as DiscoverManifest) : undefined;
 }
 
 async function listHistory(root: string, terms: string[]): Promise<string[]> {

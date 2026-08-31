@@ -3,6 +3,7 @@ import { exists, readText, writeText } from '../utils/fs.js';
 import { getEntityAliases, invertAliasMap, resolveCanonicalNameFromIndex } from '../core/glossary.js';
 import { loadRules, loadRelations, listImpacts, safeFileId } from '../core/knowledge.js';
 import { buildGraph, renderMermaidSubgraph } from '../core/graph.js';
+import { loadManifestSafe } from '../core/manifest-loader.js';
 import { retrieveTaskContext } from '../core/retrieval.js';
 import type { DiscoverManifest } from '../core/types.js';
 
@@ -24,15 +25,7 @@ export async function contextCommand(root: string, subject: string, options: Con
   const index = (await exists(indexFile))
     ? await readText(indexFile)
     : '# Business Index\n\nNo business index yet. Run `business-agent init && business-agent discover`.\n';
-  const manifestFile = path.join(agentRoot, 'memory', 'discovery-manifest.json');
-  let manifest: ContextManifest | null = null;
-  if (await exists(manifestFile)) {
-    try {
-      manifest = JSON.parse(await readText(manifestFile)) as ContextManifest;
-    } catch {
-      console.warn(`Warning: ignoring unreadable manifest at ${manifestFile}`);
-    }
-  }
+  const manifest = (await loadManifestSafe(root, (message) => console.warn(`Warning: ${message}`))) as ContextManifest;
   const aliasesByEntity = manifest?.aliases ?? {};
   const aliasIndex = manifest?.aliasIndex ?? invertAliasMap(aliasesByEntity);
   const canonicalSubject = resolveCanonicalNameFromIndex(subject, aliasIndex);
@@ -143,11 +136,11 @@ export async function contextCommand(root: string, subject: string, options: Con
   for (const relation of relevantRelations) relevantImpactFiles.add(`${safeFileId(relation.id)}.md`);
   const relevantImpacts = impacts.filter((i) => relevantImpactFiles.has(path.basename(i)));
   const graphRelations = [...(manifest?.relations ?? []), ...relations] as DiscoverManifest['relations'];
-  const graph = buildGraph(manifest ? (manifest as Partial<DiscoverManifest>) : {}, relations);
+  const graph = buildGraph(manifest as Partial<DiscoverManifest>, relations);
   const relationshipGraph = matchedNames.size
     ? renderMermaidSubgraph({
         graph,
-        manifest: manifest ?? {},
+        manifest,
         relations: graphRelations,
         starts: [...matchedNames],
         maxDepth: 2,

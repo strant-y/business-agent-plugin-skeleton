@@ -1,14 +1,14 @@
 import path from 'node:path';
-import { exists, readText, writeText } from '../utils/fs.js';
+import { writeText } from '../utils/fs.js';
 import { extractStateMachines } from '../core/analyzers/states.js';
 import { loadConfig } from '../core/config.js';
+import { loadManifestSafe } from '../core/manifest-loader.js';
 import { scanProject } from '../core/scanner.js';
 import type { DiscoverManifest } from '../core/types.js';
 
 export async function statesCommand(root: string, json = false): Promise<void> {
-  const manifestFile = path.join(root, '.agent', 'memory', 'discovery-manifest.json');
-  if (!(await exists(manifestFile))) throw new Error('Discovery manifest not found; run discover first.');
-  const manifest = JSON.parse(await readText(manifestFile)) as DiscoverManifest;
+  const manifest = (await loadManifestSafe(root)) as DiscoverManifest;
+  if (!manifest.entities?.length) throw new Error('Discovery manifest not found; run discover first.');
   const scan = await scanProject(root, await loadConfig(root));
   const machines = extractStateMachines(scan.samples, manifest.entities);
   if (json) {

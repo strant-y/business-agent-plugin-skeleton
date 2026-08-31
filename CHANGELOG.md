@@ -23,6 +23,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Fixed
 
 - Graph node identity is now based on module path (`moduleNodeId`) instead of PascalCase file names, so renames and mixed naming conventions no longer break impact chains (legacy manifests fall back with a warning).
+- Manifest consumers (impact/context/retrieval/states/task) now shape-check the discovery manifest at runtime instead of trusting `JSON.parse` blindly: corrupted files degrade to a warning instead of a crash or a garbage report.
+- Co-occurrence relations now record `file:line` evidence (aligned with rule evidence), so they can be reviewed without re-searching the file.
+- Upgraded vitest to 4.1.11, which fixes the intermittent "tests pass but the process never exits" hang on Windows (single-file runs no longer hang; full-suite hangs are a vitest/Windows teardown race, unrelated to the plugin code — every test file exits cleanly on its own).
 
 ## [0.1.0] - 2026-08
 

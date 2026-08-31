@@ -10,6 +10,7 @@ import {
   type GraphWalkStep,
 } from './graph.js';
 import { invertAliasMap, resolveCanonicalNameFromIndex } from './glossary.js';
+import { loadManifestSafe } from './manifest-loader.js';
 import { loadRules, loadRelations, safeFileId } from './knowledge.js';
 import { moduleNodeId } from './module-id.js';
 import type { TaskExperience } from './task.js';
@@ -209,10 +210,8 @@ async function loadTaskExperiences(root: string): Promise<TaskExperience[]> {
   return items;
 }
 
-async function loadManifest(root: string): Promise<Partial<DiscoverManifest>> {
-  const manifestFile = path.join(root, '.agent', 'memory', 'discovery-manifest.json');
-  if (!(await exists(manifestFile))) return {};
-  return JSON.parse(await readText(manifestFile)) as Partial<DiscoverManifest>;
+async function loadManifest(root: string, onWarning?: (message: string) => void): Promise<Partial<DiscoverManifest>> {
+  return loadManifestSafe(root, onWarning);
 }
 
 async function readImpactConfig(root: string): Promise<{ maxDepth: number }> {
@@ -671,7 +670,8 @@ function filterImpactedEntities(
 }
 
 export async function buildImpactReport(root: string, changedFiles: string[], diff = ''): Promise<ImpactReport> {
-  const manifest = await loadManifest(root);
+  const manifestWarnings: string[] = [];
+  const manifest = await loadManifest(root, (message) => manifestWarnings.push(message));
   const aliasesByEntity = manifest.aliases ?? {};
   const aliasIndex = {
     ...invertAliasMap(aliasesByEntity),
@@ -863,7 +863,7 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     diffFindings,
     diffImpact,
     risks,
-    warnings: violationWarnings,
+    warnings: [...violationWarnings, ...manifestWarnings],
     graphMermaid: graphView?.mermaid,
     contractDrift,
     violations,
