@@ -2,7 +2,7 @@ import path from 'node:path';
 import { exists, readText } from '../utils/fs.js';
 
 import type { Entity } from './types.js';
-import { isSqlTableDescription } from './entity-description.js';
+import { isSkeletonDescription, isSqlTableDescription } from './entity-description.js';
 
 export interface GlossaryEntry {
   term: string;
@@ -214,4 +214,39 @@ export function invertAliasMap(aliasesByEntity: Record<string, string[]>): Recor
 
 export function getEntityAliases(entity: string, aliasesByEntity: Record<string, string[]>): string[] {
   return aliasesByEntity[entity] ?? [];
+}
+
+/** Suffix appended to skeleton descriptions once glossary terms are known; stripped before re-adding. */
+const BUSINESS_ALIASES_SUFFIX_RE = /\s*; business aliases: [^.]*\./;
+
+/**
+ * Copy glossary terms onto the entities they point at (G1.2): the Chinese/alias
+ * vocabulary lands in `tags` (so it is persisted in the manifest and feeds
+ * retrieval) and, for skeleton descriptions only, is appended to the
+ * description so the entity itself carries business vocabulary. Idempotent:
+ * re-running discover strips the previous suffix before appending.
+ */
+export function applyGlossaryEnrichment(entities: Entity[], entries: GlossaryEntry[]): Entity[] {
+  if (!entries.length) return entities;
+  const termsByEntity = new Map<string, Set<string>>();
+  for (const entry of entries) {
+    const key = entry.entity.toLowerCase();
+    const bucket = termsByEntity.get(key) ?? new Set<string>();
+    bucket.add(entry.term);
+    for (const alias of entry.aliases) bucket.add(alias);
+    termsByEntity.set(key, bucket);
+  }
+  return entities.map((entity) => {
+    const terms = termsByEntity.get(entity.name.toLowerCase());
+    if (!terms || terms.size === 0) return entity;
+    const mergedTags = [...new Set([...(entity.tags ?? []), ...terms])].filter((tag) => tag !== entity.name);
+    const tagsChanged = mergedTags.length !== (entity.tags ?? []).length;
+    let description = entity.description;
+    if (isSkeletonDescription(description)) {
+      const base = description.replace(BUSINESS_ALIASES_SUFFIX_RE, '.').replace(/\.$/, '');
+      description = `${base}; business aliases: ${[...terms].join(', ')}.`;
+    }
+    if (!tagsChanged && description === entity.description) return entity;
+    return { ...entity, tags: mergedTags, description };
+  });
 }

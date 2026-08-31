@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { buildModuleDescriptor } from './module-id.js';
 import {
+  applyGlossaryEnrichment,
   buildAliasArtifacts,
   getEntityAliases,
   loadGlossary,
@@ -522,6 +523,9 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
 
   const finalAliasArtifacts = buildAliasArtifacts(finalEntities, glossary);
   finalEntities = mergeEntitiesByAlias(finalEntities, finalAliasArtifacts.aliasToEntity);
+  // Glossary terms become entity tags and enrich skeleton descriptions (G1.2);
+  // runs before the alias artifacts are rebuilt so the terms are indexed too.
+  finalEntities = applyGlossaryEnrichment(finalEntities, glossary);
   finalEntities = finalEntities.filter(
     (entity) =>
       !(

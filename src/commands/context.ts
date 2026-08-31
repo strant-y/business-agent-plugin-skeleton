@@ -119,19 +119,21 @@ export async function contextCommand(root: string, subject: string, options: Con
   );
 
   // Entities carry their lifecycle states directly (G1.5); state machines add the mermaid view.
+  // Machine entity names are resolved through the alias index so a renamed entity
+  // (old name kept as alias) still links to its state machine.
   const stateMachines = (manifest?.states ?? []).filter(
     (s) =>
       matchedNames.has(resolveCanonicalNameFromIndex(s.entity, aliasIndex)) || s.entity.toLowerCase() === subjectLower,
   );
+  const machineEntityNames = new Set(
+    stateMachines.map((machine) => resolveCanonicalNameFromIndex(machine.entity, aliasIndex).toLowerCase()),
+  );
   const entityStateLines = matched
-    .filter(
-      (entity) =>
-        entity.states?.length &&
-        !stateMachines.some((machine) => machine.entity.toLowerCase() === entity.name.toLowerCase()),
-    )
+    .filter((entity) => entity.states?.length && !machineEntityNames.has(entity.name.toLowerCase()))
     .map((entity) => `- ${entity.name}: ${(entity.states ?? []).join(', ')}`);
   const stateMachineLines = stateMachines.map((machine) => {
-    const fromEntity = matched.find((entity) => entity.name.toLowerCase() === machine.entity.toLowerCase())?.states;
+    const canonical = resolveCanonicalNameFromIndex(machine.entity, aliasIndex);
+    const fromEntity = matched.find((entity) => entity.name === canonical)?.states;
     return `- ${machine.entity}: ${(fromEntity ?? machine.states).join(', ')}\n\n  \`\`\`mermaid\n  ${machine.mermaid}\n  \`\`\``;
   });
   const stateLines = [...stateMachineLines, ...entityStateLines];
