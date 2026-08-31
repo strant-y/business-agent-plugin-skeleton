@@ -1,5 +1,10 @@
 # business-agent 插件操作手册
 
+> 对应版本：`business-agent-cli` v0.2.0（bin 命令仍为 `business-agent`）。
+> 0.2.0 相比 0.1.0 的主要变化见仓库 `CHANGELOG.md`：字段级影响传播、规则违反判定（Rule Violations）、
+> 规则↔测试覆盖（Test Coverage）、mermaid 关系/影响图、中文术语表（glossary）接线、
+> OpenAPI 契约对账、Go/Python 分析器、跨仓库 linkage、`impact.maxDepth` 可配置。
+
 ## 1. 给助手的常用提示词
 
 如果你以后想让我在别的项目里直接帮你安装、初始化、扫描这个插件，可以直接复制下面这些提示词。
@@ -62,7 +67,7 @@
 
 ```bash
 cd your-vue-project
-npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-0.1.0.tgz"
+npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-cli-0.2.0.tgz"
 npx business-agent init
 npx business-agent discover --deep
 ```
@@ -71,7 +76,7 @@ npx business-agent discover --deep
 
 ```bash
 cd your-vue-project
-npm install "d:\work\business-agent-plugin-skeleton\business-agent-0.1.1.tgz"
+npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-cli-0.2.0.tgz"
 npx business-agent discover --deep
 ```
 
@@ -110,7 +115,7 @@ npx business-agent index rebuild
 
 ```bash
 cd your-vue-project
-npx business-agent config set analyzers "[\"vue\",\"ast\",\"stores\",\"frontend\",\"linkage\"]"
+npx business-agent config set analyzers "[\"sql\",\"api\",\"ast\",\"vue\",\"stores\",\"frontend\",\"linkage\",\"states\"]"
 npx business-agent config set autoPromote never
 npx business-agent config set llm.allowSourceUpload false
 npx business-agent discover --deep
@@ -185,14 +190,14 @@ npm pack
 执行后会生成类似下面的文件：
 
 ```text
-business-agent-0.1.0.tgz
+business-agent-cli-0.2.0.tgz
 ```
 
 然后在真实项目中安装这个固定包：
 
 ```bash
 cd your-vue-project
-npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-0.1.0.tgz"
+npm install "d:\\work\\business-agent-plugin-skeleton\\business-agent-cli-0.2.0.tgz"
 ```
 
 安装后建议通过 `npx` 调用，确保使用的是当前项目里已安装的固定版本：
@@ -233,12 +238,15 @@ npx business-agent init
 │  ├─ relationships/   # 已确认的关系
 │  ├─ states/          # 状态机输出
 │  ├─ workflows/       # 工作流文档
+│  ├─ glossary.md      # 业务术语表（中文词 → 实体别名，强烈建议维护）
 │  └─ INDEX.md         # 业务索引
 └─ memory/
    ├─ candidates/      # discover 产生的候选规则
    ├─ discovery-manifest.json
    ├─ active-context.md
    ├─ review-state.json
+   ├─ impact-accuracy.json   # 影响预测准确率统计（task 积累）
+   ├─ hook-refresh.log       # post-commit 增量刷新日志
    ├─ sessions/        # task 生命周期记录
    ├─ indexes/         # retrieval 索引
    └─ task-history/    # 任务历史
@@ -253,16 +261,21 @@ npx business-agent init
 
 ## 6. 个人 Vue 项目推荐配置
 
+从 0.2.0 起，`discover`（不带 `--deep`）默认就运行 `sql / api / ast` 三个零依赖分析器，
+`--deep` 在此之上追加 `vue / stores / frontend / java / xml / linkage / states`。
+配置里显式写 `"analyzers": [...]` 会整体替换默认值（写 `[]` 可全部关闭）。
+
 建议在 `.agent/business-agent.json` 中先使用偏保守配置。
 
 推荐配置：
 
 ```json
 {
-  "analyzers": ["vue", "ast", "stores", "frontend", "linkage"],
+  "analyzers": ["sql", "api", "ast", "vue", "stores", "frontend", "linkage", "states"],
   "autoPromote": "never",
   "maxSampleFiles": 80,
   "maxSamplesPerExt": 40,
+  "impact": { "maxDepth": 6 },
   "llm": {
     "provider": "openai-compatible",
     "apiKeyEnv": "OPENAI_API_KEY",
@@ -277,21 +290,24 @@ npx business-agent init
 - `ast`：分析 TypeScript 类型与引用
 - `stores`：分析 store/composable 中的业务逻辑
 - `frontend`：分析页面、动作、权限、校验、状态读写
-- `linkage`：尝试把前端调用链和 API 关联起来
+- `linkage`：把前端调用链和 API 关联起来；前后端分仓时可配 `linkage.externalApis` 指向另一仓库导出的 `discovery-manifest.json`
+- `states`：状态机提取，`entity.states` 生命周期回链依赖它
+- `impact.maxDepth`：影响遍历深度上限（默认 6，范围 1-10）
 - `autoPromote: never`：禁止自动提升候选，避免误把 UI 逻辑当业务事实
 - `allowSourceUpload: false`：默认关闭源码上传，更适合个人本地使用
 
-### 5.1 查看配置
+### 6.1 查看配置
 
 ```bash
 business-agent config get
 ```
 
-### 5.2 设置配置
+### 6.2 设置配置
 
 ```bash
 business-agent config set autoPromote never
 business-agent config set maxSampleFiles 80
+business-agent config set impact.maxDepth 6
 business-agent config set llm.allowSourceUpload false
 ```
 
@@ -345,6 +361,24 @@ business-agent context 订单
 
 在你准备修改功能前、修改中、修改后逐步引入 `impact`、`task`、`retrieve`、`audit`。
 
+### 第六步（强烈建议）：维护业务术语表
+
+中文业务词要能命中实体，靠的是 `.agent/business/glossary.md`。首次 `init` 后编辑它：
+
+```markdown
+| 术语 | 别名             | 实体  |
+| ---- | ---------------- | ----- |
+| 订单 | OrderDTO, orders | Order |
+| 缴费 | PremiumPayment   | Order |
+```
+
+规则：
+
+- 三列固定为 `术语 | 别名 | 实体`，一行一条
+- `术语`是你平时说的中文词；`别名`是代码里出现过的其它叫法；`实体`必须是已发现的实体名
+- 改完后重跑 `business-agent discover`（不需要 --deep），术语会自动注入实体别名、tags 和描述
+- 之后 `business-agent context 缴费` 就能直接命中 Order 实体及其全部关系
+
 ---
 
 ## 8. 常用命令手册
@@ -378,7 +412,9 @@ business-agent init --force
 business-agent discover
 ```
 
-深度扫描：
+不带 `--deep` 时默认运行 `sql / api / ast` 三个分析器（0.2.0 起），已有基础产出。
+
+深度扫描（追加 vue / stores / frontend / java / xml / linkage / states）：
 
 ```bash
 business-agent discover --deep
@@ -489,11 +525,11 @@ business-agent context Order --json
 
 生成内容通常包括：
 
-- 相关实体
+- 相关实体（含别名与状态生命周期 `entity.states`）
 - 相关规则
-- 相关关系
+- 相关关系 + **mermaid 关系图**（1-2 跳邻域）
 - 冲突
-- 状态机
+- 状态机（mermaid 状态图）
 - 前端页面
 - 工作流
 - 用户动作
@@ -529,6 +565,15 @@ JSON 输出：
 ```bash
 business-agent impact src/views/OrderEdit.vue --json
 ```
+
+0.2.0 的报告新增四块内容：
+
+- **Rule Violations**：本次改动删除/修改了某条已确认规则的证据代码时，直接点名"违反 rule X"（最高优先级，同时出现在 Risks 首位）
+- **Test Coverage**：受影响规则分"有测试保护 / 无测试保护"两组，后者就是你该补测试的地方
+- **Impact Graph**：受影响子图的 mermaid 图，改动模块高亮
+- **字段级传播**：改一个 SQL 字段能给出"表 → API → Store → 页面 → 测试"全链路；深度由 `impact.maxDepth` 控制（默认 6）
+
+关系条目按置信度与历史预测准确率排序（`impact-accuracy.json` 积累越久排序越准）。
 
 推荐在以下场景使用：
 
@@ -725,6 +770,7 @@ business-agent states --json
 
 注意：
 
+- 状态机提取已并入 `discover --deep`（0.2.0 起），结果回写到实体的 `states` 字段
 - 当前状态机更偏启发式提取
 - 结果适合作为辅助理解，不建议直接当作绝对事实
 
@@ -930,6 +976,19 @@ business-agent audit
 
 优先用本地静态分析，等你确认基本流程有价值后，再考虑是否需要额外 LLM 增强。
 
+### 12.5 为什么用中文词检索/context 命中不了实体？
+
+中文命中依赖业务术语表。检查 `.agent/business/glossary.md`：
+
+- 表头必须是 `| 术语 | 别名 | 实体 |` 三列
+- 每个你要用中文说的业务对象加一行，实体列填扫描出的实体名
+- 改完重跑 `business-agent discover`（术语在 discover 阶段注入实体与索引）
+
+### 12.6 impact 报告说"违反 rule X"是什么意思？
+
+你的改动删除或修改了某条已确认规则的证据代码行（比如删掉了 `if (status === 'AUDIT') throw ...`）。
+这是最高优先级风险：要么规则真的被破坏了，要么需要重新 review 这条规则。去 `business-agent audit` 复核。
+
 ---
 
 ## 13. 一套最小可用命令清单
@@ -940,11 +999,13 @@ business-agent audit
 business-agent init
 business-agent discover --deep
 business-agent review
-business-agent context Order
+business-agent context 订单
 business-agent impact src/views/OrderEdit.vue
 business-agent retrieve "订单审核"
 business-agent audit
 ```
+
+中文命中的前提是维护好 `.agent/business/glossary.md`（见第 7 节第六步）。
 
 ---
 

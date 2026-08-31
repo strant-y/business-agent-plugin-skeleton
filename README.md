@@ -352,7 +352,7 @@ git push --follow-tags
 
 详细方案、里程碑与取舍见 [ROADMAP.md](./ROADMAP.md)。概要：
 
-1. 发布到 npm（改名为 `business-agent-cli`，含发布 CI）。
-2. 评审闭环：`review` 命令、评审状态持久化、`autoPromote` 旋钮。
-3. LLM 本地模型支持（Ollama）与上传隐私开关。
-4. SQL 子查询 / 多 JOIN 关系提取、冲突解决建议、状态机与工作流建模。
+1. 发布到 npm —— 改名 `business-agent-cli` 与发布 CI 已就绪（v0.2.0），待配置 `NPM_TOKEN` 后打 tag 发布。
+2. ~~评审闭环：`review` 命令、评审状态持久化、`autoPromote` 旋钮。~~ 已落地。
+3. ~~LLM 本地模型支持（Ollama）与上传隐私开关。~~ 已落地。
+4. ~~SQL 子查询 / 多 JOIN 关系提取、冲突解决建议、状态机与工作流建模。~~ 保守版已落地；完整 SQL 递归下降解析见 gap-analysis 第 10 节第 4 批（按需）。
