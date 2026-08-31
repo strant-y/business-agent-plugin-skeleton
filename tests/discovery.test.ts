@@ -378,4 +378,18 @@ describe('discover', () => {
     }
     expect(manifest.relations.some((r) => r.id.includes(':') || r.id.includes('/'))).toBe(false);
   });
+
+  it('attaches discovery rules to business entities instead of framework types', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(
+      path.join(dir, 'CustomerSection.vue'),
+      '<template><button :disabled="submitting">Save</button></template><script setup lang="ts">interface Props { submitting: boolean } const submitting = ref(false);</script>',
+      'utf8',
+    );
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const disabledRule = manifest.rules.find((rule) => rule.id === 'rule.discovery.disabled-control');
+    expect(disabledRule).toBeDefined();
+    expect(disabledRule?.entity).not.toBe('Props');
+    expect(['CustomerSection', 'Unknown']).toContain(disabledRule?.entity);
+  });
 });

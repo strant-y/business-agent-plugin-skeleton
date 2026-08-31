@@ -256,19 +256,35 @@ function buildRuleCoveringTests(
   });
 }
 
+/**
+ * Entities that are framework/type scaffolding rather than business objects.
+ * Rules matched on shared patterns (e.g. `disabled=` appears in every Vue
+ * component) used to attach to the most co-occurring name — which was usually
+ * `Props`/`ApiResponse`. Skipping these lets the rule attach to the business
+ * entity that actually owns the file.
+ */
+const TECHNICAL_ENTITY_RE =
+  /^(?:props|ref|query|auth|system|app|group|image|chatmessage|messagerole|importmeta|importmetaenv|processenv|qform|dictitem|codeoption|resultdialogline|apiresponse|nvhl|coverageitem|suite?dictoption)$/i;
+
 function inferRuleEntity(evidence: string[], samples: SampleFile[], entities: Entity[]): string {
   const scored = entities
+    .filter((entity) => !TECHNICAL_ENTITY_RE.test(entity.name))
     .map((entity) => {
       const name = entity.name.toLowerCase();
-      const score = evidence.reduce((total, file) => {
+      let fileHits = 0;
+      let textHits = 0;
+      for (const file of evidence) {
         const sample = samples.find((item) => item.file === file);
         const text = sample?.text.toLowerCase() ?? '';
-        return total + (file.toLowerCase().includes(name) ? 2 : 0) + (text.includes(name) ? 1 : 0);
-      }, 0);
-      return { entity, score };
+        // A file path containing the entity name is a strong signal (the file
+        // belongs to that entity); bare text co-occurrence is weak.
+        if (file.toLowerCase().includes(name)) fileHits += 1;
+        if (text.includes(name)) textHits += 1;
+      }
+      return { entity, score: fileHits * 10 + textHits };
     })
     .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score || b.entity.name.length - a.entity.name.length);
   return scored[0]?.entity.name ?? 'Unknown';
 }
 

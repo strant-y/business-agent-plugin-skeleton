@@ -8,7 +8,9 @@ function entityId(name: string): string {
 
 const IMPORT_RE = /import\s+([\s\S]*?)\s+from\s+["']([^"']+)["']/g;
 const ROUTE_RE = /(?:path|route)\s*:\s*["']([^"']+)["']/gi;
-const API_RE = /\b(?:axios|fetch|\$http|request|api)\s*(?:\.\w+)?\s*\(\s*["'`]([^"'`]+)["'`]/gi;
+const API_CALL_RE = /\b(?:axios|fetch|\$http|request|api)\s*(?:\.\w+)?\s*\(\s*["'`]([^"'`]+)["'`]/gi;
+/** Request-wrapper style: `request({ url: '/customer/identify' })`. */
+const URL_PROP_RE = /\burl\s*:\s*["'`]([^"'`]+)["'`]/gi;
 const STORE_RE = /\b(?:use[A-Z][A-Za-z0-9_$]*Store|use[A-Z][A-Za-z0-9_$]*|[A-Za-z0-9_$]*Store)\b/g;
 const ACTION_RE =
   /(?:@(?:click|submit)|onClick|onSubmit|handle[A-Z][A-Za-z0-9_$]*)\s*(?:=|\()\s*["']?([A-Za-z_$][\w$]*)?/gi;
@@ -27,6 +29,11 @@ const TYPE_FIELD_RE = /([A-Za-z_$][\w$]*)\s*:\s*[^;\n]+/g;
 
 function moduleName(file: string): string {
   return fileModuleName(file);
+}
+
+/** Normalize a store name so `useQuoteStore` and module `QuoteStore` match. */
+function storeKey(name: string): string {
+  return name.replace(/^use/i, '').replace(/store$/i, '').toLowerCase();
 }
 
 function relativeModule(importPath: string): string | undefined {
@@ -160,6 +167,7 @@ function analyzeSample(
   file: string,
   text: string,
   entitiesIndex: Entity[],
+  apiByStore?: Map<string, string[]>,
 ): {
   entities: Entity[];
   pages: FrontendPage[];
@@ -175,7 +183,13 @@ function analyzeSample(
       .filter((value): value is string => Boolean(value)),
   );
   const stores = unique([...matches(text, STORE_RE).filter((name) => /store|^use[A-Z]/.test(name))]);
-  const apiCalls = unique(matches(text, API_RE));
+  const directApiCalls = unique([...matches(text, API_CALL_RE), ...matches(text, URL_PROP_RE)]);
+  // Pinia stores own the API calls; a page that uses a store inherits its calls
+  // so page.apiCalls reflects the real data flow instead of staying empty.
+  const indirectApiCalls = unique(
+    stores.flatMap((store) => apiByStore?.get(storeKey(store)) ?? []),
+  );
+  const apiCalls = unique([...directApiCalls, ...indirectApiCalls]);
   const permissions = unique(matches(text, PERMISSION_RE));
   const conditions = unique(matches(text, CONDITION_RE));
   const stateReads = unique(matches(text, STATUS_READ_RE));
@@ -359,9 +373,18 @@ export const frontendAnalyzer: Analyzer = {
     const relations: Relation[] = [];
     const rules: BusinessRule[] = [];
     const workflows: WorkflowTemplate[] = [];
+    // Pinia data flow: stores own the API calls. Pre-scan store/composable
+    // modules once so pages can inherit their calls (page.apiCalls).
+    const apiByStore = new Map<string, string[]>();
+    for (const sample of scan.samples) {
+      if (!/\.(ts|js)$/i.test(sample.file)) continue;
+      const apis = unique([...matches(sample.text, API_CALL_RE), ...matches(sample.text, URL_PROP_RE)]);
+      if (!apis.length) continue;
+      apiByStore.set(storeKey(moduleName(sample.file)), apis);
+    }
     for (const sample of scan.samples) {
       if (!/\.(vue|tsx|jsx|ts|js)$/i.test(sample.file)) continue;
-      const result = analyzeSample(sample.file, sample.text, ctx.entities);
+      const result = analyzeSample(sample.file, sample.text, ctx.entities, apiByStore);
       entities.push(...result.entities);
       pages.push(...result.pages);
       actions.push(...result.actions);

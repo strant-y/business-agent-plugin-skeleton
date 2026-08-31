@@ -127,4 +127,37 @@ export function OrderPage() { useEffect(() => loadOrders(), []); return <button 
     expect(manifest.actions?.some((action) => action.source === 'Order')).toBe(true);
     expect(manifest.workflows?.some((workflow) => workflow.name.includes('frontend flow'))).toBe(true);
   });
+
+  it('inherits store API calls onto pages (Pinia data flow) and reads request({url}) wrappers', async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-frontend-store-api-'));
+    await fs.mkdir(path.join(dir, 'stores'), { recursive: true });
+    await fs.mkdir(path.join(dir, 'views'), { recursive: true });
+    await fs.writeFile(
+      path.join(dir, 'stores/quoteStore.ts'),
+      `import request from '../api/request';
+export const useQuoteStore = () => ({
+  async doQuote() {
+    const quote = await request({ url: '/quote/calc', method: 'post' });
+    return request({ url: '/quote/detail' });
+  },
+});`,
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'views/QuoteView.vue'),
+      `<script setup lang="ts">
+import { useQuoteStore } from '../stores/quoteStore';
+const quoteStore = useQuoteStore();
+function submit() { quoteStore.doQuote(); }
+</script>`,
+      'utf8',
+    );
+    const scan = await scanProject(dir, DEFAULT_CONFIG);
+    const result = await frontendAnalyzer.analyze(scan, { config: DEFAULT_CONFIG, entities: [] });
+
+    const page = result.pages?.find((p) => p.component === 'QuoteView');
+    expect(page).toBeDefined();
+    expect(page?.stores).toContain('useQuoteStore');
+    expect(page?.apiCalls).toEqual(expect.arrayContaining(['/quote/calc', '/quote/detail']));
+  });
 });
