@@ -1,6 +1,6 @@
 {
-  "name": "business-agent",
-  "version": "0.1.0",
+  "name": "business-agent-cli",
+  "version": "0.2.0",
   "description": "Business-first project-aware agent CLI scaffold",
   "license": "MIT",
   "repository": {

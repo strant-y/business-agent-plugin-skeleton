@@ -72,6 +72,47 @@ describe('discover', () => {
     expect(hasProductOrder).toBe(true);
   });
 
+  it('records same-file evidence for co-occurrence relations and skips cross-file pairs', async () => {
+    const dir = await tempRoot();
+    // Product and Order co-occur with a structural hint inside ONE file -> relation with evidence.
+    await fs.writeFile(
+      path.join(dir, 'catalog.ts'),
+      "import { Order } from './order';\nexport interface Product {}\nexport interface Order {}\nconst latest: Product[] = order.items;\n",
+      'utf8',
+    );
+    // Customer and Invoice merely co-occur in a different file from the structural hint -> no relation.
+    await fs.writeFile(path.join(dir, 'other.ts'), 'export interface Customer {}\n', 'utf8');
+    await fs.writeFile(
+      path.join(dir, 'invoice.ts'),
+      'export interface Invoice {}\nconst text = "Customer Invoice";\n',
+      'utf8',
+    );
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+
+    const productOrder = manifest.relations.find((r) => r.source === 'Product' && r.target === 'Order');
+    expect(productOrder).toBeDefined();
+    expect(productOrder?.evidence).toEqual(['catalog.ts']);
+
+    const customerInvoice = manifest.relations.find((r) => r.source === 'Customer' && r.target === 'Invoice');
+    expect(customerInvoice).toBeUndefined();
+  });
+
+  it('quotes the matched condition in rule text and extracts preconditions', async () => {
+    const dir = await tempRoot();
+    await fs.writeFile(
+      path.join(dir, 'OrderService.ts'),
+      "export class OrderService { update(order: Order) { if (admin && order.status === 'AUDIT') throw new OrderBusinessException('locked'); } }\n",
+      'utf8',
+    );
+    const manifest = await discover(dir, { dryRun: true, config: { ...DEFAULT_CONFIG, analyzers: [] } });
+    const stateRule = manifest.rules.find((rule) => rule.id === 'rule.discovery.validation-state');
+    expect(stateRule).toBeDefined();
+    expect(stateRule?.rule[0]).toContain('匹配条件');
+    expect(stateRule?.rule[0]).toContain('order.status');
+    expect(stateRule?.preconditions).toContain('order.status = AUDIT');
+    expect(stateRule?.preconditions).toContain('role: admin');
+  });
+
   it('extracts custom business exceptions as candidate rules', async () => {
     const dir = await tempRoot();
     await fs.writeFile(

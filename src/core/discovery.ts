@@ -103,18 +103,39 @@ function attachEntityStates(
   });
 }
 
-function detectRelations(textEntities: Entity[], text: string, window = 150): Relation[] {
+function detectRelations(textEntities: Entity[], samples: SampleFile[], window = 150): Relation[] {
   const relations: Relation[] = [];
-  const names = new Set(textEntities.map((e) => e.name));
+  const names = [...new Set(textEntities.map((e) => e.name))];
+  // Pre-index the sample files mentioning each entity so per-pair regex checks
+  // only run on the intersection instead of the whole concatenated repo text.
+  const filesByName = new Map<string, Set<string>>();
+  const textByFile = new Map(samples.map((sample) => [sample.file, sample.text]));
+  for (const name of names) {
+    const needle = name.toLowerCase();
+    filesByName.set(
+      name,
+      new Set(samples.filter((sample) => sample.text.toLowerCase().includes(needle)).map((sample) => sample.file)),
+    );
+  }
   for (const source of names) {
     for (const target of names) {
       if (source === target) continue;
+      const sourceFiles = filesByName.get(source) ?? new Set<string>();
+      const targetFiles = filesByName.get(target) ?? new Set<string>();
+      const coFiles = [...sourceFiles].filter((file) => targetFiles.has(file));
+      if (!coFiles.length) continue;
       const relationHint = new RegExp(`${escapeRegExp(source)}[\\s\\S]{0,${window}}${escapeRegExp(target)}`, 'm');
       const structuralHint = new RegExp(
         `(?:extends|implements|imports?|has|contains|references|belongsTo|\\b${escapeRegExp(source)}\\b[\\s\\S]{0,40}(?:\\.|<|\\[))`,
         'i',
       );
-      if (!relationHint.test(text) || !structuralHint.test(text)) continue;
+      // Co-occurrence and the structural hint must hold inside the SAME file, and
+      // that file becomes the evidence — cross-file co-occurrence is noise (G2.3).
+      const evidence = coFiles.filter((file) => {
+        const text = textByFile.get(file) ?? '';
+        return relationHint.test(text) && structuralHint.test(text);
+      });
+      if (!evidence.length) continue;
       relations.push({
         id: `relation.${source.toLowerCase()}-${target.toLowerCase()}`,
         source,
@@ -123,7 +144,7 @@ function detectRelations(textEntities: Entity[], text: string, window = 150): Re
         cardinality: 'unknown',
         description: `Potential business relationship discovered between ${source} and ${target}.`,
         confidence: 'low',
-        evidence: [],
+        evidence,
       });
     }
   }
@@ -230,33 +251,72 @@ function ruleDescription(id: string, entity: string): string {
   return 'Review the matched business signal as a candidate rule.';
 }
 
+/** First comparison inside a matched snippet, e.g. `order.status = AUDIT`. */
+const RULE_CONDITION_RE = /([A-Za-z_$][\w$.]*)\s*(?:===?|!==?)\s*["']?([A-Za-z0-9_-]+)["']?/;
+/** Role keywords that turn a matched snippet into a structured precondition. */
+const RULE_ROLE_RE = /\b(?:admin(?:istrator)?|superuser|管理员|超管)\b/i;
+
+function normalizeRuleSnippet(snippet: string): string | undefined {
+  const trimmed = snippet.replace(/\s+/g, ' ').trim();
+  if (!trimmed) return undefined;
+  return trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+}
+
+/**
+ * Turn the matched code snippet into a concrete rule condition (G3.2): the raw
+ * comparison text is quoted so candidates read like "when status = AUDIT"
+ * instead of a generic template, and role words become structured preconditions
+ * for the semantic conflict detector (G3.5).
+ */
+function enrichRuleText(snippet: string | undefined): { condition?: string; preconditions?: string[] } {
+  if (!snippet) return {};
+  const condition = normalizeRuleSnippet(snippet);
+  const preconditions: string[] = [];
+  const comparison = snippet.match(RULE_CONDITION_RE);
+  if (comparison) preconditions.push(`${comparison[1]} = ${comparison[2]}`);
+  if (RULE_ROLE_RE.test(snippet)) preconditions.push('role: admin');
+  return { condition, preconditions: preconditions.length ? preconditions : undefined };
+}
+
 function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {
   const rules: BusinessRule[] = [];
   for (const { id, name, pattern } of RULE_PATTERNS) {
-    const evidence = uniq(
-      samples.filter((s) => pattern.test(s.text)).map((s) => s.file),
-      (f) => f,
-    ).slice(0, 10);
+    const evidence: string[] = [];
+    let firstSnippet: string | undefined;
+    for (const sample of samples) {
+      const matched = sample.text.match(pattern);
+      if (!matched) continue;
+      if (!firstSnippet) firstSnippet = matched[0];
+      evidence.push(sample.file);
+      if (evidence.length >= 10) break;
+    }
     if (evidence.length === 0) continue;
     const entity = inferRuleEntity(evidence, samples, entities);
+    const { condition, preconditions } = enrichRuleText(firstSnippet);
+    const ruleText = [
+      ruleDescription(id, entity),
+      ...(id === 'thrown-error'
+        ? [
+            samples
+              .find((sample) => evidence.includes(sample.file))
+              ?.text.match(/throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/i)?.[1] ?? '',
+          ]
+        : []),
+      ...(condition ? [`匹配条件: \`${condition}\`。`] : []),
+    ]
+      .join(' ')
+      .trim();
     const rule: BusinessRule = {
       id: `rule.discovery.${id}`,
       name,
       entity,
-      rule: [
-        id === 'thrown-error'
-          ? `${ruleDescription(id, entity)} ${
-              samples
-                .find((sample) => evidence.includes(sample.file))
-                ?.text.match(/throw\s+new\s+\w+\s*\(\s*["']([^"']+)["']/i)?.[1] ?? ''
-            }`.trim()
-          : ruleDescription(id, entity),
-      ],
+      rule: [ruleText],
       impact: ['Review related UI, API, service, and database code.'],
       confidence: heuristicScorer.score(evidence),
       evidence,
       context: buildEvidenceContext(evidence, samples),
       status: 'candidate',
+      ...(preconditions ? { preconditions } : {}),
     };
     rules.push(rule);
   }
@@ -482,7 +542,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   const entities = detectEntities(scan.sampleText, scan.files, config.preferredEntities, config.maxEntities);
   const initialAliases = buildAliasArtifacts(entities, glossary);
   const canonicalEntities = mergeEntitiesByAlias(entities, initialAliases.aliasToEntity);
-  const relations = detectRelations(canonicalEntities, scan.sampleText, config.relationWindow);
+  const relations = detectRelations(canonicalEntities, scan.samples, config.relationWindow);
   const rules = detectRules(scan.samples, canonicalEntities);
 
   const analyzers = resolveAnalyzers(config, options.analyzers ?? [], warn);

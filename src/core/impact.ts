@@ -360,6 +360,22 @@ function findRelationsForEntities(
   );
 }
 
+/**
+ * Rank affected relations for reporting (G4.6): higher confidence first, and
+ * relationship kinds with zero historical precision are pushed to the back so
+ * accumulated accuracy actually orders the output instead of only pruning.
+ */
+function rankRelations(relations: Relation[], lowAccuracy: Set<string>): Relation[] {
+  const confidenceRank = (confidence: string) => (confidence === 'high' ? 3 : confidence === 'medium' ? 2 : 1);
+  return [...relations].sort((left, right) => {
+    const byConfidence = confidenceRank(right.confidence) - confidenceRank(left.confidence);
+    if (byConfidence !== 0) return byConfidence;
+    const leftLow = lowAccuracy.has(left.relationship) ? 1 : 0;
+    const rightLow = lowAccuracy.has(right.relationship) ? 1 : 0;
+    return leftLow - rightLow;
+  });
+}
+
 function findApisForEntities(apis: ApiRoute[], entities: string[], aliasIndex: Record<string, string>): ApiRoute[] {
   const entitySet = new Set(entities.map((entity) => resolveCanonicalNameFromIndex(entity, aliasIndex)));
   return unique(
@@ -744,7 +760,10 @@ export async function buildImpactReport(root: string, changedFiles: string[], di
     [...findRulesForEntities(storedRules, entities, aliasIndex), ...fallbackRules],
     (rule) => rule.id,
   );
-  const relations = findRelationsForEntities(storedRelations, entities, aliasIndex);
+  const relations = rankRelations(
+    findRelationsForEntities(storedRelations, entities, aliasIndex),
+    lowAccuracyRelationships,
+  );
   const apis = findApisForEntities(manifest.apis ?? [], entities, aliasIndex);
   const workflows = findWorkflows(manifest, entities, apis);
   const affectedPages = findPages(manifest, entities, apis);

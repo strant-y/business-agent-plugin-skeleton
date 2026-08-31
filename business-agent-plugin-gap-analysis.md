@@ -561,3 +561,45 @@
 3. **结构变更需声明**：凡改 DiscoverManifest/Entity/Relation/BusinessRule 结构的任务，要求实施 Agent 在结果说明中列出新增字段与向后兼容策略（本节提示词已要求）。
 4. **统一验收门禁**：`npm run check && npm run lint && npm run format:check && npm test && npm run build`；对改了 CLI 行为的任务（P0-3、P2-c）额外在 tests/fixtures 的样例项目里手动跑一遍命令验证输出。
 5. **回归防线**：合并后跑一次 `business-agent audit`，确认既有 .agent/ 知识（若有）无 schema 破坏。
+
+---
+
+## 10. 下一轮优化（2026-08-31 复盘）
+
+> P0/P1/P2 共 15 项已全部落地（G 系列 22 条差距：19 闭环 / 3 部分闭环）。
+> 本节为剩余差距与发布阻塞项，按投入产出排序。全部零新增依赖。
+
+### 第 1 批 · 发布线（阻塞项，不修发不了 npm）
+
+| # | 任务 | 现状证据 | 落点 |
+| --- | --- | --- | --- |
+| R1-1 | **改包名 `business-agent-cli`** | `business-agent` 已被注册表占用（实测 v0.3.0）；`business-agent-cli` 仍可用（实测 404）；当前 package.json name 仍为 `business-agent@0.1.0`，push tag 触发 publish.yml 必失败 | `package.json`（name 改、bin 保持 `business-agent` 不变，用户零迁移） |
+| R1-2 | **版本 0.2.0 + CHANGELOG** | 大量已落地功能（review 闭环、语义冲突、Go/Python、openapi、字段级传播）无版本承载；仓库无 CHANGELOG.md | `package.json`、新增 `CHANGELOG.md` |
+| R1-3 | **vitest 挂住的发布风险** | Windows + Node 22.22 + vitest 4.1.10 间歇性全绿后不退出（已多次复现，`--pool=forks`/`--no-file-parallelism` 均无效）；本地可 timeout 绕过，CI（ubuntu）暂未复现，但 publish 门禁含 `npm test` | 记录为已知问题；若 CI 复现，publish.yml 的 test 步骤加超时保护 |
+
+### 第 2 批 · 关系精度收尾
+
+| # | 任务 | 解决 | 现状证据与实施方法 | 落点 |
+| --- | --- | --- | --- | --- |
+| R2-1 | **共现关系同文件约束 + 记录证据** | G2.3 治本 | `detectRelations` 目前在全仓库拼接文本上做 150 字符窗口共现 + 宽松 structural hint，且产出关系 `evidence: []`（无任何证据）。改为：按 SampleFile 逐文件检测，共现与 structural hint 必须命中**同一文件**，该文件记入 evidence；置信度保持 low。影响图噪声源头直接少一个量级 | `src/core/discovery.ts`（detectRelations 签名改收 samples） |
+| R2-2 | **历史准确率参与排序** | G4.6 收尾 | `loadLowAccuracyRelationships` 只过滤零命中边类型；impact 输出无任何排序。补：链路/风险条目按 `(confidence, relationshipAccuracy.precision)` 降序排列，预测准的关系排前——补齐第 8 节验收标准最后一公里 | `src/core/impact.ts` |
+
+### 第 3 批 · 规则说业务话（无 LLM 也生效）
+
+| # | 任务 | 解决 | 现状证据与实施方法 | 落点 |
+| --- | --- | --- | --- | --- |
+| R3-1 | **条件文本直接进规则** | G3.2 | `ruleDescription` 已是中文模板但仍泛化（"在特定业务条件下限制用户操作"）；detectRules 只记 evidence 文件、丢弃匹配到的条件原文。改为：按模式提取匹配片段（如 `status === 'AUDIT'`），rule 文本具体化为"当 status 为 AUDIT 时禁止编辑核心字段"级别的描述；thrown-error 已拼异常消息，其余模式对齐 | `src/core/discovery.ts`（detectRules / RULE_PATTERNS） |
+| R3-2 | **角色/条件词归一进 preconditions** | G3.5 输入质量 | conflicts.ts 已有角色词表雏形（admin/管理员），复用到规则提取侧：条件文本含角色词时写入 `preconditions`，让语义冲突检测拿到结构化输入 | `src/core/discovery.ts`、`src/core/conflicts.ts` |
+
+### 第 4 批 · 可选深水区（不建议现在做）
+
+- SQL 递归下降解析（多 JOIN/CTE，原 ROADMAP 4.1）：仅当项目大量使用复杂 SQL 才值得，现有保守提取够用；
+- 实体画像描述（属性/规则/API 计数拼装进 description）：锦上添花；
+- 向量检索 / 运行时证据采集：维持"不建议"结论不变。
+
+### 实施顺序
+
+```text
+R1-1 → R1-2 → R2-1 → R2-2 → R3-1 → R3-2
+（第 1 批纯配置与文档；R2-1 改 detectRelations 签名后需同步 discovery 调用处与相关测试断言）
+```
