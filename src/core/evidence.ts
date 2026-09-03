@@ -37,11 +37,15 @@ export const heuristicScorer: EvidenceScorer = {
   name: 'heuristic',
   score(evidence, context) {
     const count = context?.count ?? evidence.length;
-    const hasCodeRef = evidence.some((e) => /\.(ts|tsx|js|jsx|vue|java|sql|xml)$/i.test(e));
+    const codeRefs = evidence.filter((e) => /\.(ts|tsx|js|jsx|vue|java|sql|xml)$/i.test(e));
     const hasText = evidence.some((e) => e.trim().length > 0);
-    if (hasText && hasCodeRef && count >= 3) return 'high';
-    if (hasText && (hasCodeRef || count >= 1)) return 'medium';
-    return 'low';
+    // Documents and notes are reference material, not ground truth: they can
+    // be moved or deleted and drift from the implementation. Code references
+    // are what keep knowledge verifiable, so text-only evidence never scores
+    // above 'low'.
+    if (codeRefs.length === 0) return 'low';
+    if (hasText && codeRefs.length >= 2 && count >= 3) return 'high';
+    return 'medium';
   },
 };
 

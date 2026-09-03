@@ -18,8 +18,13 @@ describe('heuristicScorer', () => {
     expect(heuristicScorer.score(['a.ts', 'b.ts', 'c.ts'])).toBe('high');
   });
 
-  it('returns medium for text-only evidence', () => {
-    expect(heuristicScorer.score(['reviewed in meeting'])).toBe('medium');
+  it('returns high when code references outnumber doc references', () => {
+    expect(heuristicScorer.score(['a.ts', 'b.ts', 'docs/design.md'])).toBe('high');
+  });
+
+  it('returns low for text-only evidence (docs are reference, not ground truth)', () => {
+    expect(heuristicScorer.score(['reviewed in meeting'])).toBe('low');
+    expect(heuristicScorer.score(['docs/design.md', 'docs/api.md'])).toBe('low');
   });
 });
 
