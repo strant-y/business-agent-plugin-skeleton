@@ -149,16 +149,21 @@ async function checkCandidateReconciliation(root: string, manifest: DiscoverMani
   }
 
   const notes: string[] = [];
-  if (drift)
+  if (filePending > 0)
     notes.push(
-      `候选文件待评审（${filePending}）与 manifest 候选（${manifestPending.length}）不一致，说明候选文件或清单有手工改动`,
+      `候选文件有 ${filePending} 条待评审（共 ${fileIndex.total}，已决 ${fileResolved}），建议运行 business-agent review 逐条处理`,
     );
   if (auditGap)
     notes.push(
       `${missingFromReview.length} 个已决候选文件没有 review-state 审计记录（多为手工编辑或旧版 promote 只改文件）`,
     );
   if (strayDecisions) notes.push('review-state 已决数超过候选文件已决数，可能存在已被正式规则收录的旧决策');
+  if (drift)
+    notes.push(
+      `候选文件待评审（${filePending}）与 manifest 候选（${manifestPending.length}）不一致，说明候选文件或清单有手工改动`,
+    );
   const actions: string[] = [];
+  if (filePending > 0) actions.push('对真实候选运行 business-agent review 完成评审');
   if (auditGap)
     actions.push(
       `运行 business-agent reconcile review-state 自动补齐 ${missingFromReview.length} 条审计记录（以文件状态为准回填，不会删除或降级）`,
