@@ -71,15 +71,14 @@ afterEach(async () => {
 });
 
 describe('audit candidate reconciliation (P1)', () => {
-  it('reports a consistent picture when manifest, files and review-state agree', async () => {
+  it('reports a clean picture when nothing is pending anywhere', async () => {
     const root = await makeRoot();
-    await writeCandidate(root, 'rule.todo.md', 'Status: candidate', '待评审候选');
-    await writeManifest(root, [candidateRule('rule.todo')]);
+    await writeManifest(root, []);
 
     const report = await runAudit(root);
     const check = checkById(report, 'candidates');
     expect(check.status).toBe('ok');
-    expect(check.data).toMatchObject({ manifestPending: 1, filePending: 1, fileResolved: 0, reviewResolved: 0 });
+    expect(check.data).toMatchObject({ manifestPending: 0, filePending: 0, fileResolved: 0, reviewResolved: 0 });
   });
 
   it('flags candidates resolved on disk but missing from review-state', async () => {

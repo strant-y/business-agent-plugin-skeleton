@@ -138,12 +138,15 @@ async function checkCandidateReconciliation(root: string, manifest: DiscoverMani
 
   const drift = manifestPending.length !== filePending;
   const auditGap = missingFromReview.length > 0;
-  const strayDecisions = reviewResolved > fileResolved + missingFromReview.length;
+  // A backlog exists only when either side actually has pending candidates.
+  const hasBacklog = filePending > 0 || manifestPending.length > 0;
+  const orphanLegacy = Math.max(reviewResolved - (fileResolved + missingFromReview.length), 0);
 
-  if (!drift && !auditGap && !strayDecisions) {
+  if (!hasBacklog && !auditGap) {
+    const orphanNote = orphanLegacy > 0 ? `（另含 ${orphanLegacy} 条无对应文件的历史决策，可保留作审计历史）` : '';
     return ok(
       'candidates',
-      `候选对账一致：manifest 待评审 ${manifestPending.length}、候选文件待评审 ${filePending}（共 ${fileIndex.total}，已决 ${fileResolved}）、review-state 已决 ${reviewResolved}、待补证据 ${reviewPending}`,
+      `候选对账一致：候选文件共 ${fileIndex.total}（待评审 ${filePending}，已决 ${fileResolved}）、review-state 已决 ${reviewResolved}、待补证据 ${reviewPending}${orphanNote}`,
       data,
     );
   }
@@ -153,11 +156,11 @@ async function checkCandidateReconciliation(root: string, manifest: DiscoverMani
     notes.push(
       `候选文件有 ${filePending} 条待评审（共 ${fileIndex.total}，已决 ${fileResolved}），建议运行 business-agent review 逐条处理`,
     );
+  if (manifestPending.length > 0) notes.push(`manifest 侧有 ${manifestPending.length} 条候选待同步/评审`);
   if (auditGap)
     notes.push(
       `${missingFromReview.length} 个已决候选文件没有 review-state 审计记录（多为手工编辑或旧版 promote 只改文件）`,
     );
-  if (strayDecisions) notes.push('review-state 已决数超过候选文件已决数，可能存在已被正式规则收录的旧决策');
   if (drift)
     notes.push(
       `候选文件待评审（${filePending}）与 manifest 候选（${manifestPending.length}）不一致，说明候选文件或清单有手工改动`,
