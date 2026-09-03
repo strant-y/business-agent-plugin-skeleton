@@ -668,6 +668,18 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     ...rule,
     entity: resolveCanonicalNameFromIndex(rule.entity, manifestAliasArtifacts.aliasToEntity),
   }));
+  // Re-apply review decisions AFTER entity alias normalization: the earlier
+  // applyReviewState (before merging) keys on pre-normalization entity names,
+  // while review decisions are recorded against the canonical entity names
+  // persisted in the manifest, so candidate rules whose entity got renamed
+  // here would otherwise survive filtering and reappear as pending noise.
+  finalRules = [
+    ...finalRules.filter((rule) => rule.status === 'confirmed'),
+    ...applyReviewState(
+      finalRules.filter((rule) => rule.status !== 'confirmed'),
+      reviewState,
+    ),
+  ];
   const conflicts = detectConflicts(finalRules);
 
   const modules = scan.files

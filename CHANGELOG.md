@@ -3,6 +3,12 @@
 All notable changes to this project are documented in this file.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to semantic versioning.
 
+## [Unreleased]
+
+### Fixed
+
+- Review decisions now survive entity alias normalization in discovery: `applyReviewState` ran before `resolveCanonicalNameFromIndex` renamed candidate entity names, so rejected/accepted decisions keyed on canonical manifest entities never matched during filtering and candidates reappeared as pending noise on every re-discover (observed as 61 low-confidence rules stuck "pending" in cip-views despite being rejected). Review decisions are now re-applied to non-confirmed rules after normalization.
+
 ## [0.2.0] - 2026-08-31
 
 ### Changed
