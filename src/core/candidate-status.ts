@@ -54,7 +54,7 @@ export interface CandidateFrontMatter {
 export interface ResolvedCandidateState extends CandidateFrontMatter {
   status: CandidateStatus;
   /** Which source provided the status (front matter wins over legacy lines). */
-  source: 'front-matter' | 'status-line' | 'default';
+  source: 'front-matter' | 'status-line' | 'default' | 'rejected-location';
 }
 
 /**
@@ -297,7 +297,14 @@ export async function scanCandidateDir(candidatesDir: string): Promise<Candidate
     if (!isRecognizedStatusMarker(content)) {
       index.unknownStatuses.push(path.basename(file));
     }
-    const state = resolveCandidateState(content);
+    let state = resolveCandidateState(content);
+    // Location-aware: candidates archived under rejected/ are rejected even when
+    // a legacy flow moved the file without rewriting its `Status:` marker. This
+    // is the "already rejected yet counted as pending" drift the audit found in
+    // real repositories (25+ files under rejected/ still labelled candidate).
+    if (isUnderRejectedDir(candidatesDir, file) && !isResolvedCandidateStatus(state.status)) {
+      state = { ...state, status: 'rejected', source: 'rejected-location' };
+    }
     const candidateId = resolveCandidateId(file, content);
     index.byId[candidateId] = {
       ...state,
@@ -310,6 +317,11 @@ export async function scanCandidateDir(candidatesDir: string): Promise<Candidate
     else index.pending += 1;
   }
   return index;
+}
+
+function isUnderRejectedDir(candidatesDir: string, file: string): boolean {
+  const rel = path.relative(candidatesDir, path.dirname(file)).replaceAll('\\', '/');
+  return rel === 'rejected' || rel.startsWith('rejected/');
 }
 
 function isRecognizedStatusMarker(content: string): boolean {

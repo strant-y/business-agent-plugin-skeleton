@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import {
   applyCandidateStatus,
   extractTargetRuleId,
@@ -7,6 +10,7 @@ import {
   parseFrontMatter,
   resolveCandidateId,
   resolveCandidateState,
+  scanCandidateDir,
   type CandidateStatus,
 } from '../src/core/candidate-status.js';
 
@@ -158,5 +162,33 @@ describe('isResolvedCandidateStatus', () => {
     expect(isResolvedCandidateStatus('rejected')).toBe(true);
     expect(isResolvedCandidateStatus('candidate')).toBe(false);
     expect(isResolvedCandidateStatus('needs-verification')).toBe(false);
+  });
+});
+
+describe('scanCandidateDir (location-aware)', () => {
+  it('counts files under rejected/ as resolved even when their status marker still says candidate', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'ba-scan-'));
+    const dir = path.join(root, 'candidates');
+    await fs.mkdir(path.join(dir, 'rejected'), { recursive: true });
+    // A legacy reject moved the file without rewriting the marker.
+    await fs.writeFile(
+      path.join(dir, 'rejected', 'old-noise.md'),
+      '# Candidate: 旧噪声\nStatus: candidate\n\n## Entity\nPolicy\n\n## Hypothesis\n- h\n',
+      'utf8',
+    );
+    await fs.writeFile(
+      path.join(dir, 'pending-new.md'),
+      '# Candidate: 新候选\nStatus: candidate\n\n## Entity\nPolicy\n\n## Hypothesis\n- h\n',
+      'utf8',
+    );
+
+    const index = await scanCandidateDir(dir);
+    expect(index.total).toBe(2);
+    expect(index.pending).toBe(1);
+    expect(index.resolved).toBe(1);
+    expect(index.byId['old-noise']?.status).toBe('rejected');
+    expect(index.byId['old-noise']?.source).toBe('rejected-location');
+    expect(index.byId['pending-new']?.status).toBe('candidate');
+    await fs.rm(root, { recursive: true, force: true });
   });
 });
