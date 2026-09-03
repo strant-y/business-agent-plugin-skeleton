@@ -1,5 +1,4 @@
 import path from 'node:path';
-import { discover } from '../core/discovery.js';
 import { buildImpactReport, type ImpactReport } from '../core/impact.js';
 import { refreshKnowledgeStateFromEvidence } from '../core/knowledge-state.js';
 import { rebuildRetrievalIndex } from '../core/retrieval.js';
@@ -9,7 +8,7 @@ import { appendText, ensureDir, readText, writeText } from '../utils/fs.js';
 
 /**
  * Wall-clock budget for a capture run. The post-commit hook runs capture synchronously,
- * so when the run already took longer than this we skip the incremental re-discover
+ * so when the run already took longer than this we skip the knowledge refresh
  * instead of making the developer wait on every commit.
  */
 export const KNOWLEDGE_REFRESH_BUDGET_MS = 10_000;
@@ -167,10 +166,13 @@ export async function captureCommand(root: string, options: CaptureOptions = {})
         staleRecords: 0,
       });
     } else {
-      await discover(root, {
-        files: changedFiles,
-        onWarning: (message) => !options.quiet && console.warn(`Warning: ${message}`),
-      });
+      // Incremental re-discovery is intentionally NOT run here: `discover`
+      // rewrites the whole discovery manifest, and a docs/whitespace-only
+      // commit (no scannable sources) would wipe every discovered entity,
+      // rule and relation. Knowledge refresh therefore only re-checks the
+      // evidence of affected records and rebuilds indexes. Run
+      // `business-agent discover` explicitly when new source appears and you
+      // want fresh candidates.
       refreshedKnowledge = await refreshKnowledgeStateFromEvidence(root, changedFiles);
       await rebuildRetrievalIndex(root);
       const totalElapsedMs = Date.now() - startedAt;

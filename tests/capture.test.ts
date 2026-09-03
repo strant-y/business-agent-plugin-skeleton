@@ -95,19 +95,52 @@ describe('captureCommand', () => {
     expect(updated?.status).toBe('stale');
   });
 
-  it('runs incremental discover and rebuilds retrieval index during knowledge refresh', async () => {
+  it('keeps the discovery manifest intact during knowledge refresh (no incremental overwrite)', async () => {
     const dir = await tempRoot();
     await fs.mkdir(path.join(dir, '.agent', 'business'), { recursive: true });
-    await fs.mkdir(path.join(dir, '.agent', 'memory'), { recursive: true });
+    await fs.mkdir(path.join(dir, '.agent', 'memory', 'indexes'), { recursive: true });
     await fs.mkdir(path.join(dir, 'src'), { recursive: true });
     await fs.writeFile(
       path.join(dir, 'src', 'Order.ts'),
       'export interface Order { id: string; status: string }\n',
       'utf8',
     );
+    // A full manifest with discovered knowledge already exists.
+    await fs.writeFile(
+      path.join(dir, '.agent', 'memory', 'discovery-manifest.json'),
+      JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        projectRoot: dir,
+        filesScanned: 1,
+        entities: [
+          {
+            id: 'entity.order',
+            name: 'Order',
+            type: 'business_entity',
+            description: 'Order aggregate',
+            confidence: 'high',
+            evidence: ['src/Order.ts'],
+            attributes: [],
+            tags: [],
+          },
+        ],
+        rules: [],
+        relations: [],
+        apis: [],
+        conflicts: [],
+        aliases: {},
+        aliasIndex: {},
+      }),
+      'utf8',
+    );
+    await fs.mkdir(path.join(dir, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'docs', 'handover.md'), '# handover note\n', 'utf8');
 
+    // A docs-only change (no scannable source) triggers knowledge refresh but
+    // must NOT wipe the manifest — that data loss happened in cip-views when
+    // the post-commit hook ran capture --refresh-knowledge after md-only commits.
     const summary = await captureCommand(dir, {
-      files: ['src/Order.ts'],
+      files: ['docs/handover.md'],
       refreshKnowledge: true,
       quiet: true,
     });

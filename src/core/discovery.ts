@@ -755,13 +755,22 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
     aliasIndex: sqlAliasIndex,
     fieldIndex,
   };
+  const prevManifest = await readPreviousManifest(agentRoot);
+
+  // Guard: a file-restricted (incremental) discover that matched no scannable
+  // source must not overwrite the full manifest with an empty one (this wiped
+  // real cip-views knowledge when a docs-only commit triggered the post-commit
+  // hook). Keep the previous manifest and skip all disk side effects.
+  if (options.files?.length && scan.files.length === 0 && prevManifest) {
+    warn('No scannable source matched the requested files; keeping the existing discovery manifest unchanged.');
+    return prevManifest;
+  }
+
   const problems = await validateManifest(manifest);
   if (problems.length > 0) {
     throw new Error(`Discovery produced an invalid manifest:\n${problems.map((p) => `- ${p}`).join('\n')}`);
   }
   if (options.dryRun) return manifest;
-
-  const prevManifest = await readPreviousManifest(agentRoot);
   await writeJson(path.join(agentRoot, 'memory', 'discovery-manifest.json'), manifest);
   await saveReviewState(agentRoot, reviewState);
 
