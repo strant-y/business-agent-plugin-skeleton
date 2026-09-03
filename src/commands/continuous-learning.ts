@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { dispatchLifecycleEvent } from '../core/lifecycle.js';
 import { loadKnowledgeState, type KnowledgeRecord, type KnowledgeStatus } from '../core/knowledge-state.js';
 import { recordFeedback, type FeedbackType } from '../core/feedback.js';
@@ -8,6 +9,7 @@ import {
   type RetrievalHit,
 } from '../core/retrieval.js';
 import { loadTaskSession } from '../core/task.js';
+import { checkKnowledgeConsistency } from '../core/consistency.js';
 
 const FEEDBACK_TYPES = new Set<FeedbackType>([
   'accept_impact',
@@ -283,6 +285,19 @@ function formatIndexRebuild(result: RetrievalDocument[]): string {
   ].join('\n');
 }
 
+/** After `index rebuild`, verify INDEX.md links point at real files. */
+async function reportIndexIssues(root: string, json: boolean): Promise<void> {
+  const consistency = await checkKnowledgeConsistency(path.join(root, '.agent'));
+  if (consistency.indexBrokenLinks.length === 0) return;
+  if (json) {
+    console.warn(JSON.stringify({ warning: 'index-broken-links', links: consistency.indexBrokenLinks }));
+    return;
+  }
+  console.warn(
+    `Warning: INDEX.md 存在 ${consistency.indexBrokenLinks.length} 个断链：${consistency.indexBrokenLinks.join(', ')}`,
+  );
+}
+
 async function requireActiveSession(root: string): Promise<{ taskId: string; sessionId: string }> {
   const session = await loadTaskSession(root);
   if (session.status !== 'active') throw new Error('Task feedback requires an active task session.');
@@ -336,8 +351,10 @@ export async function continuousLearningCommand(
       includeUnhealthy: options.includeUnhealthy,
       includeLowConfidence: options.includeLowConfidence,
     });
-  } else if (action === 'index') result = await rebuildRetrievalIndex(root);
-  else if (action === 'feedback') {
+  } else if (action === 'index') {
+    result = await rebuildRetrievalIndex(root);
+    await reportIndexIssues(root, json);
+  } else if (action === 'feedback') {
     const values = withoutOptions(args);
     const reason = parseOption(args, 'reason');
     const correction = parseOption(args, 'correction');

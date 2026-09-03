@@ -4,7 +4,9 @@ import { parseCandidate, buildRuleFromCandidate, buildRelationFromInput } from '
 import { isRelationshipValue } from '../core/types.js';
 import { writeRule, writeRelation, buildIndex, loadRules, loadRelations } from '../core/knowledge.js';
 import { validateRule, validateRelation } from '../core/validate.js';
-import type { Relation } from '../core/types.js';
+import { applyCandidateStatus, resolveCandidateState, resolveCandidateId } from '../core/candidate-status.js';
+import { loadReviewState, markReviewed, saveReviewState } from '../core/review.js';
+import type { BusinessRule, Confidence, Relation } from '../core/types.js';
 
 export interface PromoteOptions {
   type?: 'rule' | 'relation';
@@ -13,6 +15,10 @@ export interface PromoteOptions {
   target?: string;
   relationship?: string;
   cardinality?: string;
+  /** Explicit rule id override (e.g. `rule.approval-display`); conflicts still fail, never overwrite. */
+  id?: string;
+  /** Merge the candidate into an existing rule instead of creating a new one. */
+  into?: string;
   json?: boolean;
   dryRun?: boolean;
 }
@@ -63,22 +69,86 @@ async function resolveCandidateText(candidatesDir: string, target: string): Prom
   return null;
 }
 
-async function markCandidatePromoted(file: string, promotedId: string): Promise<void> {
+async function markCandidateResolved(
+  file: string,
+  status: 'promoted' | 'covered' | 'rejected',
+  targetRuleId: string | undefined,
+  reason?: string,
+): Promise<void> {
   try {
     const content = await readText(file);
-    if (!content.includes('Status: candidate')) return;
-    await writeText(file, content.replace('Status: candidate', `Status: promoted as ${promotedId}`));
+    await writeText(file, applyCandidateStatus(content, path.basename(file), { status, targetRuleId, reason }));
   } catch {
     // Marking is best-effort; promotion itself already succeeded.
   }
 }
 
-function warnIfAlreadyPromoted(resolved: ResolvedCandidate | null): void {
-  if (resolved?.content.includes('Status: promoted')) {
+function warnIfAlreadyResolved(resolved: ResolvedCandidate | null): void {
+  if (!resolved) return;
+  const state = resolveCandidateState(resolved.content);
+  if (state.status === 'promoted') {
     console.warn(
-      `Warning: candidate "${resolved.name}" was already promoted; promoting again will overwrite the existing knowledge files.`,
+      `Warning: candidate "${resolved.name}" was already promoted${
+        state.targetRuleId ? ` as ${state.targetRuleId}` : ''
+      }; promoting again will overwrite the existing knowledge files.`,
     );
+  } else if (state.status === 'covered') {
+    console.warn(
+      `Warning: candidate "${resolved.name}" was already covered by ${state.targetRuleId ?? 'an existing rule'}.`,
+    );
+  } else if (state.status === 'rejected') {
+    console.warn(`Warning: candidate "${resolved.name}" was already rejected.`);
   }
+}
+
+/**
+ * Record a promotion/merge decision in review-state so audit can reconcile
+ * the candidate file (resolved) with the review trail (recorded). Best-effort:
+ * promotion itself has already succeeded when this runs.
+ */
+async function recordPromotionDecision(
+  agentRoot: string,
+  file: string,
+  input: {
+    status: 'promoted' | 'covered';
+    targetRuleId: string;
+    name: string;
+    entity: string;
+    reason?: string;
+  },
+): Promise<void> {
+  try {
+    const content = await readText(file);
+    const fileName = path.basename(file);
+    const slug = fileName.replace(/\.md$/i, '');
+    const candidateId = resolveCandidateId(fileName, content);
+    const state = await loadReviewState(agentRoot);
+    markReviewed(
+      state,
+      { name: input.name, entity: input.entity, confidence: 'medium' as Confidence },
+      {
+        decision: input.status === 'promoted' ? 'accepted' : 'rejected',
+        slug,
+        candidateId,
+        status: input.status,
+        targetRuleId: input.targetRuleId,
+        reason: input.reason ?? (input.status === 'covered' ? 'merged into existing rule' : undefined),
+        reviewedBy: 'promote',
+      },
+    );
+    await saveReviewState(agentRoot, state);
+  } catch {
+    // Best-effort: audit will surface the gap if recording fails.
+  }
+}
+
+function normalizeRuleId(value: string): string {
+  return value.startsWith('rule.') ? value : `rule.${value}`;
+}
+
+async function findExistingRule(agentRoot: string, ruleId: string): Promise<BusinessRule | undefined> {
+  const rules = await loadRules(agentRoot);
+  return rules.find((rule) => rule.id === ruleId);
 }
 
 async function promoteRule(
@@ -94,7 +164,16 @@ async function promoteRule(
   if (!resolved) {
     console.warn(`Warning: no candidate file found for "${target}"; promoting a bare rule from the name.`);
   }
-  warnIfAlreadyPromoted(resolved);
+  warnIfAlreadyResolved(resolved);
+
+  // Prefer the stable candidate file slug over the (possibly Chinese) display name.
+  const idHint = resolved?.file ? path.basename(resolved.file).replace(/\.md$/i, '') : undefined;
+  const candidateId = resolved?.file ? resolveCandidateId(path.basename(resolved.file), resolved.content) : undefined;
+
+  if (options.into) {
+    await promoteIntoExistingRule(agentRoot, candidatesDir, target, resolved, candidate, candidateId, options);
+    return;
+  }
 
   const entity = options.entity ?? candidate.entity ?? (await inferEntity(agentRoot, candidate.name));
   const rule = buildRuleFromCandidate({
@@ -103,7 +182,20 @@ async function promoteRule(
     candidate,
     confidence: 'medium',
     evidence: candidate.evidence.length ? candidate.evidence : undefined,
+    idHint,
   });
+  if (options.id) rule.id = normalizeRuleId(options.id);
+
+  const existing = await findExistingRule(agentRoot, rule.id);
+  if (existing && existing.name === rule.name && existing.entity === rule.entity) {
+    console.warn(`Warning: rule ${rule.id} already exists with identical name/entity; refreshing its content.`);
+  } else if (existing) {
+    throw new Error(
+      `Rule id "${rule.id}" already exists ("${existing.name}"). ` +
+        `Refusing to overwrite. Re-run with --id <new-id> to pick a different id, ` +
+        `or --into ${rule.id} to merge this candidate into the existing rule.`,
+    );
+  }
 
   const validation = await validateRule(rule);
   if (!validation.valid) {
@@ -111,13 +203,23 @@ async function promoteRule(
   }
 
   if (options.dryRun) {
-    console.log(`Dry run: would promote rule "${rule.name}" (entity: ${rule.entity}) to .agent/business/rules/`);
+    console.log(
+      `Dry run: would promote rule "${rule.name}" (id: ${rule.id}, entity: ${rule.entity}) to .agent/business/rules/`,
+    );
     return;
   }
 
   const base = await writeRule(agentRoot, rule);
   await refreshIndex(agentRoot);
-  if (resolved?.file) await markCandidatePromoted(resolved.file, rule.id);
+  if (resolved?.file) {
+    await markCandidateResolved(resolved.file, 'promoted', rule.id);
+    await recordPromotionDecision(agentRoot, resolved.file, {
+      status: 'promoted',
+      targetRuleId: rule.id,
+      name: rule.name,
+      entity: rule.entity,
+    });
+  }
 
   if (options.json) {
     console.log(JSON.stringify(rule, null, 2));
@@ -128,6 +230,63 @@ async function promoteRule(
   console.log(`  ${agentRoot}/business/impact/${base}.md`);
 }
 
+async function promoteIntoExistingRule(
+  agentRoot: string,
+  candidatesDir: string,
+  target: string,
+  resolved: ResolvedCandidate | null,
+  candidate: ReturnType<typeof parseCandidate>,
+  candidateId: string | undefined,
+  options: PromoteOptions,
+): Promise<void> {
+  const intoId = normalizeRuleId(options.into as string);
+  const existing = await findExistingRule(agentRoot, intoId);
+  if (!existing) {
+    throw new Error(`Target rule "${intoId}" not found under ${agentRoot}/business/rules/.`);
+  }
+  const merged: BusinessRule = {
+    ...existing,
+    rule: uniq([...existing.rule, ...(candidate.hypothesis.length ? candidate.hypothesis : [candidate.name])]),
+    evidence: uniq([...existing.evidence, ...(candidate.evidence.length ? candidate.evidence : [])]),
+    impact: uniq([...(existing.impact ?? []), ...(candidate.impact ?? [])]),
+    context: uniq([...(existing.context ?? []), ...candidate.context]),
+    confidence: existing.confidence,
+  };
+
+  const validation = await validateRule(merged);
+  if (!validation.valid) {
+    throw new Error(`Merged rule is invalid:\n${validation.problems.map((p) => `- ${p}`).join('\n')}`);
+  }
+
+  if (options.dryRun) {
+    console.log(
+      `Dry run: would merge candidate "${candidate.name}" into existing rule ${intoId} ` +
+        `(+${merged.rule.length - existing.rule.length} rule lines, +${merged.evidence.length - existing.evidence.length} evidence).`,
+    );
+    return;
+  }
+
+  await writeRule(agentRoot, merged);
+  await refreshIndex(agentRoot);
+  if (resolved?.file) {
+    await markCandidateResolved(resolved.file, 'covered', intoId, 'merged into existing rule');
+    await recordPromotionDecision(agentRoot, resolved.file, {
+      status: 'covered',
+      targetRuleId: intoId,
+      name: candidate.name,
+      entity: existing.entity,
+      reason: 'merged into existing rule',
+    });
+  }
+
+  if (options.json) {
+    console.log(JSON.stringify({ mergedInto: intoId, candidate: candidateId ?? target, rule: merged }, null, 2));
+    return;
+  }
+  console.log(`Merged candidate "${candidate.name}" into existing rule: ${intoId}`);
+  console.log(`  ${agentRoot}/business/rules/${intoId.slice('rule.'.length)}.md`);
+}
+
 async function promoteRelation(
   agentRoot: string,
   candidatesDir: string,
@@ -135,7 +294,7 @@ async function promoteRelation(
   options: PromoteOptions,
 ): Promise<void> {
   const resolved = await resolveCandidateText(candidatesDir, target);
-  warnIfAlreadyPromoted(resolved);
+  warnIfAlreadyResolved(resolved);
   const source = options.source ?? (resolved ? resolved.name : undefined);
   if (!source || !options.target) {
     throw new Error('Relation promotion requires --source <name> --target <name>');
@@ -170,7 +329,15 @@ async function promoteRelation(
 
   const base = await writeRelation(agentRoot, relation);
   await refreshIndex(agentRoot);
-  if (resolved?.file) await markCandidatePromoted(resolved.file, relation.id);
+  if (resolved?.file) {
+    await markCandidateResolved(resolved.file, 'promoted', relation.id);
+    await recordPromotionDecision(agentRoot, resolved.file, {
+      status: 'promoted',
+      targetRuleId: relation.id,
+      name: relation.source,
+      entity: relation.target,
+    });
+  }
 
   if (options.json) {
     console.log(JSON.stringify(relation, null, 2));
@@ -179,6 +346,10 @@ async function promoteRelation(
   console.log(`Promoted relation: ${base}`);
   console.log(`  ${agentRoot}/business/relationships/${base}.md`);
   console.log(`  ${agentRoot}/business/impact/${base}.md`);
+}
+
+function uniq(items: string[]): string[] {
+  return [...new Set(items.filter((item) => item.trim().length > 0))];
 }
 
 async function inferEntity(agentRoot: string, name: string): Promise<string> {

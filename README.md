@@ -8,19 +8,18 @@ A minimal Business-First, Project-aware Agent Harness CLI for Node.js + TypeScri
 - `discover` scans source files and creates initial business entity/rule/relation candidates. Candidate rules are stored under `.agent/memory/candidates/` so they can be verified and promoted; only confirmed knowledge lands in `.agent/business/`. Manual edits to entity files are preserved across runs.
   - `discover` runs the default SQL, API route and TypeScript AST analyzers; `discover --deep` adds the extended analyzer set (Vue SFC, Pinia/Vuex stores, composables and API wrappers, frontend pages/actions, React JSX/Hook patterns, Java, MyBatis XML, cross-end linkage) on top of those defaults.
 - `context` creates a task-oriented business context package including relevant rules, relationships, conflicts, API routes and impact maps (`--json` for machine-readable output).
-- `review` interactively accepts, rejects, or skips candidate rules; use `--non-interactive --accept medium --reject low` for scripted review.
+- `review` reviews candidate rules. Batch mode accepts/rejects/skips interactively or with `--non-interactive --accept medium --reject low`; single-candidate mode resolves one id at a time: `review <candidateId> --reject [--reason …]` or `review <candidateId> --covered-by <ruleId>` when an existing rule already covers it. Rejected candidates move to `.agent/memory/candidates/rejected/`; every decision is recorded in `.agent/memory/review-state.json` (stable candidateId key + audit reason). Candidate status is read uniformly from YAML front matter, English `Status:` lines, or Chinese `- 状态:` lines — a missing or unknown marker counts as pending instead of being silently skipped.
 - `evolve` stores candidate knowledge for later verification and promotion.
-- `promote` validates a verified candidate against the schemas, promotes it into confirmed knowledge under `.agent/business/` (with an impact map), marks the candidate file as promoted, and warns when a candidate is promoted a second time.
-- `validate` checks the discovery manifest and the confirmed knowledge files against the JSON schemas in `schemas/`.
-- `review` supports interactive or scripted candidate review; `--json` emits a machine-readable summary and rejected candidates move to `.agent/memory/candidates/rejected/`.
+- `promote` validates a verified candidate against the schemas and promotes it into confirmed knowledge under `.agent/business/` (with an impact map), marking the candidate file as promoted (front matter + legacy status line). Non-ASCII titles no longer collapse to the shared `rule.promoted-rule` id, an existing rule with the same id is never silently overwritten (promote fails and asks for `--id <new-id>` or `--into <existing-id>`), and `--into rule.x` merges the candidate into that rule instead of creating a duplicate.
+- `validate` checks the discovery manifest and the confirmed knowledge files against the JSON schemas in `schemas/`, plus cross-file consistency: each rule JSON must have its Markdown and impact map, ids must be unique, evidence must be non-empty, INDEX.md links must resolve, and candidate status markers must be recognized.
 - `config get/set` reads or updates `.agent/business-agent.json`.
 - `conflicts` recalculates rule conflicts and suggestions; `deprecate` marks a confirmed rule as deprecated and refreshes the knowledge index.
 - `states` writes Mermaid state diagrams; `workflow` creates a manual workflow template.
 - `learn` records a business discovery as a reviewable candidate; `impact` maps changed files to affected entities, rules, relationships, and APIs — first by walking the relation graph from the changed module (view → store → entity → rule/API) in both directions, falling back to file-name evidence when no graph node matches.
 - `capture` is the task-closing step: it writes a task-history record (changed files + the code-level impact chain) and, with `--learn`, records a verified business fact as a reviewable candidate. `hook install` adds a `post-commit` git hook that runs `capture --since last-commit --quiet` automatically after every commit, so knowledge keeps accumulating while you work. Hook failures are logged to `.agent/memory/hook-errors.log` (commits are never blocked) and surfaced by `audit`.
 - `task` provides the Agent task lifecycle: `start`, `context`, `predict-impact`, `checkpoint`, `test`, `finish`, and `feedback`. Sessions are stored as structured JSON under `.agent/memory/sessions/`; finishing refreshes retrieval indexes, and feedback closes the loop back into knowledge state and retrieval.
-- `retrieve`, `index rebuild`, and `knowledge status|verify|stale` provide the continuous-learning loop: retrieve prior context, rebuild indexes from accumulated memory, inspect current knowledge state, verify a record, or mark stale knowledge after evidence re-checks.
-- `audit` is the periodic health check for accumulated knowledge: it verifies init/manifest/schema integrity, flags pending low-confidence candidate noise, stale/contradicted/deprecated knowledge-state records, evidence files that drifted or disappeared, hook installation status and failures, and unfinished task sessions. Exits `1` when issues are found, so it can gate CI or a weekly review routine.
+- `retrieve`, `index rebuild`, and `knowledge status|verify|stale` provide the continuous-learning loop: retrieve prior context, rebuild indexes from accumulated memory, inspect current knowledge state, verify a record, or mark stale knowledge after evidence re-checks. Resolved candidates (promoted/covered/rejected) are excluded from the retrieval index — only confirmed rules and pending/`needs-verification` candidates are searchable, so promoted rules no longer rank below the hypotheses they superseded.
+- `audit` is the periodic health check for accumulated knowledge: it verifies init/manifest/schema integrity, reconciles candidate state across three sources (discovery manifest vs candidate files vs review-state decisions — reporting drift with concrete reconcile actions and per-source counts in `--json`), flags stale/contradicted/deprecated knowledge-state records, evidence files that drifted or disappeared, hook installation status and failures, and unfinished task sessions. Exits `1` when issues are found, so it can gate CI or a weekly review routine.
 
 The default discovery engine runs the low-dependency `sql`, `api` and `ast` analyzers. Additional analysis is opt-in via `--deep` or the `analyzers` config; explicitly setting `analyzers` to `[]` disables all analyzers.
 
@@ -51,9 +50,15 @@ business-agent init
 business-agent discover
 business-agent context Plan
 business-agent evolve "审核中的方案不能修改核心险种"
-business-agent promote "审核中的方案不能修改核心险种" --entity Plan
+business-agent promote "审核中的方案不能修改核心险种" --entity Plan --id rule.plan-locked-under-audit
 business-agent validate
 ```
+
+> For titles without ASCII letters (e.g. pure Chinese), promote no longer
+> falls back to the shared `rule.promoted-rule` id — it derives a stable id
+> from the candidate file slug, or a deterministic hash of the name. Explicit
+> `--id rule.<name>` is the recommended way to keep ids readable and stable,
+> and `promote <candidate> --into rule.existing` merges instead of duplicating.
 
 Continuous-learning quick start:
 
@@ -69,6 +74,32 @@ business-agent retrieve "订单审核"
 business-agent knowledge status order-review-rule
 business-agent task feedback confirm_rule order-review-rule --reason "已由测试和人工确认"
 ```
+
+## Use it in your project (recommended for teams)
+
+`npm link` above is convenient for a single machine but drifts across team
+members and CI. For a team, install the CLI as a **local dev dependency** so
+everyone runs the exact same version and scripts can call it via `pnpm`:
+
+```bash
+# From the plugin repo, pack a tarball:
+npm pack                      # produces business-agent-cli-<version>.tgz
+
+# In your business repo, install the tarball (or a git ref):
+pnpm add -D ./business-agent-cli-0.2.0.tgz
+
+# Then scripts and CI use the pinned local binary:
+pnpm business-agent init && pnpm business-agent discover && pnpm business-agent audit
+```
+
+Add a small `package.json` script so agents and humans share one entry point:
+
+```json
+{ "scripts": { "business:validate": "business-agent validate && business-agent audit" } }
+```
+
+and run it in CI after each merge (`pnpm business:validate`) to gate on schema
+and candidate/rule consistency before releasing.
 
 ## CLI
 
@@ -153,11 +184,11 @@ business-agent task feedback confirm_rule rule-order-review --reason "业务确�
 - `task finish <summary> [--learn <fact>]`: closes the task, writes task history and reusable task experience, optionally records a learned candidate, and rebuilds retrieval indexes.
 - `task feedback <type> <targetId> [--reason <text>] [--correction <text>]`: records user feedback, requires an active task session, persists feedback under `.agent/memory/feedback/`, and applies supported status transitions back into knowledge state.
 - `retrieve <query>`: searches the retrieval index and returns ranked context hits with reasons, evidence, confidence, and warnings. By default, stale/contradicted/deprecated knowledge and low-confidence candidates are filtered out to reduce noise; pass `--include-unhealthy` and `--include-low-confidence` to include them.
-- `index rebuild`: rebuilds `.agent/memory/indexes/retrieval-index.json` from discovery output, knowledge state, task history, experiences, and feedback.
+- `index rebuild`: rebuilds `.agent/memory/indexes/retrieval-index.json` and `business/INDEX.md` (rules + relationships + impact maps) in one pass, then verifies INDEX.md link integrity and warns about broken links — no manual three-way index maintenance.
 - `knowledge status <id>`: reads the current knowledge record and state.
 - `knowledge verify <id> [--reason <text>]`: transitions a record to `verified` through the persisted state machine.
 - `knowledge stale --id <id> [--reason <text>]`: marks the specified knowledge record as `stale`; the legacy positional `<id> [reason]` form remains accepted for compatibility.
-- `audit [--json]`: runs the knowledge health check (init, manifest, schema, candidate noise, knowledge state, evidence drift, hook status/failures, unfinished sessions). Exits `1` when issues are found; `--json` emits a machine-readable report.
+- `audit [--json]`: runs the knowledge health check (init, manifest, schema, candidate reconciliation, knowledge state, evidence drift, hook status/failures, unfinished sessions). Exits `1` when issues are found; `--json` emits a machine-readable report including per-source candidate counts.
 
 ### Output modes
 

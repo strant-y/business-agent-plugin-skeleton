@@ -53,14 +53,46 @@ export interface PromoteRuleInput {
   confidence?: BusinessRule['confidence'];
   evidence?: string[];
   context?: string[];
+  /** Stable hint (e.g. the candidate file slug) used when the name itself is not slug-safe. */
+  idHint?: string;
+}
+
+/** Deterministic 32-bit FNV-1a hash rendered in base36; keeps generated ids stable across runs. */
+export function stableHash(input: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < input.length; i++) {
+    hash ^= input.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+/**
+ * Slugify a candidate name into a rule id fragment. Non-ASCII names (e.g.
+ * Chinese titles) produce an empty naive slug, so callers can pass a stable
+ * hint (the candidate file slug); as a last resort a deterministic hash of
+ * the original name guarantees unique, predictable ids instead of a shared
+ * `promoted-rule` fallback that would overwrite previously promoted rules.
+ */
+export function ruleIdSlug(name: string, hint?: string): string {
+  const fromName =
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || '';
+  if (fromName) return fromName;
+  const fromHint =
+    (hint ?? '')
+      .replace(/^rule\./i, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '') || '';
+  if (fromHint) return fromHint;
+  return `candidate-${stableHash(name)}`;
 }
 
 export function buildRuleFromCandidate(input: PromoteRuleInput): BusinessRule {
-  const slug =
-    input.name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '') || 'promoted-rule';
+  const slug = ruleIdSlug(input.name, input.idHint);
   const evidence = input.evidence ?? input.candidate.evidence;
   return {
     id: `rule.${slug}`,

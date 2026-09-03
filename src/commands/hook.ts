@@ -36,7 +36,9 @@ export type HookAction = 'install' | 'remove';
 export async function hookCommand(root: string, action: HookAction): Promise<void> {
   const gitRoot = await findGitRoot(root);
   if (!gitRoot) {
-    throw new Error('Not a git repository: no .git found in this directory or any parent. Run `git init` or `business-agent init` first.');
+    throw new Error(
+      'Not a git repository: no .git found in this directory or any parent. Run `git init` or `business-agent init` first.',
+    );
   }
   const hooksDir = path.join(gitRoot, '.git', 'hooks');
   const hookFile = path.join(hooksDir, 'post-commit');

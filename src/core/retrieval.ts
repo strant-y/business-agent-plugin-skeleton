@@ -2,9 +2,11 @@ import path from 'node:path';
 import { exists, readText, writeJson } from '../utils/fs.js';
 import { normalizeEvidence, type EvidenceRef } from './evidence.js';
 import { loadFeedback } from './feedback.js';
-import { loadRules, buildIndex } from './knowledge.js';
+import { loadRules, buildIndex, safeFileId } from './knowledge.js';
 import { getEntityAliases, invertAliasMap, resolveCanonicalNameFromIndex } from './glossary.js';
 import { loadManifestSafe } from './manifest-loader.js';
+import { isResolvedCandidateStatus, scanCandidateDir } from './candidate-status.js';
+import { isResolvedDecision, loadReviewState } from './review.js';
 import type { KnowledgeRecord, KnowledgeStatus } from './knowledge-state.js';
 import type { TaskExperience } from './task.js';
 
@@ -68,6 +70,35 @@ function taskHistoryDir(root: string): string {
   return path.join(root, '.agent', 'memory', 'task-history');
 }
 
+/**
+ * Collect the candidate file slugs (which equal safeFileId(rule.id) for every
+ * candidate written by `writeCandidate`) that should no longer surface as
+ * searchable rules: candidates whose markdown front matter / status line is
+ * resolved (promoted, covered, rejected) or that have a resolved review-state
+ * entry. Formal rules written under .agent/business/rules are unaffected.
+ */
+async function loadResolvedCandidateRuleSlugs(root: string): Promise<Set<string>> {
+  const agentRoot = path.join(root, '.agent');
+  const resolved = new Set<string>();
+  const candidatesDir = path.join(agentRoot, 'memory', 'candidates');
+  if (await exists(candidatesDir)) {
+    const index = await scanCandidateDir(candidatesDir);
+    for (const entry of Object.values(index.byId)) {
+      if (!isResolvedCandidateStatus(entry.status)) continue;
+      const slug = entry.fileName.replace(/\.md$/i, '');
+      if (slug) resolved.add(slug);
+      if (entry.targetRuleId) resolved.add(safeFileId(entry.targetRuleId));
+    }
+  }
+  const reviewState = await loadReviewState(agentRoot);
+  for (const entry of Object.values(reviewState.decisions)) {
+    if (!isResolvedDecision(entry)) continue;
+    if (entry.slug) resolved.add(entry.slug);
+    if (entry.targetRuleId) resolved.add(safeFileId(entry.targetRuleId));
+  }
+  return resolved;
+}
+
 async function loadKnowledgeRecords(root: string): Promise<Record<string, KnowledgeRecord>> {
   const file = knowledgeStatePath(root);
   if (!(await exists(file))) return {};
@@ -100,6 +131,7 @@ async function loadTaskExperiences(root: string): Promise<TaskExperience[]> {
 export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocument[]> {
   const documents: RetrievalDocument[] = [];
   const knowledgeRecords = await loadKnowledgeRecords(root);
+  const resolvedCandidateRuleSlugs = await loadResolvedCandidateRuleSlugs(root);
   const manifest = await loadManifestSafe(root, (message) => console.warn(`Warning: ${message}`));
   const aliasesByEntity = manifest.aliases ?? {};
   const aliasIndex = manifest.aliasIndex ?? invertAliasMap(aliasesByEntity);
@@ -124,6 +156,7 @@ export async function rebuildRetrievalIndex(root: string): Promise<RetrievalDocu
     });
   }
   for (const rule of manifest.rules ?? []) {
+    if (resolvedCandidateRuleSlugs.has(safeFileId(rule.id))) continue;
     const knowledge = knowledgeRecords[rule.id];
     const canonicalEntity = resolveCanonicalNameFromIndex(rule.entity, aliasIndex);
     const entityAliases = getEntityAliases(canonicalEntity, aliasesByEntity);

@@ -9,6 +9,7 @@ import {
   validateKnowledgeDir,
   type KnowledgeProblem,
 } from '../core/validate.js';
+import { checkKnowledgeConsistency } from '../core/consistency.js';
 
 export interface ValidateCommandOptions {
   json?: boolean;
@@ -74,34 +75,40 @@ export async function validateCommand(root: string, options: ValidateCommandOpti
   // Confirmed knowledge under .agent/business/ is also schema-checked.
   const knowledgeProblems: KnowledgeProblem[] = await validateKnowledgeDir(agentRoot);
 
+  // Cross-file consistency: rule JSON/Markdown/impact trio, unique ids,
+  // non-empty evidence, INDEX.md link integrity, candidate status closure.
+  const consistency = await checkKnowledgeConsistency(agentRoot);
+  const consistencyFailed = !consistency.healthy;
+
   if (options.json) {
     console.log(
       JSON.stringify(
         {
           manifest: manifestFile,
           manifestFound: manifest !== null,
-          valid: problems.length === 0 && knowledgeProblems.length === 0,
+          valid: problems.length === 0 && knowledgeProblems.length === 0 && !consistencyFailed,
           problems,
           knowledge: knowledgeProblems,
+          consistency,
         },
         null,
         2,
       ),
     );
-    if (problems.length > 0 || knowledgeProblems.length > 0) process.exitCode = 1;
+    if (problems.length > 0 || knowledgeProblems.length > 0 || consistencyFailed) process.exitCode = 1;
     return;
   }
 
   if (!manifest) {
     console.log(`No discovery manifest found at ${manifestFile}. Run \`business-agent discover\` first.`);
-    if (knowledgeProblems.length === 0) return;
+    if (knowledgeProblems.length === 0 && !consistencyFailed) return;
   }
 
-  if (problems.length === 0 && knowledgeProblems.length === 0) {
+  if (problems.length === 0 && knowledgeProblems.length === 0 && !consistencyFailed) {
     const summary = manifest
       ? `${(manifest.entities ?? []).length} entities, ${(manifest.rules ?? []).length} rules, ${(manifest.relations ?? []).length} relations, ${(manifest.apis ?? []).length} apis, ${(manifest.conflicts ?? []).length} conflicts`
       : 'no manifest';
-    console.log(`Validated ${summary} and confirmed knowledge files: all conform to schemas.`);
+    console.log(`Validated ${summary} and confirmed knowledge files: all conform to schemas and stay consistent.`);
     return;
   }
 
@@ -112,6 +119,15 @@ export async function validateCommand(root: string, options: ValidateCommandOpti
   for (const k of knowledgeProblems) {
     console.error(`- [${k.kind}] ${k.file}`);
     for (const msg of k.problems) console.error(`    ${msg}`);
+  }
+  if (consistencyFailed) {
+    for (const rule of consistency.rules) {
+      for (const msg of rule.problems) console.error(`- [rule] ${rule.file} (${rule.id}): ${msg}`);
+    }
+    for (const id of consistency.duplicateIds) console.error(`- [rule] duplicate id across files: ${id}`);
+    for (const link of consistency.indexBrokenLinks) console.error(`- [index] broken link in INDEX.md: ${link}`);
+    for (const name of consistency.unknownCandidateStatuses)
+      console.error(`- [candidate] unrecognized status marker: ${name}`);
   }
   process.exitCode = 1;
 }

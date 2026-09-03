@@ -324,7 +324,8 @@ function enrichRuleText(snippet: string | undefined): { condition?: string; prec
   return { condition, preconditions: preconditions.length ? preconditions : undefined };
 }
 
-function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {  const rules: BusinessRule[] = [];
+function detectRules(samples: SampleFile[], entities: Entity[]): BusinessRule[] {
+  const rules: BusinessRule[] = [];
   for (const { id, name, pattern } of RULE_PATTERNS) {
     const evidence: string[] = [];
     let firstSnippet: string | undefined;
@@ -620,7 +621,7 @@ export async function discover(root: string, options: DiscoverOptions = {}): Pro
   const autoPromoted = candidateRules.filter((rule) => shouldAutoPromote(rule, config.autoPromote));
   const persistedRules = candidateRules.filter((rule) => !shouldAutoPromote(rule, config.autoPromote));
   const confirmedRules = autoPromoted.map((rule) => ({ ...rule, status: 'confirmed' as const }));
-  for (const rule of autoPromoted) markReviewed(reviewState, rule, 'accepted', rule.id);
+  for (const rule of autoPromoted) markReviewed(reviewState, rule, { decision: 'accepted', slug: rule.id });
   finalRules = mergeCandidateRules([
     ...persistedRules,
     ...confirmedRules,

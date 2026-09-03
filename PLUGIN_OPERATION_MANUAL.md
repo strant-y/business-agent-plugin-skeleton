@@ -472,6 +472,19 @@ business-agent review --non-interactive --accept medium --reject low
 business-agent review --json
 ```
 
+单候选评审（推荐在阅读候选后直接处理某一条）：
+
+```bash
+business-agent review <candidateId> --reject --reason "仅前端展示逻辑，非业务规则"
+business-agent review <candidateId> --covered-by rule.order-locked-under-audit --reason "已被既有正式规则覆盖"
+business-agent review <candidateId> --accept --reason "前后端与接口资料印证"   # 等价于 promote <candidateId>
+```
+
+候选状态统一从 YAML front matter / 英文 `Status:` 行 / 中文 `- 状态:` 行读取：
+缺状态或未知状态一律视为待评审，不会被静默跳过；front matter 中的
+`candidateId` 是稳定 ID，评审决策写入 review-state 时以它为键，并记录
+状态、目标规则 ID、原因与评审人。
+
 建议个人 Vue 项目使用方式：
 
 - 交互式查看候选
@@ -493,14 +506,24 @@ business-agent review --json
 作用：把已验证的候选提升为确认知识。
 
 ```bash
-business-agent promote <candidate>
+business-agent promote <candidate> [--id rule.<name>] [--into rule.<existing>]
 ```
 
 示例：
 
 ```bash
-business-agent promote 审核中的订单不能修改 --entity Order
+business-agent promote 审核中的订单不能修改 --entity Order --id rule.order-locked-under-audit
+business-agent promote 报批号空值兜底 --into rule.approval-display   # 合并入既有规则，不新建
 ```
+
+行为要点：
+
+- 规则 id 稳定且可预测：拉丁标题直接 slug 化；纯中文标题按候选文件名派生，
+  否则取标题的确定性哈希——绝不会再回退成共享的 `rule.promoted-rule` 互相覆盖。
+- **拒绝覆盖**：目标 id 已被占用且内容不同时命令失败退出，要求显式
+  `--id <new-id>` 或 `--into rule.existing`，不会静默覆盖已有正式规则。
+- `--into` 把候选的规则描述、证据与影响合并进既有规则，候选标记为
+  `covered`（front matter + `Status: covered by …` 双写），不产生重复文件。
 
 使用建议：
 
@@ -720,7 +743,9 @@ business-agent audit --json
 - `.agent/` 是否完整
 - manifest 是否有效
 - schema 是否通过
-- 候选是否堆积过多
+- **候选三方对账**：manifest 候选数、候选文件状态数、review-state 已决数是否一致；
+  不一致时逐项报告差异并给出可执行动作（如"对 N 个已决文件重跑 review 补齐审计记录"）；
+  `--json` 直接给出各来源计数（data.manifestPending / filePending / fileResolved / reviewResolved …）
 - 知识是否 stale / contradicted / deprecated
 - 证据文件是否漂移或丢失
 - hook 和 task session 是否异常
@@ -734,11 +759,21 @@ business-agent audit --json
 
 ## 8.12 `validate`
 
-作用：验证 discovery manifest 和确认知识是否符合 schema。
+作用：验证 discovery manifest 和确认知识是否符合 schema，并做跨文件一致性检查。
 
 ```bash
 business-agent validate
 ```
+
+JSON 输出（按每条正式规则列出检查项）：
+
+```bash
+business-agent validate --json
+```
+
+一致性检查包括：规则 JSON / 对应 Markdown / impact map 三件套齐全、规则 id 全局唯一、
+证据非空、`business/INDEX.md` 链接完整、候选文件状态标记可识别。任何一项缺失都会
+失败退出（exit 1），可在 CI 中作为门禁。
 
 建议在以下情况下执行：
 

@@ -78,6 +78,10 @@ export const PROMOTE_KEYS = new Set([
   'target',
   'relationship',
   'cardinality',
+  'id',
+  'into',
+  'covered-by',
+  'reason',
   'accept',
   'reject',
 ]);

@@ -95,12 +95,15 @@ describe('runAudit', () => {
     await writeJson(root, '.agent/memory/hook-errors.log', '2026-08-18T09:00:00Z business-agent capture failed\n');
 
     const report = await runAudit(root);
-    const noise = report.checks.find((check) => check.id === 'noise');
+    const candidates = report.checks.find((check) => check.id === 'candidates');
     const knowledge = report.checks.find((check) => check.id === 'knowledge-state');
     const hook = report.checks.find((check) => check.id === 'hook');
 
-    expect(noise?.status).toBe('warn');
-    expect(noise?.message).toContain('低置信度');
+    // The manifest lists a pending candidate but no candidate file backs it:
+    // reconciliation reports the drift instead of a single noise boolean.
+    expect(candidates?.status).toBe('warn');
+    expect(candidates?.data?.manifestPending).toBe(1);
+    expect(candidates?.message).toContain('不一致');
     expect(knowledge?.status).toBe('warn');
     expect(knowledge?.message).toContain('stale');
     expect(hook?.status).toBe('warn');

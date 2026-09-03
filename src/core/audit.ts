@@ -4,6 +4,8 @@ import { findGitRoot } from '../utils/git.js';
 import { validateManifest, validateKnowledgeDir } from './validate.js';
 import { normalizeEvidence, validateEvidence } from './evidence.js';
 import { findKnowledgeEvidenceDrift } from './knowledge-state.js';
+import { isResolvedCandidateStatus, scanCandidateDir, type CandidateStatus } from './candidate-status.js';
+import { isResolvedDecision, loadReviewState } from './review.js';
 import type { DiscoverManifest } from './types.js';
 
 export type AuditStatus = 'ok' | 'warn' | 'error';
@@ -13,6 +15,8 @@ export interface AuditCheck {
   label: string;
   status: AuditStatus;
   message: string;
+  /** Optional structured payload (e.g. reconciliation counts) for --json consumers. */
+  data?: Record<string, unknown>;
 }
 
 export interface AuditReport {
@@ -24,16 +28,16 @@ export interface AuditReport {
 
 const MAX_EVIDENCE_CHECKS = 200;
 
-function ok(label: string, message: string): AuditCheck {
-  return { id: label, label, status: 'ok', message };
+function ok(label: string, message: string, data?: Record<string, unknown>): AuditCheck {
+  return { id: label, label, status: 'ok', message, ...(data ? { data } : {}) };
 }
 
-function warn(label: string, message: string): AuditCheck {
-  return { id: label, label, status: 'warn', message };
+function warn(label: string, message: string, data?: Record<string, unknown>): AuditCheck {
+  return { id: label, label, status: 'warn', message, ...(data ? { data } : {}) };
 }
 
-function error(label: string, message: string): AuditCheck {
-  return { id: label, label, status: 'error', message };
+function error(label: string, message: string, data?: Record<string, unknown>): AuditCheck {
+  return { id: label, label, status: 'error', message, ...(data ? { data } : {}) };
 }
 
 function summarizeProblems(problems: string[], max = 5): string {
@@ -80,20 +84,85 @@ async function checkSchema(root: string, manifest: DiscoverManifest | undefined)
   return ok('schema', '发现清单与已确认知识均符合 schema');
 }
 
-function checkNoise(manifest: DiscoverManifest | undefined): AuditCheck {
-  if (!manifest) return warn('noise', '无发现清单，跳过候选噪声检查');
-  const pending = (manifest.rules ?? []).filter((rule) => rule.status !== 'confirmed' && rule.status !== 'deprecated');
-  const low = pending.filter((rule) => rule.confidence === 'low');
-  if (low.length > 0) {
-    return warn(
-      'noise',
-      `有 ${pending.length} 条候选规则未评审（其中 ${low.length} 条低置信度），建议运行 business-agent review --reject low 清理噪声`,
+/**
+ * Reconcile the three sources that describe candidate state:
+ *  1. the discovery manifest rules,
+ *  2. the candidate markdown files (status read via the unified parser),
+ *  3. the review-state decisions.
+ * They drift when a file is edited by hand, a promotion only rewrote the file,
+ * or a review decision was recorded without the file marker. The check reports
+ * each count and suggests concrete reconcile actions instead of a single
+ * boolean "noise" line.
+ */
+async function checkCandidateReconciliation(root: string, manifest: DiscoverManifest | undefined): Promise<AuditCheck> {
+  const data: Record<string, unknown> = {};
+  if (!manifest) {
+    data.skipped = true;
+    return warn('candidates', '无发现清单，跳过候选对账检查', data);
+  }
+  const agentRoot = path.join(root, '.agent');
+  const manifestPending = (manifest.rules ?? []).filter(
+    (rule) => rule.status !== 'confirmed' && rule.status !== 'deprecated',
+  );
+  const fileIndex = await scanCandidateDir(path.join(agentRoot, 'memory', 'candidates'));
+  const statusCounts = fileIndex.byId;
+  const byStatus = new Map<CandidateStatus, number>();
+  for (const entry of Object.values(statusCounts)) {
+    byStatus.set(entry.status, (byStatus.get(entry.status) ?? 0) + 1);
+  }
+  const filePending = fileIndex.pending;
+  const fileResolved = fileIndex.resolved;
+
+  const reviewState = await loadReviewState(agentRoot);
+  const reviewEntries = Object.values(reviewState.decisions);
+  const reviewResolved = reviewEntries.filter(isResolvedDecision).length;
+  const reviewPending = reviewEntries.length - reviewResolved;
+
+  // Files resolved on disk but missing a review-state record → audit trail gap.
+  const fileResolvedIds = new Set<string>();
+  for (const entry of Object.values(statusCounts)) {
+    if (isResolvedCandidateStatus(entry.status)) fileResolvedIds.add(entry.candidateId);
+  }
+  const reviewSlugs = new Set(reviewEntries.map((entry) => entry.slug));
+  const missingFromReview = [...fileResolvedIds].filter((candidateId) => !reviewSlugs.has(candidateId));
+
+  data.manifestPending = manifestPending.length;
+  data.fileTotal = fileIndex.total;
+  data.filePending = filePending;
+  data.fileResolved = fileResolved;
+  data.fileByStatus = Object.fromEntries(byStatus);
+  data.reviewTotal = reviewEntries.length;
+  data.reviewResolved = reviewResolved;
+  data.reviewPending = reviewPending;
+  data.missingFromReview = missingFromReview.length;
+
+  const drift = manifestPending.length !== filePending;
+  const auditGap = missingFromReview.length > 0;
+  const strayDecisions = reviewResolved > fileResolved + missingFromReview.length;
+
+  if (!drift && !auditGap && !strayDecisions) {
+    return ok(
+      'candidates',
+      `候选对账一致：manifest 待评审 ${manifestPending.length}、候选文件待评审 ${filePending}（共 ${fileIndex.total}，已决 ${fileResolved}）、review-state 已决 ${reviewResolved}、待补证据 ${reviewPending}`,
+      data,
     );
   }
-  if (pending.length > 0) {
-    return warn('noise', `有 ${pending.length} 条候选规则待评审，建议运行 business-agent review`);
-  }
-  return ok('noise', '无待评审候选，知识库已收敛');
+
+  const notes: string[] = [];
+  if (drift)
+    notes.push(
+      `候选文件待评审（${filePending}）与 manifest 候选（${manifestPending.length}）不一致，说明候选文件或清单有手工改动`,
+    );
+  if (auditGap)
+    notes.push(
+      `${missingFromReview.length} 个已决候选文件没有 review-state 审计记录（多为手工编辑或旧版 promote 只改文件）`,
+    );
+  if (strayDecisions) notes.push('review-state 已决数超过候选文件已决数，可能存在已被正式规则收录的旧决策');
+  const actions: string[] = [];
+  if (auditGap) actions.push(`对 ${missingFromReview.length} 个文件重跑 review 补齐审计记录，或用 --json 输出查看清单`);
+  if (drift) actions.push('运行 business-agent discover 重新生成 manifest，或按候选文件状态手工对齐');
+  actions.push('运行 business-agent validate 校验整体一致性');
+  return warn('candidates', `候选对账发现差异：${notes.join('；')}。建议：${actions.join('；')}`, data);
 }
 
 async function checkKnowledgeState(root: string): Promise<AuditCheck> {
@@ -207,7 +276,7 @@ export async function runAudit(root: string): Promise<AuditReport> {
   const { check: manifestCheck, manifest } = await checkManifest(root);
   checks.push(manifestCheck);
   checks.push(await checkSchema(root, manifest));
-  checks.push(checkNoise(manifest));
+  checks.push(await checkCandidateReconciliation(root, manifest));
   checks.push(await checkKnowledgeState(root));
   checks.push(await checkKnowledgeEvidenceDrift(root));
   checks.push(await checkEvidence(root, manifest));

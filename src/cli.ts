@@ -39,11 +39,11 @@ const HELP: Record<string, string> = {
   evolve:
     'Usage: business-agent evolve [candidate] [--dry-run]\n\nCreate a candidate knowledge item, or print the candidates directory.',
   promote:
-    'Usage: business-agent promote <candidate> [--type rule|relation] [--entity <name>] [--dry-run]\n\nPromote a verified candidate into .agent/business/ as confirmed knowledge.\nFor relations, also pass --source <name> --target <name> [--cardinality 1:N].',
+    'Usage: business-agent promote <candidate> [--type rule|relation] [--entity <name>] [--id rule.<name>] [--into rule.<existing>] [--dry-run]\n\nPromote a verified candidate into .agent/business/ as confirmed knowledge.\nRule ids are stable and predictable (non-ASCII titles use the file slug or a deterministic hash); promoting onto an existing rule with different content fails and asks for --id/--into instead of overwriting.\nFor relations, also pass --source <name> --target <name> [--cardinality 1:N].',
   validate:
     'Usage: business-agent validate [--json]\n\nValidate the discovery manifest and the confirmed knowledge files against the JSON schemas.',
   review:
-    'Usage: business-agent review [--non-interactive] [--accept high|medium|low] [--reject high|medium|low] [--json]\n\nReview candidate business rules and accept, reject, or skip them.',
+    'Usage: business-agent review [--non-interactive] [--accept high|medium|low] [--reject high|medium|low] [--json]\n       business-agent review <candidateId> --accept [--reason <text>]\n       business-agent review <candidateId> --reject [--reason <text>]\n       business-agent review <candidateId> --covered-by <ruleId> [--reason <text>]\n\nReview candidate business rules and accept, reject, cover, or skip them.\nStatus is read from YAML front matter, English `Status:` lines and Chinese `状态:` lines alike; candidates without any marker count as pending.',
   config:
     'Usage: business-agent config get [key] | config set <key> <value>\n\nRead or update .agent/business-agent.json.',
   conflicts: 'Usage: business-agent conflicts [--json]\n\nDetect rule conflicts and print resolution suggestions.',
@@ -61,8 +61,35 @@ const HELP: Record<string, string> = {
   retrieve:
     'Usage: business-agent retrieve <query> [--include-unhealthy] [--include-low-confidence]\n\nRetrieve ranked business context. By default stale/contradicted/deprecated knowledge and low-confidence candidates are filtered out; use the flags to include them.',
   audit:
-    'Usage: business-agent audit [--json]\n\nHealth check for the accumulated knowledge: init, manifest, schema, candidate noise, knowledge state, evidence drift, hook status and unfinished sessions. Exits 1 when issues are found.',
+    'Usage: business-agent audit [--json]\n\nHealth check for the accumulated knowledge: init, manifest, schema, candidate reconciliation (manifest vs candidate files vs review-state), knowledge state, evidence drift, hook status and unfinished sessions. Exits 1 when issues are found.',
 };
+
+/** Options for single-candidate review mode: `review <id> --accept|--reject|--covered-by <rule> [--reason <text>]`. */
+function parseReviewSingleOptions(args: string[]): {
+  rejectFlag?: boolean;
+  acceptFlag?: boolean;
+  coveredBy?: string;
+  reason?: string;
+} {
+  const out: { rejectFlag?: boolean; acceptFlag?: boolean; coveredBy?: string; reason?: string } = {};
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    if (arg === '--reject') out.rejectFlag = true;
+    else if (arg === '--accept') out.acceptFlag = true;
+    else if (arg === '--covered-by') {
+      const value = args[++i];
+      if (!value || value.startsWith('--')) throw new Error('Option --covered-by requires a value');
+      out.coveredBy = value;
+    } else if (arg === '--reason') {
+      const value = args[++i];
+      if (value === undefined) throw new Error('Option --reason requires a value');
+      out.reason = value;
+    } else {
+      throw new Error(`Unknown review option: ${arg}. Run \`business-agent help review\`.`);
+    }
+  }
+  return out;
+}
 
 function printGeneralHelp(): void {
   console.log(`business-agent ${VERSION}
@@ -154,6 +181,8 @@ async function main(): Promise<void> {
         target: opts.target,
         relationship: opts.relationship,
         cardinality: opts.cardinality,
+        id: opts.id,
+        into: opts.into,
         json: flags.json,
         dryRun: flags.dryRun,
       });
@@ -164,6 +193,12 @@ async function main(): Promise<void> {
       await validateCommand(root, { json: flags.json });
       break;
     case 'review': {
+      // Single-candidate mode: `review <candidateId> --accept|--reject|--covered-by <ruleId> [--reason <text>]`
+      if (args[0] && !args[0].startsWith('--')) {
+        const single = parseReviewSingleOptions(args.slice(1));
+        await reviewCommand(root, { candidate: args[0], json: flags.json, ...single });
+        break;
+      }
       const opts = parsePromoteOptions(args);
       const validConfidence = (value: string | undefined): 'high' | 'medium' | 'low' | undefined => {
         if (!value) return undefined;

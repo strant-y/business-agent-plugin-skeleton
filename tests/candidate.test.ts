@@ -4,6 +4,7 @@ import {
   buildRuleFromCandidate,
   buildRelationFromInput,
   candidateSlug,
+  stableHash,
 } from '../src/core/candidate.js';
 
 const SAMPLE = `# Candidate: 审核中的方案不能修改核心险种
@@ -46,9 +47,42 @@ describe('buildRuleFromCandidate', () => {
     const parsed = parseCandidate(SAMPLE, 'fallback');
     const rule = buildRuleFromCandidate({ name: parsed.name, entity: 'Plan', candidate: parsed });
     expect(rule.status).toBe('confirmed');
-    expect(rule.id).toBe('rule.promoted-rule');
     expect(rule.entity).toBe('Plan');
     expect(rule.evidence).toContain('src/PlanService.ts');
+  });
+
+  it('never falls back to a shared promoted-rule id for non-latin names', () => {
+    const parsed = parseCandidate(SAMPLE, 'fallback');
+    const rule = buildRuleFromCandidate({ name: parsed.name, entity: 'Plan', candidate: parsed });
+    expect(rule.id).toBe(`rule.candidate-${stableHash(parsed.name)}`);
+    expect(rule.id).not.toBe('rule.promoted-rule');
+  });
+
+  it('generates distinct ids for two Chinese-title candidates (no overwrite collisions)', () => {
+    const a = buildRuleFromCandidate({
+      name: '批改申请报批号展示错误',
+      entity: 'Policy',
+      candidate: parseCandidate('## Hypothesis\n- a', 'a'),
+    });
+    const b = buildRuleFromCandidate({
+      name: '退保申请必须人工复核',
+      entity: 'Policy',
+      candidate: parseCandidate('## Hypothesis\n- b', 'b'),
+    });
+    expect(a.id).not.toBe(b.id);
+    expect(a.id).toMatch(/^rule\./);
+    expect(b.id).toMatch(/^rule\./);
+  });
+
+  it('prefers a latin file slug hint over hashing a Chinese title', () => {
+    const parsed = parseCandidate(SAMPLE, 'approval-lock');
+    const rule = buildRuleFromCandidate({
+      name: parsed.name,
+      entity: 'Plan',
+      candidate: parsed,
+      idHint: 'rule.approval-lock-check',
+    });
+    expect(rule.id).toBe('rule.approval-lock-check');
   });
 
   it('falls back to evidence placeholder', () => {

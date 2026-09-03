@@ -185,6 +185,6 @@ const rows = listOrders();
 
     const page = result.pages?.find((p) => p.component === 'OrderList');
     expect(page).toBeDefined();
-    expect(page?.apiCalls).toEqual(expect.arrayContaining(['/api/orders', '/api/orders/' ]));
+    expect(page?.apiCalls).toEqual(expect.arrayContaining(['/api/orders', '/api/orders/']));
   });
 });

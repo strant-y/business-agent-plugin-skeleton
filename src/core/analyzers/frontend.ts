@@ -41,7 +41,10 @@ function moduleName(file: string): string {
 
 /** Normalize a store name so `useQuoteStore` and module `QuoteStore` match. */
 function storeKey(name: string): string {
-  return name.replace(/^use/i, '').replace(/store$/i, '').toLowerCase();
+  return name
+    .replace(/^use/i, '')
+    .replace(/store$/i, '')
+    .toLowerCase();
 }
 
 function relativeModule(importPath: string): string | undefined {
@@ -195,13 +198,9 @@ function analyzeSample(
   const directApiCalls = collectApiCalls(text);
   // Pinia stores own the API calls; a page that uses a store inherits its calls
   // so page.apiCalls reflects the real data flow instead of staying empty.
-  const indirectApiCalls = unique(
-    stores.flatMap((store) => apiByStore?.get(storeKey(store)) ?? []),
-  );
+  const indirectApiCalls = unique(stores.flatMap((store) => apiByStore?.get(storeKey(store)) ?? []));
   // Pages (and stores) importing api-wrapper modules inherit those modules' URLs.
-  const viaImports = unique(
-    importedModules.flatMap((mod) => urlsByModule?.get(mod.toLowerCase()) ?? []),
-  );
+  const viaImports = unique(importedModules.flatMap((mod) => urlsByModule?.get(mod.toLowerCase()) ?? []));
   const apiCalls = unique([...directApiCalls, ...indirectApiCalls, ...viaImports]);
   const permissions = unique(matches(text, PERMISSION_RE));
   const conditions = unique(matches(text, CONDITION_RE));
