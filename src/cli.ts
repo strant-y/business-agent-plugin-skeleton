@@ -20,6 +20,7 @@ import { hookCommand } from './commands/hook.js';
 import { taskCommand } from './commands/task.js';
 import { continuousLearningCommand } from './commands/continuous-learning.js';
 import { auditCommand } from './commands/audit.js';
+import { reconcileReviewState } from './commands/reconcile.js';
 import {
   parseArgs,
   parsePromoteOptions,
@@ -62,6 +63,8 @@ const HELP: Record<string, string> = {
     'Usage: business-agent retrieve <query> [--include-unhealthy] [--include-low-confidence]\n\nRetrieve ranked business context. By default stale/contradicted/deprecated knowledge and low-confidence candidates are filtered out; use the flags to include them.',
   audit:
     'Usage: business-agent audit [--json]\n\nHealth check for the accumulated knowledge: init, manifest, schema, candidate reconciliation (manifest vs candidate files vs review-state), knowledge state, evidence drift, hook status and unfinished sessions. Exits 1 when issues are found.',
+  reconcile:
+    'Usage: business-agent reconcile review-state [--dry-run] [--json]\n\nBackfill review-state audit records for candidate files that are already resolved on disk (promoted/covered/rejected) but have no review decision yet. Safe: file status is the source of truth; nothing is deleted or downgraded.',
 };
 
 /** Options for single-candidate review mode: `review <id> --accept|--reject|--covered-by <rule> [--reason <text>]`. */
@@ -120,6 +123,7 @@ Commands:
   index                 Manage retrieval indexes (\`rebuild\`)
   knowledge             Inspect or transition knowledge state
   audit                 Health check the accumulated knowledge
+  reconcile             Backfill review-state from resolved candidate files
 
 Global options:
   --help, -h            Show help for a command or this overview
@@ -280,6 +284,18 @@ async function main(): Promise<void> {
       rejectUnexpectedArgs('audit', args);
       await auditCommand(root, flags.json);
       break;
+    case 'reconcile': {
+      const action = args[0];
+      if (action !== 'review-state') throw new Error('Usage: business-agent reconcile review-state [--dry-run]');
+      rejectUnexpectedArgs('reconcile', args.slice(1));
+      const result = await reconcileReviewState(root, { dryRun: flags.dryRun, json: flags.json });
+      if (flags.json) console.log(JSON.stringify(result, null, 2));
+      else
+        console.log(
+          `Reconciled review-state: scanned ${result.scanned} candidate files, backfilled ${result.added} review decision(s) from file status.`,
+        );
+      break;
+    }
     case 'task': {
       const subcommand = args[0];
       if (subcommand === 'feedback') {

@@ -159,7 +159,10 @@ async function checkCandidateReconciliation(root: string, manifest: DiscoverMani
     );
   if (strayDecisions) notes.push('review-state 已决数超过候选文件已决数，可能存在已被正式规则收录的旧决策');
   const actions: string[] = [];
-  if (auditGap) actions.push(`对 ${missingFromReview.length} 个文件重跑 review 补齐审计记录，或用 --json 输出查看清单`);
+  if (auditGap)
+    actions.push(
+      `运行 business-agent reconcile review-state 自动补齐 ${missingFromReview.length} 条审计记录（以文件状态为准回填，不会删除或降级）`,
+    );
   if (drift) actions.push('运行 business-agent discover 重新生成 manifest，或按候选文件状态手工对齐');
   actions.push('运行 business-agent validate 校验整体一致性');
   return warn('candidates', `候选对账发现差异：${notes.join('；')}。建议：${actions.join('；')}`, data);
