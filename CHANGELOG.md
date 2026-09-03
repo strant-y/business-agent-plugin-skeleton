@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 ### Fixed
 
 - Review decisions now survive entity alias normalization in discovery: `applyReviewState` ran before `resolveCanonicalNameFromIndex` renamed candidate entity names, so rejected/accepted decisions keyed on canonical manifest entities never matched during filtering and candidates reappeared as pending noise on every re-discover (observed as 61 low-confidence rules stuck "pending" in cip-views despite being rejected). Review decisions are now re-applied to non-confirmed rules after normalization.
+- `hook install` and the audit hook check now resolve the git repository root by walking up parent directories instead of assuming `<projectRoot>/.git` exists, so projects that live in a subdirectory of their repo (e.g. cip-views inside the cip repo) can install and detect the post-commit hook. The generated hook cds back to the project root and invokes the plugin CLI by absolute path, since business projects typically have no global `business-agent` command on PATH.
 
 ## [0.2.0] - 2026-08-31
 

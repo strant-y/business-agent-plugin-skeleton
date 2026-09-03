@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { exists, readText } from '../utils/fs.js';
+import { findGitRoot } from '../utils/git.js';
 import { validateManifest, validateKnowledgeDir } from './validate.js';
 import { normalizeEvidence, validateEvidence } from './evidence.js';
 import { findKnowledgeEvidenceDrift } from './knowledge-state.js';
@@ -173,9 +174,13 @@ async function checkHook(root: string): Promise<AuditCheck> {
       return warn('hook', `hook 运行失败 ${lines.length} 次，最近：${tail}（检查 business-agent 是否可用）`);
     }
   }
-  const hookFile = path.join(root, '.git', 'hooks', 'post-commit');
-  if (!(await exists(hookFile))) {
-    return warn('hook', 'post-commit hook 未安装，建议运行 business-agent hook install 自动捕获每次提交');
+  const gitRoot = await findGitRoot(root);
+  const hookFile = gitRoot ? path.join(gitRoot, '.git', 'hooks', 'post-commit') : undefined;
+  if (!hookFile || !(await exists(hookFile))) {
+    return warn(
+      'hook',
+      `post-commit hook 未安装（git 仓库根：${gitRoot ?? '未找到 .git'}），建议运行 business-agent hook install 自动捕获每次提交`,
+    );
   }
   const content = await readText(hookFile);
   if (!content.includes('# business-agent')) {

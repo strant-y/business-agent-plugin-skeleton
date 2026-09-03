@@ -1,7 +1,25 @@
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 import { promisify } from 'node:util';
+import { exists } from './fs.js';
 
 const run = promisify(execFile);
+
+/**
+ * Walk up from `start` until a directory containing `.git` is found. Projects
+ * often live in a subdirectory of their repository (e.g. cip-views inside the
+ * cip repo), so hooks and hook checks must resolve the real git root instead
+ * of assuming `<root>/.git` exists.
+ */
+export async function findGitRoot(start: string): Promise<string | undefined> {
+  let dir = path.resolve(start);
+  for (;;) {
+    if (await exists(path.join(dir, '.git'))) return dir;
+    const parent = path.dirname(dir);
+    if (parent === dir) return undefined;
+    dir = parent;
+  }
+}
 
 /**
  * List files changed by git. With `sinceLastCommit` it reports the files of

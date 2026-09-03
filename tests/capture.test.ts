@@ -210,7 +210,8 @@ describe('hookCommand', () => {
 
     await hookCommand(dir, 'install');
     const content = await fs.readFile(hookFile, 'utf8');
-    expect(content).toContain('business-agent capture --since last-commit --quiet --refresh-knowledge');
+    expect(content).toContain('capture --since last-commit --quiet --refresh-knowledge');
+    expect(content).toContain(`cd "${dir.replace(/\\/g, '/')}"`);
     expect(content).toContain('hook-errors.log');
     expect(content).toContain('|| true');
 
@@ -236,6 +237,22 @@ describe('hookCommand', () => {
     const remaining = await fs.readFile(hookFile, 'utf8');
     expect(remaining).toContain('# my own hook');
     expect(remaining).not.toContain('business-agent');
+  });
+
+  it('installs the hook into the git root when the project is a subdirectory', async () => {
+    const repo = await tempRoot();
+    await fs.mkdir(path.join(repo, '.git', 'hooks'), { recursive: true });
+    const project = path.join(repo, 'packages', 'app');
+    await fs.mkdir(project, { recursive: true });
+
+    await hookCommand(project, 'install');
+    const hookFile = path.join(repo, '.git/hooks/post-commit');
+    const content = await fs.readFile(hookFile, 'utf8');
+    expect(content).toContain(`cd "${project.replace(/\\/g, '/')}"`);
+    expect(content).toContain('capture --since last-commit');
+
+    await hookCommand(project, 'remove');
+    await expect(fs.readFile(hookFile, 'utf8')).rejects.toThrow();
   });
 
   it('rejects when the directory is not a git repository', async () => {
